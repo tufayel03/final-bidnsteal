@@ -1,0 +1,16 @@
+node_modules/
+dist/
+coverage/
+.env
+.env.*
+!.env.example
+.logs/
+.playwright-cli/
+*.log
+client/front/dist/
+client/admin/dist/
+server/uploads/*
+!server/uploads/.gitkeep
+!server/uploads/media/
+server/uploads/media/*
+!server/uploads/media/.gitkeep

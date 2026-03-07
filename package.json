@@ -1,0 +1,24 @@
+{
+  "name": "bidnsteal-workspace",
+  "private": true,
+  "version": "1.0.0",
+  "workspaces": [
+    "client/front",
+    "client/admin",
+    "server"
+  ],
+  "scripts": {
+    "dev": "concurrently -n server,front,admin -c green,cyan,magenta \"npm --workspace server run dev\" \"npm --workspace bidnsteal-front run dev\" \"npm --workspace bidnsteal-admin run dev\"",
+    "dev:server": "npm --workspace server run dev",
+    "dev:front": "npm --workspace bidnsteal-front run dev",
+    "dev:admin": "npm --workspace bidnsteal-admin run dev",
+    "build": "npm run build:server && npm run build:front && npm run build:admin",
+    "build:server": "npm --workspace server run build",
+    "build:front": "npm --workspace bidnsteal-front run build",
+    "build:admin": "npm --workspace bidnsteal-admin run build",
+    "seed": "npm --workspace server run seed"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  }
+}
