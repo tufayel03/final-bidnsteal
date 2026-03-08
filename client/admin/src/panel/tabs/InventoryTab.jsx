@@ -6,27 +6,16 @@ import { DashboardStatCard } from '../components/dashboard/DashboardStatCard';
 
 export function InventoryTab() {
     const admin = useAdmin();
-    const { inventoryFilters, inventory = [], inventoryDeleting } = admin;
+    const { inventoryFilters, inventory = [], inventoryDeleting, categories = [], categoryFilters = {}, categoryEditor = {} } = admin;
+    const inventoryView = admin.inventoryView || 'products';
     const lowStockCount = inventory.filter((item) => Number(item.stock || 0) < 10).length;
     const reservedUnits = inventory.reduce((total, item) => total + Number(item.reserved || 0), 0);
     const auctionModeCount = inventory.filter((item) => String(item.mode || '').toLowerCase().includes('auction')).length;
+    const categoriesWithProducts = categories.filter((item) => Number(item.productCount || 0) > 0).length;
+    const defaultCategory = categories.find((item) => item.isDefault);
 
-    return (
-        <div style={{ display: 'grid', gap: '24px' }}>
-            <div className="admin-tab-header">
-                <div>
-                    <h2>{admin.inventoryTrashMode ? 'Inventory Trash' : 'Inventory Management'}</h2>
-                    <p>{admin.inventoryTrashMode ? 'Restore deleted products or permanently erase them.' : 'Manage products, view stock levels, and control pricing.'}</p>
-                </div>
-                {!admin.inventoryTrashMode && (
-                    <button
-                        onClick={() => admin.openProductCreate && admin.openProductCreate()}
-                        className="order-filter-btn primary"
-                    >
-                        + Add Product
-                    </button>
-                )}
-            </div>
+    const renderProductsView = () => (
+        <>
             <div className="dashboard-stat-grid dashboard-stat-grid--primary">
                 <DashboardStatCard
                     icon="boxes"
@@ -139,6 +128,7 @@ export function InventoryTab() {
                             </th>
                             <th>Image</th>
                             <th>Title / SKU</th>
+                            <th>Category</th>
                             <th>Mode</th>
                             <th>Price</th>
                             <th>Stock</th>
@@ -168,10 +158,16 @@ export function InventoryTab() {
                                 </td>
                                 <td>
                                     <p style={{ fontWeight: 700, whiteSpace: 'nowrap' }}>{item.title}</p>
-                                    <p className="mono" style={{ fontSize: '11px', color: '#8d9ab3' }}>{item.sku}</p>
+                                    <p className="mono" style={{ fontSize: '11px', color: 'var(--muted)' }}>{item.sku}</p>
                                     <div style={{ marginTop: '4px', display: 'flex', gap: '4px' }}>
                                         {item.isFeatured && <span className="status-badge status-live">featured</span>}
                                         {item.isNewDrop && <span className="status-badge status-processing">new</span>}
+                                    </div>
+                                </td>
+                                <td>
+                                    <div className="inventory-category-pill">
+                                        <Icon name="folder-tree" style={{ width: '13px', height: '13px' }} />
+                                        <span>{item.category || 'Uncategorized'}</span>
                                     </div>
                                 </td>
                                 <td style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{item.mode}</td>
@@ -217,6 +213,251 @@ export function InventoryTab() {
                     </tbody>
                 </table>
             </div>
+        </>
+    );
+
+    const renderCategoriesView = () => (
+        <>
+            <div className="dashboard-stat-grid dashboard-stat-grid--primary">
+                <DashboardStatCard
+                    icon="folder-tree"
+                    label="Category Library"
+                    value={admin.number ? admin.number(categories.length) : categories.length}
+                    meta="Managed taxonomy"
+                    tone="stone"
+                    featured
+                />
+                <DashboardStatCard
+                    icon="package-check"
+                    label="Used Categories"
+                    value={admin.number ? admin.number(categoriesWithProducts) : categoriesWithProducts}
+                    meta="Assigned to products"
+                    tone="olive"
+                    compact
+                />
+                <DashboardStatCard
+                    icon="package-x"
+                    label="Empty Categories"
+                    value={admin.number ? admin.number(Math.max(0, categories.length - categoriesWithProducts)) : Math.max(0, categories.length - categoriesWithProducts)}
+                    meta="Ready for future products"
+                    tone="sand"
+                    compact
+                />
+                <DashboardStatCard
+                    icon="shield-check"
+                    label="Default Category"
+                    value={defaultCategory?.name || 'Unset'}
+                    meta="Fallback on delete"
+                    tone="clay"
+                    compact
+                />
+            </div>
+
+            <div className="inventory-category-layout">
+                <div className="inventory-category-form-card admin-card">
+                    <div className="inventory-section-head">
+                        <div>
+                            <span className="inventory-section-eyebrow">Category Builder</span>
+                            <h3>{categoryEditor.id ? 'Edit Category' : 'Create Category'}</h3>
+                            <p>Build reusable product categories and assign them from the product form.</p>
+                        </div>
+                        <div className="inventory-category-head-icon">
+                            <Icon name="folder-plus" style={{ width: '18px', height: '18px' }} />
+                        </div>
+                    </div>
+
+                    <div className="inventory-category-form-grid">
+                        <div>
+                            <label className="settings-label">Category Name</label>
+                            <input
+                                value={categoryEditor.name || ''}
+                                onChange={(e) => { admin.categoryEditor.name = e.target.value; }}
+                                placeholder="Die-cast Cars"
+                                className="admin-search-input"
+                            />
+                        </div>
+                        <div>
+                            <label className="settings-label">Slug</label>
+                            <input
+                                value={categoryEditor.slug || ''}
+                                onChange={(e) => { admin.categoryEditor.slug = e.target.value; }}
+                                placeholder="auto from name"
+                                className="admin-search-input"
+                            />
+                        </div>
+                        <div style={{ gridColumn: '1 / -1' }}>
+                            <label className="settings-label">Description</label>
+                            <textarea
+                                value={categoryEditor.description || ''}
+                                onChange={(e) => { admin.categoryEditor.description = e.target.value; }}
+                                placeholder="Optional note for admins about when to use this category."
+                                className="settings-textarea admin-search-input"
+                            />
+                        </div>
+                    </div>
+
+                    <div className="inventory-category-note">
+                        <Icon name="info" style={{ width: '14px', height: '14px' }} />
+                        <span>Deleting a category automatically moves linked products into {defaultCategory?.name || 'Uncategorized'}.</span>
+                    </div>
+
+                    <div className="inventory-category-form-actions">
+                        <button
+                            type="button"
+                            onClick={() => admin.cancelCategoryEdit && admin.cancelCategoryEdit()}
+                            className="order-filter-btn"
+                        >
+                            Reset
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => admin.saveCategoryEditor && admin.saveCategoryEditor()}
+                            className="order-filter-btn primary"
+                            disabled={admin.categorySaving}
+                        >
+                            {admin.categorySaving ? 'Saving...' : (categoryEditor.id ? 'Save Category' : 'Create Category')}
+                        </button>
+                    </div>
+                </div>
+
+                <div className="inventory-category-list-card admin-card">
+                    <div className="inventory-section-head inventory-section-head--tight">
+                        <div>
+                            <span className="inventory-section-eyebrow">Taxonomy Library</span>
+                            <h3>Existing Categories</h3>
+                            <p>Manage reusable product groupings and keep the catalog structured.</p>
+                        </div>
+                        <div className="inventory-category-toolbar">
+                            <input
+                                value={categoryFilters.search || ''}
+                                onChange={(e) => { admin.categoryFilters.search = e.target.value; }}
+                                type="text"
+                                placeholder="Search category..."
+                                className="admin-search-input"
+                            />
+                            <button
+                                type="button"
+                                onClick={() => admin.loadCategories && admin.loadCategories()}
+                                className="order-filter-btn"
+                            >
+                                Search
+                            </button>
+                        </div>
+                    </div>
+
+                    <div className="inventory-category-list-head">
+                        <span>Category</span>
+                        <span>Slug</span>
+                        <span>Products</span>
+                        <span>Description</span>
+                        <span>Actions</span>
+                    </div>
+
+                    <div className="inventory-category-list">
+                        {categories.length ? categories.map((category) => (
+                            <div key={category.id} className="inventory-category-row">
+                                <div className="inventory-category-main">
+                                    <div className="inventory-category-badge">
+                                        <Icon name={category.isDefault ? 'shield-check' : 'folder-tree'} style={{ width: '14px', height: '14px' }} />
+                                        <span>{category.name}</span>
+                                    </div>
+                                    {category.isDefault && <span className="status-badge status-processing">default</span>}
+                                </div>
+                                <div className="inventory-category-meta mono">{category.slug}</div>
+                                <div className="inventory-category-count">
+                                    <strong>{admin.number ? admin.number(category.productCount || 0) : category.productCount || 0}</strong>
+                                    <span>{Number(category.productCount || 0) === 1 ? 'product' : 'products'}</span>
+                                </div>
+                                <div className="inventory-category-description">{category.description || 'No admin description set.'}</div>
+                                <div className="inventory-category-actions">
+                                    <button
+                                        type="button"
+                                        onClick={() => admin.startCategoryEdit && admin.startCategoryEdit(category)}
+                                        className="order-filter-btn"
+                                    >
+                                        Edit
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            if (window.confirm(`Delete "${category.name}"? Linked products will move to ${defaultCategory?.name || 'Uncategorized'}.`)) {
+                                                admin.deleteCategory && admin.deleteCategory(category);
+                                            }
+                                        }}
+                                        className="order-filter-btn danger"
+                                        disabled={category.isDefault || admin.categoryDeletingId === category.id}
+                                    >
+                                        {admin.categoryDeletingId === category.id ? 'Deleting...' : 'Delete'}
+                                    </button>
+                                </div>
+                            </div>
+                        )) : (
+                            <div className="coupon-empty-state">
+                                <strong>No categories found.</strong>
+                                <p>Create your first category here, then reuse it across products from the product editor.</p>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            </div>
+        </>
+    );
+
+    return (
+        <div style={{ display: 'grid', gap: '24px' }}>
+            <div className="admin-tab-header">
+                <div>
+                    <h2>{inventoryView === 'categories' ? 'Category Management' : (admin.inventoryTrashMode ? 'Inventory Trash' : 'Inventory Management')}</h2>
+                    <p>
+                        {inventoryView === 'categories'
+                            ? 'Create reusable catalog categories and use them across product creation.'
+                            : (admin.inventoryTrashMode
+                                ? 'Restore deleted products or permanently erase them.'
+                                : 'Manage products, view stock levels, and control pricing.')}
+                    </p>
+                </div>
+                <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+                    <div className="admin-soft-segment">
+                        <button
+                            type="button"
+                            onClick={() => { admin.inventoryView = 'products'; admin.forceUpdate && admin.forceUpdate(); }}
+                            className={`admin-soft-segment-btn${inventoryView === 'products' ? ' is-active' : ''}`}
+                        >
+                            Products
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => {
+                                admin.inventoryView = 'categories';
+                                admin.loadCategories && admin.loadCategories().then(() => admin.forceUpdate && admin.forceUpdate());
+                            }}
+                            className={`admin-soft-segment-btn${inventoryView === 'categories' ? ' is-active' : ''}`}
+                        >
+                            Categories
+                        </button>
+                    </div>
+                    {inventoryView === 'products' ? (
+                        !admin.inventoryTrashMode && (
+                            <button
+                                onClick={() => admin.openProductCreate && admin.openProductCreate()}
+                                className="order-filter-btn primary"
+                            >
+                                + Add Product
+                            </button>
+                        )
+                    ) : (
+                        <button
+                            type="button"
+                            onClick={() => admin.startCategoryCreate && admin.startCategoryCreate()}
+                            className="order-filter-btn primary"
+                        >
+                            + New Category
+                        </button>
+                    )}
+                </div>
+            </div>
+
+            {inventoryView === 'products' ? renderProductsView() : renderCategoriesView()}
 
             {admin.inventoryDeleteModal && (
                 <AdminModalPortal>

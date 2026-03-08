@@ -50,7 +50,6 @@ export function SettingsTab() {
 
     const [activeTab, setActiveTab] = useState('templates');
 
-    const filteredMediaTags = admin.mediaTemplateTags ? admin.mediaTemplateTags() : [];
     const courierDispatchEnabled = admin.courierDispatchEnabled ? admin.courierDispatchEnabled() : false;
     const activeTemplateLabel = templateEditor.selectedKey || templateEditor.key || 'No template selected';
     const smtpStatusLabel = smtpSettings.enabled ? 'Enabled' : 'Disabled';
@@ -99,7 +98,6 @@ export function SettingsTab() {
                             <StatCard label="Library Size" value={templateKeys.length} hint="Saved template records" accent="accent-primary" />
                             <StatCard label="Current Template" value={activeTemplateLabel} hint="Active editor target" />
                             <StatCard label="Quick Tokens" value={templatePlaceholders.length} hint="Insertable placeholders" />
-                            <StatCard label="Media Tags" value={filteredMediaTags.length} hint="Generated from uploaded files" />
                         </div>
                     </section>
 
@@ -190,25 +188,6 @@ export function SettingsTab() {
                                 ))}
                             </div>
                         </div>
-
-                        {filteredMediaTags.length > 0 ? (
-                            <div className="settings-token-section">
-                                <label className="settings-label">Media Auto Tags</label>
-                                <div className="settings-token-grid settings-token-grid-scrolling custom-scrollbar">
-                                    {filteredMediaTags.map((tag) => (
-                                        <button
-                                            key={tag}
-                                            onClick={() => admin.insertTemplateText && admin.insertTemplateText(tag)}
-                                            onDoubleClick={() => admin.copyText && admin.copyText(tag)}
-                                            className="template-tag-btn media"
-                                        >
-                                            {tag}
-                                        </button>
-                                    ))}
-                                </div>
-                                <p className="settings-helper-text">Media tags are generated from uploaded files and resolve to image source placeholders.</p>
-                            </div>
-                        ) : null}
 
                         <div className="settings-test-card">
                             <div className="settings-field">

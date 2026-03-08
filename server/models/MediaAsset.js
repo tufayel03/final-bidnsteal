@@ -4,6 +4,7 @@ const { attachJsonTransform } = require("./helpers");
 const mediaAssetSchema = new mongoose.Schema(
   {
     fileName: { type: String, required: true, unique: true },
+    templateTagId: { type: String, unique: true, sparse: true, index: true },
     originalName: { type: String, default: "" },
     mimeType: { type: String, default: "" },
     size: { type: Number, default: 0 },

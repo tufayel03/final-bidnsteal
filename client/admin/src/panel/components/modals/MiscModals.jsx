@@ -15,11 +15,11 @@ export function MiscModals() {
         <>
             {campaignPreview.open && (
                 <AdminModalPortal>
-                    <div className="admin-modal-overlay" style={{ zIndex: 1085 }} onClick={(event) => event.target === event.currentTarget && admin.closeCampaignPreview && admin.closeCampaignPreview()}>
-                        <div className="admin-modal" style={{ maxWidth: '1280px', width: 'min(1280px, calc(100vw - 48px))' }}>
+                    <div className="admin-modal-overlay misc-soft-overlay" style={{ zIndex: 1085 }} onClick={(event) => event.target === event.currentTarget && admin.closeCampaignPreview && admin.closeCampaignPreview()}>
+                        <div className="admin-modal misc-soft-modal" style={{ maxWidth: '1280px', width: 'min(1280px, calc(100vw - 48px))' }}>
                             <div className="admin-modal-head">
                                 <div>
-                                    <h3 style={{ margin: 0, fontSize: '22px', fontWeight: 800, color: '#f8fafc' }}>Campaign HTML Preview</h3>
+                                    <h3 style={{ margin: 0, fontSize: '22px', fontWeight: 800 }}>Campaign HTML Preview</h3>
                                     <p style={{ margin: '6px 0 0 0', color: 'var(--muted)', fontSize: '13px' }}>
                                         Rendered with sample subscriber and site data before sending.
                                     </p>
@@ -36,7 +36,7 @@ export function MiscModals() {
                                     <div style={{ display: 'grid', gap: '16px' }}>
                                         <div className="admin-inset-card" style={{ marginBottom: 0 }}>
                                             <span style={label}>Rendered Subject</span>
-                                            <p style={{ margin: 0, color: '#f8fafc', fontSize: '18px', fontWeight: 700 }}>{campaignPreview.subject || 'No subject rendered.'}</p>
+                                            <p style={{ margin: 0, fontSize: '18px', fontWeight: 700 }}>{campaignPreview.subject || 'No subject rendered.'}</p>
                                         </div>
 
                                         <div className="admin-inset-card" style={{ marginBottom: 0, display: 'grid', gap: '12px' }}>
@@ -68,11 +68,11 @@ export function MiscModals() {
 
             {emailMediaPicker.open && (
                 <AdminModalPortal>
-                    <div className="admin-modal-overlay" style={{ zIndex: 1090 }} onClick={(event) => event.target === event.currentTarget && admin.closeEmailMediaPicker && admin.closeEmailMediaPicker()}>
-                        <div className="admin-modal" style={{ maxWidth: '1180px' }}>
+                    <div className="admin-modal-overlay misc-soft-overlay" style={{ zIndex: 1090 }} onClick={(event) => event.target === event.currentTarget && admin.closeEmailMediaPicker && admin.closeEmailMediaPicker()}>
+                        <div className="admin-modal misc-soft-modal" style={{ maxWidth: '1180px' }}>
                             <div className="admin-modal-head">
                                 <div>
-                                    <h3 style={{ margin: 0, fontSize: '22px', fontWeight: 800, color: '#f8fafc' }}>Insert Uploaded Image Tag</h3>
+                                    <h3 style={{ margin: 0, fontSize: '22px', fontWeight: 800 }}>Insert Uploaded Image Tag</h3>
                                     <p style={{ margin: '6px 0 0 0', color: 'var(--muted)', fontSize: '13px' }}>
                                         {emailMediaPicker.target === 'campaign' ? 'Target: Campaign HTML editor' : 'Target: Email template HTML editor'}
                                     </p>
@@ -100,25 +100,25 @@ export function MiscModals() {
                                         </div>
                                     </div>
 
-                                    <p style={{ margin: 0, color: 'var(--muted)', fontSize: '12px' }}>
-                                        For templates, insert uses auto placeholders like <span style={mono}>{'{{media.image_file_png}}'}</span>. Campaign target inserts direct media URLs.
+                                    <p className="media-picker-help" style={{ margin: 0, fontSize: '12px' }}>
+                                        For templates, insert uses numeric media placeholders like <span style={mono}>{'{{media.123456789012}}'}</span>. Campaign target inserts direct media URLs.
                                     </p>
 
-                                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: '12px' }}>
+                                    <div className="media-picker-grid">
                                         {assets.map((asset) => (
-                                            <div key={asset.id} style={{ display: 'grid', gap: '10px', padding: '12px', border: '1px solid var(--border)', background: 'rgba(15, 15, 25, 0.72)' }}>
-                                                <div style={{ aspectRatio: '1 / 1', border: '1px solid var(--border)', background: 'rgba(255,255,255,0.04)', overflow: 'hidden' }}>
+                                            <div key={asset.id} className="media-picker-card">
+                                                <div className="media-picker-thumb">
                                                     <img src={admin.mediaPreviewUrl ? admin.mediaPreviewUrl(asset) : ''} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                                                 </div>
-                                                <p style={{ margin: 0, fontSize: '12px', color: '#e2e8f0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={asset.fileName}>{asset.fileName}</p>
-                                                <p style={{ margin: 0, ...mono, fontSize: '10px', color: 'var(--primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={admin.mediaTemplatePlaceholder ? admin.mediaTemplatePlaceholder(asset.fileName) : ''}>
-                                                    {admin.mediaTemplatePlaceholder ? admin.mediaTemplatePlaceholder(asset.fileName) : ''}
+                                                <p className="media-picker-file" style={{ margin: 0, fontSize: '12px' }} title={asset.fileName}>{asset.fileName}</p>
+                                                <p className="media-picker-tag" style={{ margin: 0, ...mono, fontSize: '10px' }} title={admin.mediaTemplatePlaceholder ? admin.mediaTemplatePlaceholder(asset) : ''}>
+                                                    {admin.mediaTemplatePlaceholder ? admin.mediaTemplatePlaceholder(asset) : ''}
                                                 </p>
                                                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
                                                     <button onClick={() => admin.insertEmailImageTag && admin.insertEmailImageTag(asset)} className="primary-btn" style={{ padding: '10px 12px' }}>
                                                         {emailMediaPicker.target === 'campaign' ? 'Insert URL' : 'Insert Tag'}
                                                     </button>
-                                                    <button onClick={() => admin.copyText && admin.copyText(emailMediaPicker.target === 'campaign' ? (admin.mediaPreviewUrl ? admin.mediaPreviewUrl(asset) : '') : (admin.mediaTemplatePlaceholder ? admin.mediaTemplatePlaceholder(asset.fileName) : ''))} className="secondary-btn" style={{ padding: '10px 12px' }}>
+                                                    <button onClick={() => admin.copyText && admin.copyText(emailMediaPicker.target === 'campaign' ? (admin.mediaPreviewUrl ? admin.mediaPreviewUrl(asset) : '') : (admin.mediaTemplatePlaceholder ? admin.mediaTemplatePlaceholder(asset) : ''))} className="secondary-btn" style={{ padding: '10px 12px' }}>
                                                         {emailMediaPicker.target === 'campaign' ? 'Copy URL' : 'Copy Tag'}
                                                     </button>
                                                 </div>
@@ -144,8 +144,8 @@ export function MiscModals() {
 
             {showSearch && (
                 <AdminModalPortal>
-                    <div className="admin-modal-overlay" style={{ alignItems: 'flex-start', paddingTop: '96px', zIndex: 1000 }} onClick={(event) => event.target === event.currentTarget && admin.setShowSearch && admin.setShowSearch(false)}>
-                        <div className="admin-modal" style={{ maxWidth: '720px' }}>
+                    <div className="admin-modal-overlay misc-soft-overlay" style={{ alignItems: 'flex-start', paddingTop: '96px', zIndex: 1000 }} onClick={(event) => event.target === event.currentTarget && admin.setShowSearch && admin.setShowSearch(false)}>
+                        <div className="admin-modal misc-soft-modal" style={{ maxWidth: '720px' }}>
                             <div className="admin-modal-head" style={{ gap: '12px' }}>
                                 <Icon name="search" className="w-5 h-5" />
                                 <input type="text" placeholder="Jump to command, order, or user..." className="admin-search-input" style={{ flex: 1 }} autoFocus />

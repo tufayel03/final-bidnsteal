@@ -19,6 +19,7 @@ import { ProductFormTab } from '../panel/tabs/ProductFormTab';
 import { AdminModals } from '../panel/components/modals/AdminModals';
 import { OrderDetailsPage } from '../panel/components/orders/OrderDetailsPage';
 import { AuctionDetailsPage } from '../panel/components/auctions/AuctionDetailsPage';
+import { UserDetailsPage } from '../panel/components/users/UserDetailsPage';
 
 function AdminLayout() {
   const admin = useAdmin();
@@ -26,6 +27,7 @@ function AdminLayout() {
   const location = useLocation();
   const orderDetailsMatch = useMatch('/tufayel/panel/orders/:orderId');
   const auctionDetailsMatch = useMatch('/tufayel/panel/auctions/:auctionId');
+  const userDetailsMatch = useMatch('/tufayel/panel/users/:userId');
   const isBasePanelRoute = location.pathname === '/tufayel/panel';
   const requestedTab = isBasePanelRoute ? new URLSearchParams(location.search).get('tab') : null;
 
@@ -67,6 +69,13 @@ function AdminLayout() {
       return;
     }
 
+    if (userDetailsMatch) {
+      if (admin.activeTab !== 'users' && admin.setActiveTab) {
+        admin.setActiveTab('users');
+      }
+      return;
+    }
+
     if (!isBasePanelRoute || !requestedTab) return;
 
     const knownTabs = new Set((admin.menuItems || []).map((item) => item.id));
@@ -75,7 +84,7 @@ function AdminLayout() {
     if (admin.activeTab !== requestedTab && admin.setActiveTab) {
       admin.setActiveTab(requestedTab);
     }
-  }, [admin, auctionDetailsMatch, isBasePanelRoute, isLoaded, orderDetailsMatch, requestedTab]);
+  }, [admin, auctionDetailsMatch, isBasePanelRoute, isLoaded, orderDetailsMatch, requestedTab, userDetailsMatch]);
 
   if (!isLoaded) {
     return (
@@ -95,6 +104,10 @@ function AdminLayout() {
 
     if (auctionDetailsMatch) {
       return <AuctionDetailsPage />;
+    }
+
+    if (userDetailsMatch) {
+      return <UserDetailsPage />;
     }
 
     switch (admin.activeTab) {
@@ -147,7 +160,7 @@ function AdminLayout() {
       <div className="admin-main">
         <AdminTopbar />
 
-        <main className={`admin-content custom-scrollbar ${admin.activeTab === 'dashboard' && !orderDetailsMatch && !auctionDetailsMatch ? 'admin-content--dashboard' : ''}`}>
+        <main className={`admin-content custom-scrollbar ${admin.activeTab === 'dashboard' && !orderDetailsMatch && !auctionDetailsMatch && !userDetailsMatch ? 'admin-content--dashboard' : ''}`}>
           {renderActiveTab()}
         </main>
       </div>

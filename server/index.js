@@ -16,6 +16,7 @@ const { connectRedis, getCachedJson, setCachedJson } = require("./config/redis")
 const { ensureUploadsStructure, uploadsRoot } = require("./config/uploads");
 const authRoutes = require("./routes/auth");
 const storeRoutes = require("./routes/store");
+const adminCategoriesRoutes = require("./routes/adminCategories");
 const adminProductsRoutes = require("./routes/adminProducts");
 const adminAuctionsRoutes = require("./routes/adminAuctions");
 const adminOrdersRoutes = require("./routes/adminOrders");
@@ -196,6 +197,7 @@ app.get("/api/metrics", async (_req, res) => {
 
 app.use("/api/auth", authRoutes);
 app.use("/api", storeRoutes);
+app.use("/api/admin/categories", adminCategoriesRoutes);
 app.use("/api/admin/products", adminProductsRoutes);
 app.use("/api/admin/auctions", adminAuctionsRoutes);
 app.use("/api/admin/orders", adminOrdersRoutes);

@@ -65,6 +65,7 @@ export function getInitialAdminState() {
 
     // inventory
     inventory: [],
+    inventoryView: "products",
     inventoryFilters: {
       search: "",
       saleMode: "All Sale Modes"
@@ -73,8 +74,20 @@ export function getInitialAdminState() {
     inventoryDeleting: false,
     inventoryTrashMode: false,
     inventoryDeleteModal: null,
+    categories: [],
+    categoryFilters: {
+      search: ""
+    },
+    categoryEditor: {
+      id: "",
+      name: "",
+      slug: "",
+      description: ""
+    },
+    categorySaving: false,
+    categoryDeletingId: "",
     mediaAssets: [],
-    mediaViewMode: "grid",
+    mediaViewMode: "columns",
     mediaTrashMode: false,
     mediaDeleteModal: null,
     mediaFilters: {
@@ -383,6 +396,8 @@ export function getInitialAdminState() {
         slug: "",
         price: "",
         sku: "",
+        categoryId: "",
+        category: "",
         stock: "",
         condition: "carded",
         saleMode: "fixed",

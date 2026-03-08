@@ -94,6 +94,37 @@ export function ProductFormTab() {
                                     style={{ width: '100%' }}
                                 />
                             </div>
+                            <div style={{ gridColumn: '1 / -1' }}>
+                                <label className="settings-label">Category</label>
+                                <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto', gap: '12px' }}>
+                                    <select
+                                        value={productModal.form?.categoryId || ''}
+                                        onChange={(e) => {
+                                            const selected = (admin.categories || []).find((item) => item.id === e.target.value);
+                                            if (admin.productModal?.form) {
+                                                admin.productModal.form.categoryId = selected?.id || '';
+                                                admin.productModal.form.category = selected?.name || '';
+                                            }
+                                        }}
+                                        className="order-filter-select"
+                                        style={{ width: '100%' }}
+                                    >
+                                        <option value="">Select Category</option>
+                                        {(admin.categories || []).map((category) => (
+                                            <option key={category.id} value={category.id}>
+                                                {category.name}
+                                            </option>
+                                        ))}
+                                    </select>
+                                    <button
+                                        type="button"
+                                        onClick={() => admin.openInventoryCategories && admin.openInventoryCategories()}
+                                        className="order-filter-btn"
+                                    >
+                                        Manage Categories
+                                    </button>
+                                </div>
+                            </div>
                             <div>
                                 <label className="settings-label">Stock</label>
                                 <input
@@ -114,6 +145,10 @@ export function ProductFormTab() {
                                     style={{ width: '100%' }}
                                 />
                             </div>
+                        </div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap', color: 'var(--muted)', fontSize: '12px' }}>
+                            <span>Categories are managed from Inventory &gt; Categories.</span>
+                            <span>{(admin.categories || []).length} categories available</span>
                         </div>
                     </div>
 

@@ -207,7 +207,7 @@ export const adminMethods = {
       }
       try {
         if (tab === "dashboard") await this.loadDashboard();
-        if (tab === "inventory") await this.loadInventory();
+        if (tab === "inventory") await Promise.all([this.loadInventory(), this.loadCategories()]);
         if (tab === "media") await this.loadMedia();
         if (tab === "auctions") await this.loadAuctions();
         if (tab === "orders") await this.loadOrders();
@@ -873,12 +873,137 @@ export const adminMethods = {
         image: this.mediaUrl(firstImage),
         isFeatured: Boolean(item.isFeatured),
         isNewDrop: Boolean(item.isNewDrop),
+        category: item.category || "",
+        categoryId: item.categoryId || "",
         series: item.series || "",
         condition: item.condition,
         saleMode: item.saleMode
       };
     });
     this.syncInventorySelection();
+  },
+
+  async loadCategories(searchOverride) {
+    const search = typeof searchOverride === "string" ? searchOverride : this.categoryFilters.search;
+    const response = await this.apiRequest(`/admin/categories?${this.toQueryString({ search })}`);
+    this.categories = Array.isArray(response) ? response : [];
+    this.syncCategoryEditor();
+  },
+
+  defaultProductCategory() {
+    const categories = Array.isArray(this.categories) ? this.categories : [];
+    if (!categories.length) return null;
+    return (
+      categories.find((item) => item.isDefault) ||
+      categories.find((item) => String(item.slug || "").trim() === "uncategorized") ||
+      categories[0]
+    );
+  },
+
+  syncCategoryEditor() {
+    if (!this.categoryEditor?.id) {
+      return;
+    }
+    const current = (this.categories || []).find((item) => item.id === this.categoryEditor.id);
+    if (!current) {
+      this.categoryEditor = {
+        id: "",
+        name: "",
+        slug: "",
+        description: ""
+      };
+      return;
+    }
+    this.categoryEditor = {
+      id: current.id,
+      name: current.name || "",
+      slug: current.slug || "",
+      description: current.description || ""
+    };
+  },
+
+  startCategoryCreate() {
+    this.categoryEditor = {
+      id: "",
+      name: "",
+      slug: "",
+      description: ""
+    };
+  },
+
+  startCategoryEdit(category) {
+    this.categoryEditor = {
+      id: category?.id || "",
+      name: category?.name || "",
+      slug: category?.slug || "",
+      description: category?.description || ""
+    };
+  },
+
+  cancelCategoryEdit() {
+    this.startCategoryCreate();
+  },
+
+  async saveCategoryEditor() {
+    this.categorySaving = true;
+    try {
+      const body = {
+        name: this.categoryEditor.name,
+        slug: this.categoryEditor.slug || undefined,
+        description: this.categoryEditor.description || undefined
+      };
+
+      if (this.categoryEditor.id) {
+        await this.apiRequest(`/admin/categories/${this.categoryEditor.id}`, {
+          method: "PATCH",
+          body
+        });
+        this.notify("Category updated.", "success");
+      } else {
+        await this.apiRequest("/admin/categories", {
+          method: "POST",
+          body
+        });
+        this.notify("Category created.", "success");
+      }
+
+      await Promise.all([this.loadCategories(), this.loadInventory()]);
+      this.startCategoryCreate();
+    } catch (error) {
+      this.notify(this.errorMessage(error), "error");
+    } finally {
+      this.categorySaving = false;
+    }
+  },
+
+  async deleteCategory(category) {
+    if (!category?.id) return;
+    this.categoryDeletingId = category.id;
+    try {
+      const response = await this.apiRequest(`/admin/categories/${category.id}`, {
+        method: "DELETE"
+      });
+      const reassignedProducts = Number(response?.reassignedProducts || 0);
+      if (reassignedProducts > 0) {
+        this.notify(`Category deleted. ${reassignedProducts} product(s) moved to ${response?.fallbackCategory || "Uncategorized"}.`, "success");
+      } else {
+        this.notify("Category deleted.", "success");
+      }
+      await Promise.all([this.loadCategories(), this.loadInventory()]);
+      if (this.categoryEditor.id === category.id) {
+        this.startCategoryCreate();
+      }
+    } catch (error) {
+      this.notify(this.errorMessage(error), "error");
+    } finally {
+      this.categoryDeletingId = "";
+    }
+  },
+
+  openInventoryCategories() {
+    this.inventoryView = "categories";
+    this.setActiveTab("inventory");
+    void this.loadCategories();
   },
 
   syncInventorySelection() {
@@ -959,7 +1084,7 @@ export const adminMethods = {
     }
     return this.mediaAssets.filter((item) => {
       const fileName = String(item.fileName || "").toLowerCase();
-      const templateTag = this.mediaTemplateTag(item.fileName).toLowerCase();
+      const templateTag = this.mediaTemplateTag(item).toLowerCase();
       return fileName.includes(search) || templateTag.includes(search);
     });
   },
@@ -1014,30 +1139,29 @@ export const adminMethods = {
     return this.selectedMediaFileNames().length;
   },
 
-  mediaTemplateTagKey(fileName) {
-    const rawName = String(fileName || "").trim().toLowerCase();
-    if (!rawName) return "";
-    const normalized = rawName
-      .replace(/[^a-z0-9]+/g, "_")
-      .replace(/^_+|_+$/g, "");
-    if (!normalized) return "";
-    return /^[a-z]/.test(normalized) ? normalized : `img_${normalized}`;
+  mediaTemplateTagKey(itemOrTagId) {
+    const rawTagId =
+      itemOrTagId && typeof itemOrTagId === "object"
+        ? itemOrTagId.templateTagId
+        : itemOrTagId;
+    const normalized = String(rawTagId || "").trim();
+    return /^\d+$/.test(normalized) ? normalized : "";
   },
 
-  mediaTemplateTag(fileName) {
-    const key = this.mediaTemplateTagKey(fileName);
+  mediaTemplateTag(itemOrTagId) {
+    const key = this.mediaTemplateTagKey(itemOrTagId);
     return key ? `media.${key}` : "";
   },
 
-  mediaTemplatePlaceholder(fileName) {
-    const tag = this.mediaTemplateTag(fileName);
+  mediaTemplatePlaceholder(itemOrTagId) {
+    const tag = this.mediaTemplateTag(itemOrTagId);
     return tag ? `{{${tag}}}` : "";
   },
 
   mediaTemplateTags(limit = 40) {
     const unique = new Set();
     (this.mediaAssets || []).forEach((item) => {
-      const placeholder = this.mediaTemplatePlaceholder(item?.fileName);
+      const placeholder = this.mediaTemplatePlaceholder(item);
       if (placeholder) {
         unique.add(placeholder);
       }
@@ -1106,7 +1230,7 @@ export const adminMethods = {
   },
 
   copyMediaTemplateTag(item) {
-    const placeholder = this.mediaTemplatePlaceholder(item?.fileName);
+    const placeholder = this.mediaTemplatePlaceholder(item);
     if (!placeholder) {
       this.notify("Auto media tag unavailable for this file.", "error");
       return;
@@ -1377,7 +1501,7 @@ export const adminMethods = {
     return this.mediaAssets.filter((item) => {
       const fileName = String(item.fileName || "").toLowerCase();
       const url = String(item.url || "").toLowerCase();
-      const templateTag = this.mediaTemplateTag(item.fileName).toLowerCase();
+      const templateTag = this.mediaTemplateTag(item).toLowerCase();
       return fileName.includes(search) || url.includes(search) || templateTag.includes(search);
     });
   },
@@ -1420,7 +1544,7 @@ export const adminMethods = {
 
   resolveEmailImageSource(itemOrUrl, target) {
     if (target === "template" && itemOrUrl && typeof itemOrUrl === "object") {
-      const placeholder = this.mediaTemplatePlaceholder(itemOrUrl.fileName);
+      const placeholder = this.mediaTemplatePlaceholder(itemOrUrl);
       if (placeholder) {
         return placeholder;
       }
@@ -3878,8 +4002,16 @@ export const adminMethods = {
     };
   },
 
-  openProductCreate() {
+  async openProductCreate() {
+    if (!this.categories.length) {
+      try {
+        await this.loadCategories();
+      } catch (error) {
+        this.notify(this.errorMessage(error), "error");
+      }
+    }
     const auctionWindow = this.defaultAuctionWindow();
+    const defaultCategory = this.defaultProductCategory();
     this.productModal.mode = "create";
     this.productModal.productId = "";
     this.productModal.form = {
@@ -3887,6 +4019,8 @@ export const adminMethods = {
       slug: "",
       price: "",
       sku: "",
+      categoryId: defaultCategory?.id || "",
+      category: defaultCategory?.name || "",
       stock: "",
       condition: "carded",
       saleMode: "fixed",
@@ -3912,6 +4046,13 @@ export const adminMethods = {
   },
 
   async openProductEdit(item) {
+    if (!this.categories.length) {
+      try {
+        await this.loadCategories();
+      } catch (error) {
+        this.notify(this.errorMessage(error), "error");
+      }
+    }
     let detail = null;
     try {
       detail = await this.apiRequest(`/products/${item.slug}`);
@@ -3940,6 +4081,8 @@ export const adminMethods = {
       slug: detail?.slug || item.slug,
       price: detail?.price ?? item.price,
       sku: detail?.sku || item.sku,
+      categoryId: detail?.categoryId || item.categoryId || "",
+      category: detail?.category || item.category || "",
       stock: detail?.stock ?? item.stock,
       condition: detail?.condition || item.condition,
       saleMode,
@@ -4049,6 +4192,8 @@ export const adminMethods = {
         slug: this.productModal.form.slug || undefined,
         price: Number(this.productModal.form.price || 0),
         sku: this.productModal.form.sku,
+        categoryId: this.productModal.form.categoryId || undefined,
+        category: this.productModal.form.category || undefined,
         stock: Number(this.productModal.form.stock || 0),
         condition: this.productModal.form.condition,
         saleMode: this.productModal.form.saleMode,
@@ -4099,7 +4244,7 @@ export const adminMethods = {
 
       this.notify(`Product ${modeLabel}.${auctionNote}`, "success");
       this.closeProductModal();
-      await this.loadInventory();
+      await Promise.all([this.loadInventory(), this.loadCategories()]);
       await this.loadAuctions(true);
       this.loadedTabs.dashboard = false;
     } catch (error) {
@@ -4139,7 +4284,7 @@ export const adminMethods = {
       if (!identifier) return;
       await this.apiRequest(`/admin/products/${encodeURIComponent(identifier)}/restore`, { method: "POST" });
       this.notify("Product restored.", "success");
-      await this.loadInventory();
+      await Promise.all([this.loadInventory(), this.loadCategories()]);
       this.loadedTabs.dashboard = false;
     } catch (error) {
       this.notify(this.errorMessage(error), "error");
@@ -4213,7 +4358,7 @@ export const adminMethods = {
       }
 
       if (!skipReload) {
-        await this.loadInventory();
+        await Promise.all([this.loadInventory(), this.loadCategories()]);
       }
       this.loadedTabs.dashboard = false;
 

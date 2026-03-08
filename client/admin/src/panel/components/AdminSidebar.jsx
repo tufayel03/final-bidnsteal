@@ -53,7 +53,7 @@ export function AdminSidebar() {
                 </div>
             </div>
 
-            <nav className="admin-nav admin-simple-nav custom-scrollbar" style={{ overflowY: 'auto' }}>
+            <nav className="admin-nav admin-simple-nav">
                 {menuGroups.map((group) => (
                     <section key={group.id} className="admin-simple-nav-group">
                         {!collapsed ? <div className="admin-simple-nav-group-label">{group.label}</div> : null}

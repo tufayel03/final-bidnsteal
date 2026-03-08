@@ -1,8 +1,10 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAdmin } from '../AdminContext';
 
 export function UsersTab() {
     const admin = useAdmin();
+    const navigate = useNavigate();
     const { users = [], usersMeta = {}, userFilters = {}, usersImport = {} } = admin;
 
     return (
@@ -78,7 +80,7 @@ export function UsersTab() {
                                 </td>
                                 <td>
                                     <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                                        <button onClick={() => admin.viewUserDetails && admin.viewUserDetails(user)} className="order-filter-btn" style={{ padding: '6px 12px' }}>View</button>
+                                        <button onClick={() => navigate(`/tufayel/panel/users/${encodeURIComponent(user.id)}`)} className="order-filter-btn" style={{ padding: '6px 12px' }}>View</button>
                                         <button onClick={() => admin.sendUserPasswordReset && admin.sendUserPasswordReset(user)} className="order-filter-btn" style={{ padding: '6px 12px' }}>Reset PW</button>
                                         <button onClick={() => admin.toggleUserSuspend && admin.toggleUserSuspend(user)} className={`order-filter-btn ${user.isSuspended ? 'primary' : 'danger'}`} style={{ padding: '6px 12px' }}>
                                             {user.isSuspended ? 'Unsuspend' : 'Suspend'}

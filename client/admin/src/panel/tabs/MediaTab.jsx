@@ -248,7 +248,7 @@ export function MediaTab() {
                                                     {item.fileName}
                                                 </p>
                                                 <p className="mono media-tag-hint" style={{ marginTop: '2px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                                                    {admin.mediaTemplatePlaceholder ? admin.mediaTemplatePlaceholder(item.fileName) : ''}
+                                                    {admin.mediaTemplatePlaceholder ? admin.mediaTemplatePlaceholder(item) : ''}
                                                 </p>
                                             </div>
 
@@ -324,8 +324,8 @@ export function MediaTab() {
                                                     />
                                                 </label>
                                             </div>
-                                            <p className="mono media-grid-meta" title={admin.mediaTemplatePlaceholder ? admin.mediaTemplatePlaceholder(item.fileName) : ''}>
-                                                {admin.mediaTemplatePlaceholder ? admin.mediaTemplatePlaceholder(item.fileName) : ''}
+                                            <p className="mono media-grid-meta" title={admin.mediaTemplatePlaceholder ? admin.mediaTemplatePlaceholder(item) : ''}>
+                                                {admin.mediaTemplatePlaceholder ? admin.mediaTemplatePlaceholder(item) : ''}
                                             </p>
                                             <div className="media-actions-grid">
                                                 {admin.mediaTrashMode ? (

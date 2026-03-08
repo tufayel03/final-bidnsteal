@@ -69,10 +69,19 @@ export function OrderDetailsSurface({ variant = 'modal', onClose }) {
         </div>
 
         {isPage ? (
-          <button onClick={onClose} className="secondary-btn order-details-page-back-btn">
-            <Icon name="arrow-left" className="w-4 h-4" />
-            <span>Back to Orders</span>
-          </button>
+          <div className="order-details-page-actions">
+            <button onClick={onClose} className="secondary-btn order-details-page-back-btn">
+              <Icon name="arrow-left" className="w-4 h-4" />
+              <span>Back to Orders</span>
+            </button>
+            <button
+              onClick={() => admin.saveOrderDetails && admin.saveOrderDetails()}
+              disabled={orderDetailsModal.saving || orderDetailsModal.loading}
+              className="primary-btn order-details-page-save-btn"
+            >
+              {orderDetailsModal.saving ? 'Saving...' : 'Save Changes'}
+            </button>
+          </div>
         ) : (
           <button onClick={onClose} className="icon-btn">
             <Icon name="x" className="w-5 h-5" />
@@ -424,16 +433,18 @@ export function OrderDetailsSurface({ variant = 'modal', onClose }) {
         )}
       </div>
 
-      <div className="admin-modal-foot">
-        <button onClick={onClose} className="secondary-btn">{isPage ? 'Back to Orders' : 'Close'}</button>
-        <button
-          onClick={() => admin.saveOrderDetails && admin.saveOrderDetails()}
-          disabled={orderDetailsModal.saving || orderDetailsModal.loading}
-          className="primary-btn"
-        >
-          {orderDetailsModal.saving ? 'Saving...' : 'Save Changes'}
-        </button>
-      </div>
+      {!isPage && (
+        <div className="admin-modal-foot">
+          <button onClick={onClose} className="secondary-btn">Close</button>
+          <button
+            onClick={() => admin.saveOrderDetails && admin.saveOrderDetails()}
+            disabled={orderDetailsModal.saving || orderDetailsModal.loading}
+            className="primary-btn"
+          >
+            {orderDetailsModal.saving ? 'Saving...' : 'Save Changes'}
+          </button>
+        </div>
+      )}
     </div>
   );
 }

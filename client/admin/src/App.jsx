@@ -12,6 +12,7 @@ export default function App() {
       <Route path="/tufayel/panel" element={<AdminPanelExactPage />} />
       <Route path="/tufayel/panel/orders/:orderId" element={<AdminPanelExactPage />} />
       <Route path="/tufayel/panel/auctions/:auctionId" element={<AdminPanelExactPage />} />
+      <Route path="/tufayel/panel/users/:userId" element={<AdminPanelExactPage />} />
       <Route path="*" element={<Navigate to="/tufayel" replace />} />
     </Routes>
   );

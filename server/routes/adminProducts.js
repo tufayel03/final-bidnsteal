@@ -2,11 +2,13 @@ const express = require("express");
 const mongoose = require("mongoose");
 const Auction = require("../models/Auction");
 const Product = require("../models/Product");
+const ProductCategory = require("../models/ProductCategory");
 const { requireAdmin } = require("../middleware/auth");
 const { containsRegex, parsePagination } = require("../utils/http");
 const { sanitizeText } = require("../utils/validation");
 
 const router = express.Router();
+const DEFAULT_CATEGORY_NAME = "Uncategorized";
 
 function slugify(value) {
   return String(value || "")
@@ -16,8 +18,85 @@ function slugify(value) {
     .replace(/^-+|-+$/g, "");
 }
 
-function resolveCategory(body, existing) {
-  return sanitizeText(body.category || existing?.category || body.series || existing?.series || "Cars", 120) || "Cars";
+function escapeRegex(value) {
+  return String(value || "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+async function uniqueCategorySlug(base, excludeId = "") {
+  const seed = slugify(base) || `category-${Date.now()}`;
+  let candidate = seed;
+  let suffix = 2;
+
+  while (true) {
+    const conflict = await ProductCategory.findOne({
+      slug: candidate,
+      ...(excludeId && mongoose.Types.ObjectId.isValid(excludeId) ? { _id: { $ne: excludeId } } : {})
+    }).select("_id");
+    if (!conflict) {
+      return candidate;
+    }
+    candidate = `${seed}-${suffix}`;
+    suffix += 1;
+  }
+}
+
+async function ensureDefaultCategory() {
+  let category = await ProductCategory.findOne({ slug: slugify(DEFAULT_CATEGORY_NAME) });
+  if (!category) {
+    category = await ProductCategory.create({
+      name: DEFAULT_CATEGORY_NAME,
+      slug: slugify(DEFAULT_CATEGORY_NAME),
+      description: "Fallback category for uncategorized catalog items."
+    });
+  }
+  return category;
+}
+
+async function ensureCategoryByName(name) {
+  const safeName = sanitizeText(name, 120) || DEFAULT_CATEGORY_NAME;
+  const normalizedSlug = slugify(safeName);
+  let category = await ProductCategory.findOne({
+    $or: [{ slug: normalizedSlug }, { name: { $regex: `^${escapeRegex(safeName)}$`, $options: "i" } }]
+  });
+  if (!category) {
+    category = await ProductCategory.create({
+      name: safeName,
+      slug: await uniqueCategorySlug(safeName),
+      description: ""
+    });
+  }
+  return category;
+}
+
+async function resolveCategory(body, existing) {
+  const incomingCategoryId = String(body?.categoryId || "").trim();
+  if (incomingCategoryId && mongoose.Types.ObjectId.isValid(incomingCategoryId)) {
+    const category = await ProductCategory.findById(incomingCategoryId);
+    if (category) {
+      return { category: category.name, categoryId: category._id };
+    }
+  }
+
+  const incomingCategoryName = sanitizeText(body?.category, 120);
+  if (incomingCategoryName) {
+    const category = await ensureCategoryByName(incomingCategoryName);
+    return { category: category.name, categoryId: category._id };
+  }
+
+  const existingCategoryName = sanitizeText(existing?.category, 120);
+  if (existingCategoryName) {
+    const category = await ensureCategoryByName(existingCategoryName);
+    return { category: category.name, categoryId: category._id };
+  }
+
+  const seriesFallback = sanitizeText(body?.series || existing?.series, 120);
+  if (seriesFallback) {
+    const category = await ensureCategoryByName(seriesFallback);
+    return { category: category.name, categoryId: category._id };
+  }
+
+  const defaultCategory = await ensureDefaultCategory();
+  return { category: defaultCategory.name, categoryId: defaultCategory._id };
 }
 
 function normalizeSaleMode(value, fallback = "fixed") {
@@ -105,11 +184,13 @@ router.post("/", async (req, res) => {
   const slug = slugBase || `product-${Date.now()}`;
   const exists = await Product.findOne({ slug });
   const nextSlug = exists ? `${slug}-${Date.now().toString().slice(-4)}` : slug;
+  const categoryState = await resolveCategory(req.body);
 
   const product = await Product.create({
     title,
     slug: nextSlug,
-    category: resolveCategory(req.body),
+    categoryId: categoryState.categoryId,
+    category: categoryState.category,
     price: Math.max(0, Number(req.body?.price || 0)),
     sku: sanitizeText(req.body?.sku, 80),
     stock: Math.max(0, Number(req.body?.stock || 0)),
@@ -135,6 +216,7 @@ router.patch("/:identifier", async (req, res) => {
   }
 
   const previousSaleMode = product.saleMode || "fixed";
+  const categoryState = await resolveCategory(req.body, product);
 
   if (req.body?.title !== undefined) product.title = sanitizeText(req.body.title, 180);
   if (req.body?.slug !== undefined) product.slug = slugify(req.body.slug || product.title);
@@ -151,7 +233,8 @@ router.patch("/:identifier", async (req, res) => {
   if (req.body?.rating !== undefined) product.rating = Number(req.body.rating || 0);
   if (req.body?.isFeatured !== undefined) product.isFeatured = Boolean(req.body.isFeatured);
   if (req.body?.isNewDrop !== undefined) product.isNewDrop = Boolean(req.body.isNewDrop);
-  product.category = resolveCategory(req.body, product);
+  product.categoryId = categoryState.categoryId;
+  product.category = categoryState.category;
 
   await product.save();
   if (previousSaleMode !== "fixed" && product.saleMode === "fixed") {

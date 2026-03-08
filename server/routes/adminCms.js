@@ -9,7 +9,7 @@ const Subscriber = require("../models/Subscriber");
 const User = require("../models/User");
 const { env } = require("../config/env");
 const { requireAdmin } = require("../middleware/auth");
-const { createTransport, getSmtpSettings, renderTemplateString, sendEmail, sendTemplateEmail } = require("../services/emailService");
+const { attachMediaTemplateContext, createTransport, getSmtpSettings, renderTemplateString, sendEmail, sendTemplateEmail } = require("../services/emailService");
 const { syncAuctions } = require("../services/auctionService");
 const { normalizeCampaignForAdmin, queueCampaignDispatch } = require("../services/campaignDispatchService");
 const { getPublicSiteProfile } = require("../services/siteProfileService");
@@ -502,7 +502,7 @@ router.post("/campaigns/preview", async (req, res) => {
     return res.status(400).json({ message: "Campaign subject or HTML is required for preview." });
   }
 
-  const context = await buildCampaignPreviewContext();
+  const context = await attachMediaTemplateContext(await buildCampaignPreviewContext());
   return res.json({
     subjectTemplate: subject,
     htmlTemplate: html,
@@ -839,7 +839,7 @@ router.post("/email-templates/:key/preview", async (req, res) => {
   if (!template) {
     return res.status(404).json({ message: "Template not found." });
   }
-  const context = await buildTemplateContext();
+  const context = await attachMediaTemplateContext(await buildTemplateContext());
   return res.json({
     subjectTemplate: template.subjectTemplate,
     htmlTemplate: template.htmlTemplate,

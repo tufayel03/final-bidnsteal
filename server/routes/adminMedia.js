@@ -8,6 +8,7 @@ const { ensureUploadsStructure, mediaUploadsDir } = require("../config/uploads")
 const MediaAsset = require("../models/MediaAsset");
 const { requireAdmin } = require("../middleware/auth");
 const { containsRegex, parsePagination } = require("../utils/http");
+const { ensureMediaAssetTagIds, generateUniqueMediaTagId } = require("../utils/mediaTags");
 
 const router = express.Router();
 const uploadDir = mediaUploadsDir;
@@ -60,18 +61,27 @@ router.get("/", async (req, res) => {
   const search = String(req.query.search || "").trim();
   const trash = req.query.trash === "true";
 
-  const query = trash
-    ? { deletedAt: { $ne: null } }
-    : { $or: [{ deletedAt: null }, { deletedAt: { $exists: false } }] };
+  const filters = [
+    trash
+      ? { deletedAt: { $ne: null } }
+      : { $or: [{ deletedAt: null }, { deletedAt: { $exists: false } }] }
+  ];
 
   if (search) {
-    query.fileName = containsRegex(search);
+    const pattern = containsRegex(search);
+    filters.push({
+      $or: [{ fileName: pattern }, { originalName: pattern }, { templateTagId: pattern }]
+    });
   }
+
+  const query = filters.length === 1 ? filters[0] : { $and: filters };
 
   const [items, total] = await Promise.all([
     MediaAsset.find(query).sort({ createdAt: -1 }).skip(skip).limit(limit),
     MediaAsset.countDocuments(query)
   ]);
+
+  await ensureMediaAssetTagIds(items, MediaAsset);
 
   return res.json({
     items,
@@ -87,8 +97,10 @@ router.post("/upload", upload.single("file"), async (req, res) => {
     return res.status(400).json({ message: "File is required." });
   }
 
+  const templateTagId = await generateUniqueMediaTagId((candidate) => MediaAsset.exists({ templateTagId: candidate }), 12);
   const asset = await MediaAsset.create({
     fileName: req.file.filename,
+    templateTagId,
     originalName: path.basename(String(req.file.originalname || "").trim()),
     mimeType: req.file.mimetype,
     size: req.file.size,

@@ -9,7 +9,6 @@ import { useCart } from '../context/CartContext';
 import { useStore } from '../context/StoreContext';
 import { assetUrl } from '../lib/api';
 
-const CATEGORIES = ['All', 'Cars', 'Tracks', 'Playsets', 'Accessories'];
 const PRICE_RANGES = [
   { label: 'All Prices', min: 0, max: Infinity },
   { label: 'Under ৳20', min: 0, max: 20 },
@@ -32,6 +31,23 @@ export function ShopPage() {
   useEffect(() => {
     setCurrentPage(1);
   }, [activeCategory, activePriceRange, inStockOnly, searchQuery]);
+
+  const categories = useMemo(() => {
+    const unique = Array.from(
+      new Set(
+        products
+          .map((product) => String(product.category || '').trim())
+          .filter(Boolean)
+      )
+    ).sort((left, right) => left.localeCompare(right));
+    return ['All', ...unique];
+  }, [products]);
+
+  useEffect(() => {
+    if (activeCategory !== 'All' && !categories.includes(activeCategory)) {
+      setActiveCategory('All');
+    }
+  }, [activeCategory, categories]);
 
   const gridClassMap = {
     'list': 'flex flex-col gap-3 md:gap-4',
@@ -136,7 +152,7 @@ export function ShopPage() {
             <div>
               <h3 className="text-xs font-mono text-gray-500 mb-3 uppercase tracking-widest">Category</h3>
               <div className="space-y-1">
-                {CATEGORIES.map((category) => (
+                {categories.map((category) => (
                   <button
                     key={category}
                     onClick={() => setActiveCategory(category)}
