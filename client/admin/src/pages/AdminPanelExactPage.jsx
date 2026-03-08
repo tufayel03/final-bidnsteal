@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useLocation, useMatch } from 'react-router-dom';
 import { AdminProvider, useAdmin } from '../panel/AdminContext';
 import { AdminSidebar } from '../panel/components/AdminSidebar';
 import { AdminTopbar } from '../panel/components/AdminTopbar';
@@ -16,10 +17,15 @@ import { CouponsTab } from '../panel/tabs/CouponsTab';
 import { ReportsTab } from '../panel/tabs/ReportsTab';
 import { ProductFormTab } from '../panel/tabs/ProductFormTab';
 import { AdminModals } from '../panel/components/modals/AdminModals';
+import { OrderDetailsPage } from '../panel/components/orders/OrderDetailsPage';
 
 function AdminLayout() {
   const admin = useAdmin();
   const [isLoaded, setIsLoaded] = useState(false);
+  const location = useLocation();
+  const orderDetailsMatch = useMatch('/tufayel/panel/orders/:orderId');
+  const isBasePanelRoute = location.pathname === '/tufayel/panel';
+  const requestedTab = isBasePanelRoute ? new URLSearchParams(location.search).get('tab') : null;
 
   useEffect(() => {
     // Inject required styles dynamically just for the admin panel if needed
@@ -42,6 +48,26 @@ function AdminLayout() {
     };
   }, []);
 
+  useEffect(() => {
+    if (!isLoaded) return;
+
+    if (orderDetailsMatch) {
+      if (admin.activeTab !== 'orders' && admin.setActiveTab) {
+        admin.setActiveTab('orders');
+      }
+      return;
+    }
+
+    if (!isBasePanelRoute || !requestedTab) return;
+
+    const knownTabs = new Set((admin.menuItems || []).map((item) => item.id));
+    if (!knownTabs.has(requestedTab)) return;
+
+    if (admin.activeTab !== requestedTab && admin.setActiveTab) {
+      admin.setActiveTab(requestedTab);
+    }
+  }, [admin, isBasePanelRoute, isLoaded, orderDetailsMatch, requestedTab]);
+
   if (!isLoaded) {
     return (
       <div className="flex h-screen items-center justify-center bg-zinc-950 text-zinc-100 font-sans">
@@ -54,6 +80,10 @@ function AdminLayout() {
   }
 
   const renderActiveTab = () => {
+    if (orderDetailsMatch) {
+      return <OrderDetailsPage />;
+    }
+
     switch (admin.activeTab) {
       case 'dashboard':
         return <DashboardTab />;

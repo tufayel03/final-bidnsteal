@@ -1902,6 +1902,30 @@ textarea:focus,
     inset 0 0 22px rgba(0, 243, 255, 0.04);
 }
 
+.order-details-page-wrap {
+  display: grid;
+}
+
+.order-details-page {
+  width: 100%;
+  max-width: none;
+  max-height: none;
+  min-height: calc(100vh - 150px);
+  display: flex;
+  flex-direction: column;
+}
+
+.order-details-page-body {
+  flex: 1;
+  overflow: visible;
+}
+
+.order-details-page-back-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .order-details-head {
   padding: 12px 16px;
   background:
@@ -2177,6 +2201,10 @@ textarea:focus,
 }
 
 @media (max-width: 760px) {
+  .order-details-page {
+    min-height: auto;
+  }
+
   .order-details-body {
     padding: 10px;
   }

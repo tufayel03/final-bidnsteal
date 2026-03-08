@@ -129,7 +129,7 @@ async function createAuctionWinnerOrder(auction, user) {
 
   try {
     return await Order.create({
-      orderNumber: makeOrderNumber(),
+      orderNumber: await makeOrderNumber(),
       sourceAuctionId: auction._id,
       userId: user._id,
       customerName: user.name,

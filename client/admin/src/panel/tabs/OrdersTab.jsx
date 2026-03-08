@@ -1,8 +1,10 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAdmin } from '../AdminContext';
 
 export function OrdersTab() {
     const admin = useAdmin();
+    const navigate = useNavigate();
     const { orderFilters, orders = [], ordersDeleting, orderDrafts, ordersMeta } = admin;
 
     return (
@@ -145,7 +147,13 @@ export function OrdersTab() {
                                 </td>
                                 <td>
                                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-                                        <button onClick={() => admin.openOrderDetails && admin.openOrderDetails(order)} className="order-filter-btn" style={{ padding: '4px 8px', fontSize: '11px', gridColumn: 'span 2' }}>Details</button>
+                                        <button
+                                            onClick={() => navigate(`/tufayel/panel/orders/${order.id}`)}
+                                            className="order-filter-btn"
+                                            style={{ padding: '4px 8px', fontSize: '11px', gridColumn: 'span 2' }}
+                                        >
+                                            Details
+                                        </button>
                                         <button onClick={() => admin.saveOrder && admin.saveOrder(order)} className="order-filter-btn primary" style={{ padding: '4px 8px', fontSize: '11px' }}>Save</button>
                                         <button onClick={() => admin.sendOrderToCourier && admin.sendOrderToCourier(order)} className="order-filter-btn" style={{ padding: '4px 8px', fontSize: '11px' }}>Send</button>
                                         <button onClick={() => admin.syncOrderCourierStatus && admin.syncOrderCourierStatus(order)} className="order-filter-btn" style={{ padding: '4px 8px', fontSize: '11px' }}>Sync</button>

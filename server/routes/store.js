@@ -257,7 +257,7 @@ async function createStoreOrder({
     }
 
     const orderPayload = {
-      orderNumber: makeOrderNumber(),
+      orderNumber: await makeOrderNumber(),
       userId: user._id,
       customerName: shippingAddress.fullName || user.name,
       customerEmail: user.email,

@@ -1,14 +1,29 @@
 import React from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useAdmin } from '../AdminContext';
 import { Icon } from './Icon';
 
 export function AdminSidebar() {
     const admin = useAdmin();
+    const navigate = useNavigate();
+    const location = useLocation();
 
     // Extract necessary state from Proxy
     const collapsed = admin.localSettings?.sidebarCollapsed;
     const activeTab = admin.activeTab;
     const menuItems = admin.menuItems || [];
+
+    const handleTabChange = (tabId) => {
+        if (!tabId) return;
+        if (admin.setActiveTab) {
+            admin.setActiveTab(tabId);
+        }
+
+        const nextUrl = `/tufayel/panel?tab=${encodeURIComponent(tabId)}`;
+        if (`${location.pathname}${location.search}` !== nextUrl) {
+            navigate(nextUrl);
+        }
+    };
 
     return (
         <aside className={`admin-sidebar ${collapsed ? 'collapsed' : ''}`}>
@@ -58,7 +73,7 @@ export function AdminSidebar() {
                                 </div>
                             )}
                             <button
-                                onClick={() => admin.setActiveTab(item.id)}
+                                onClick={() => handleTabChange(item.id)}
                                 title={collapsed ? item.label : ''}
                                 className={`admin-nav-item ${activeTab === item.id ? 'active' : ''}`}
                             >
