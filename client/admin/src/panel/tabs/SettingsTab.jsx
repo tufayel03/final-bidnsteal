@@ -1,364 +1,544 @@
 import React, { useState } from 'react';
+import { Activity, Eye, ImagePlus, Mail, RefreshCw, Send, ShieldCheck, SlidersHorizontal, Truck } from 'lucide-react';
 import { useAdmin } from '../AdminContext';
+
+const SETTINGS_TABS = [
+    { key: 'templates', label: 'Email Templates', caption: 'Transactional template editor', icon: Mail },
+    { key: 'smtp', label: 'SMTP Mailer', caption: 'Mail transport + sender identity', icon: Send },
+    { key: 'courier', label: 'Courier Integration', caption: 'Steadfast dispatch + fraud checks', icon: Truck },
+    { key: 'preferences', label: 'Local Preferences', caption: 'Browser-only admin behavior', icon: SlidersHorizontal }
+];
+
+function ToggleVisual({ checked }) {
+    return <span className={`settings-toggle ${checked ? 'is-on' : ''}`} />;
+}
+
+function SectionHeader({ kicker, title, description, aside = null }) {
+    return (
+        <div className="settings-panel-head">
+            <div className="settings-panel-copy">
+                {kicker ? <p className="settings-panel-kicker">{kicker}</p> : null}
+                <h3>{title}</h3>
+                {description ? <p className="settings-panel-description">{description}</p> : null}
+            </div>
+            {aside ? <div className="settings-panel-aside">{aside}</div> : null}
+        </div>
+    );
+}
+
+function StatCard({ label, value, hint, accent = '' }) {
+    return (
+        <div className={`settings-stat-card${accent ? ` ${accent}` : ''}`}>
+            <span className="settings-stat-label">{label}</span>
+            <strong className="settings-stat-value">{value}</strong>
+            {hint ? <p className="settings-stat-hint">{hint}</p> : null}
+        </div>
+    );
+}
 
 export function SettingsTab() {
     const admin = useAdmin();
-    const { templateEditor = {}, templatePreview = {}, templateKeys = [], templatePlaceholders = [], smtpSettings = {}, courierSettings = {}, localSettings = {} } = admin;
+    const {
+        templateEditor = {},
+        templatePreview = {},
+        templateKeys = [],
+        templatePlaceholders = [],
+        smtpSettings = {},
+        courierSettings = {},
+        localSettings = {}
+    } = admin;
 
     const [activeTab, setActiveTab] = useState('templates');
 
     const filteredMediaTags = admin.mediaTemplateTags ? admin.mediaTemplateTags() : [];
     const courierDispatchEnabled = admin.courierDispatchEnabled ? admin.courierDispatchEnabled() : false;
+    const activeTemplateLabel = templateEditor.selectedKey || templateEditor.key || 'No template selected';
+    const smtpStatusLabel = smtpSettings.enabled ? 'Enabled' : 'Disabled';
+    const smtpTransportLabel = smtpSettings.host ? `${smtpSettings.host}:${smtpSettings.port || 465}` : 'Transport not configured';
+    const courierBalanceLabel = courierSettings.balance === null || courierSettings.balance === undefined
+        ? 'Not checked'
+        : (admin.currency ? admin.currency(courierSettings.balance) : courierSettings.balance);
 
-    // Inner Navigation Component
     const renderNav = () => (
-        <div className="flex space-x-2 border-b border-[var(--border-strong)] pb-3 mb-6">
-            {['templates', 'smtp', 'courier', 'preferences'].map(tab => (
-                <button
-                    key={tab}
-                    onClick={() => setActiveTab(tab)}
-                    className={`px-4 py-2 text-sm font-bold uppercase tracking-widest rounded-none transition-all ${activeTab === tab ? 'bg-[var(--primary-soft)] text-[var(--primary)] border border-[var(--primary)] shadow-[0_0_15px_var(--primary-soft)]' : 'text-zinc-500 hover:text-[var(--secondary)] border border-transparent hover:border-[var(--secondary)] hover:bg-[var(--bg-soft)] shadow-none'}`}
-                >
-                    {tab === 'templates' && 'Email Templates'}
-                    {tab === 'smtp' && 'SMTP Mailer'}
-                    {tab === 'courier' && 'Courier Integration'}
-                    {tab === 'preferences' && 'Local Preferences'}
-                </button>
-            ))}
+        <div className="settings-subnav">
+            {SETTINGS_TABS.map((tab) => {
+                const Icon = tab.icon;
+                const active = activeTab === tab.key;
+                return (
+                    <button
+                        key={tab.key}
+                        type="button"
+                        onClick={() => setActiveTab(tab.key)}
+                        className={`settings-subnav-button${active ? ' is-active' : ''}`}
+                    >
+                        <span className="settings-subnav-icon">
+                            <Icon size={16} />
+                        </span>
+                        <span className="settings-subnav-copy">
+                            <span className="settings-subnav-title">{tab.label}</span>
+                            <span className="settings-subnav-caption">{tab.caption}</span>
+                        </span>
+                    </button>
+                );
+            })}
         </div>
     );
 
     const renderTemplatesTab = () => (
-        <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 items-start">
-            <div className="settings-card settings-editor-card w-full">
-                <div className="flex items-center justify-between">
-                    <h3 className="text-lg font-semibold">Email Template Editor</h3>
-                    <span className="text-[10px] uppercase tracking-[0.14em] text-zinc-500">Live Backend</span>
-                </div>
-
-                <div>
-                    <label className="settings-label">Template Library</label>
-                    <select
-                        value={templateEditor.selectedKey || ''}
-                        onChange={(e) => {
-                            admin.templateEditor.selectedKey = e.target.value;
-                            if (admin.selectTemplate) admin.selectTemplate(e.target.value);
-                        }}
-                        className="settings-input text-sm w-full"
-                    >
-                        <option value="">Select template</option>
-                        {templateKeys.map(key => (
-                            <option key={key} value={key}>{key}</option>
-                        ))}
-                    </select>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 w-full">
-                    <div>
-                        <label className="settings-label">Template Key</label>
-                        <input
-                            value={templateEditor.key || ''}
-                            onChange={(e) => { admin.templateEditor.key = e.target.value; }}
-                            placeholder="template_key"
-                            className="settings-input mono text-sm w-full"
+        <div className="settings-workspace settings-workspace-wide">
+            <div className="settings-layout settings-layout-editor">
+                <div className="settings-stack">
+                    <section className="settings-card settings-surface-card">
+                        <SectionHeader
+                            kicker="Email Templates"
+                            title="Template Editor"
+                            description="Edit live transactional templates, attach uploaded media, and keep placeholders organized."
+                            aside={<span className="settings-panel-pill">Live backend</span>}
                         />
-                    </div>
-                    <div>
-                        <label className="settings-label">Subject Line</label>
-                        <input
-                            value={templateEditor.subjectTemplate || ''}
-                            onChange={(e) => { admin.templateEditor.subjectTemplate = e.target.value; }}
-                            placeholder="Subject template"
-                            className="settings-input text-sm w-full"
+                        <div className="settings-stat-grid">
+                            <StatCard label="Library Size" value={templateKeys.length} hint="Saved template records" accent="accent-primary" />
+                            <StatCard label="Current Template" value={activeTemplateLabel} hint="Active editor target" />
+                            <StatCard label="Quick Tokens" value={templatePlaceholders.length} hint="Insertable placeholders" />
+                            <StatCard label="Media Tags" value={filteredMediaTags.length} hint="Generated from uploaded files" />
+                        </div>
+                    </section>
+
+                    <section className="settings-card settings-surface-card">
+                        <SectionHeader
+                            kicker="Editor Inputs"
+                            title="Template Content"
+                            description="Select a template from the backend library, then update its key, subject line, and HTML body."
                         />
-                    </div>
-                </div>
+                        <div className="settings-form-grid settings-form-grid-editor">
+                            <div className="settings-field settings-field-full">
+                                <label className="settings-label">Template Library</label>
+                                <select
+                                    value={templateEditor.selectedKey || ''}
+                                    onChange={(event) => {
+                                        admin.templateEditor.selectedKey = event.target.value;
+                                        if (admin.selectTemplate) admin.selectTemplate(event.target.value);
+                                    }}
+                                    className="settings-input text-sm w-full"
+                                >
+                                    <option value="">Select template</option>
+                                    {templateKeys.map((key) => (
+                                        <option key={key} value={key}>{key}</option>
+                                    ))}
+                                </select>
+                            </div>
+                            <div className="settings-field">
+                                <label className="settings-label">Template Key</label>
+                                <input
+                                    value={templateEditor.key || ''}
+                                    onChange={(event) => { admin.templateEditor.key = event.target.value; }}
+                                    placeholder="template_key"
+                                    className="settings-input mono text-sm w-full"
+                                />
+                            </div>
+                            <div className="settings-field">
+                                <label className="settings-label">Subject Line</label>
+                                <input
+                                    value={templateEditor.subjectTemplate || ''}
+                                    onChange={(event) => { admin.templateEditor.subjectTemplate = event.target.value; }}
+                                    placeholder="Subject template"
+                                    className="settings-input text-sm w-full"
+                                />
+                            </div>
+                            <div className="settings-field settings-field-full">
+                                <label className="settings-label">HTML Body</label>
+                                <textarea
+                                    value={templateEditor.htmlTemplate || ''}
+                                    onChange={(event) => { admin.templateEditor.htmlTemplate = event.target.value; }}
+                                    placeholder="HTML template..."
+                                    className="settings-input settings-template-editor text-sm mono w-full"
+                                />
+                            </div>
+                        </div>
 
-                <div>
-                    <label className="settings-label">HTML Body</label>
-                    <textarea
-                        value={templateEditor.htmlTemplate || ''}
-                        onChange={(e) => { admin.templateEditor.htmlTemplate = e.target.value; }}
-                        placeholder="HTML template..."
-                        className="settings-input h-[400px] text-sm mono w-full"
-                    ></textarea>
-                    <div className="mt-3 flex flex-wrap items-center gap-2">
-                        <button onClick={() => admin.openEmailMediaPicker && admin.openEmailMediaPicker('template')} className="settings-btn settings-btn-soft px-3 py-2 text-xs">Insert Uploaded Image Tag</button>
-                        <button onClick={() => admin.setActiveTab && admin.setActiveTab('media')} className="settings-btn settings-btn-soft px-3 py-2 text-xs">Open Media</button>
-                        <p className="text-[10px] text-zinc-500">Adds a ready <code>&lt;img ...&gt;</code> tag into this template.</p>
-                    </div>
-                </div>
-
-                <div>
-                    <label className="settings-label">Quick Placeholders</label>
-                    <div className="flex flex-wrap gap-2 mt-2">
-                        {templatePlaceholders.map(tag => (
-                            <button
-                                key={tag}
-                                onClick={() => admin.insertTemplateTag && admin.insertTemplateTag(tag)}
-                                onDoubleClick={() => admin.copyText && admin.copyText(`{{${tag}}}`)}
-                                className="px-2 py-1 rounded-none text-[11px] mono uppercase bg-[rgba(10,10,20,0.8)] border border-[var(--border-strong)] text-[var(--text)] hover:border-[var(--secondary)] hover:text-[#fff] hover:shadow-[0_0_10px_var(--secondary)] transition-all cursor-pointer"
-                            >
-                                {`{{${tag}}}`}
+                        <div className="settings-inline-actions">
+                            <button onClick={() => admin.openEmailMediaPicker && admin.openEmailMediaPicker('template')} className="settings-btn settings-btn-soft">
+                                <ImagePlus size={15} />
+                                <span>Insert Uploaded Image Tag</span>
                             </button>
-                        ))}
-                    </div>
-                    {filteredMediaTags.length > 0 && (
-                        <div className="mt-3">
-                            <label className="settings-label !mb-2 !text-[10px]">Media Auto Tags</label>
-                            <div className="flex flex-wrap gap-2 max-h-28 overflow-y-auto custom-scrollbar pr-1 mt-2">
-                                {filteredMediaTags.map(tag => (
+                            <button onClick={() => admin.setActiveTab && admin.setActiveTab('media')} className="settings-btn settings-btn-soft">
+                                <Eye size={15} />
+                                <span>Open Media</span>
+                            </button>
+                            <p className="settings-inline-note">Adds a ready image tag into the current template body.</p>
+                        </div>
+                    </section>
+
+                    <section className="settings-card settings-surface-card">
+                        <SectionHeader
+                            kicker="Tokens + Actions"
+                            title="Insert Helpers"
+                            description="Click a tag to insert it. Double-click a tag to copy the token or media placeholder."
+                        />
+
+                        <div className="settings-token-section">
+                            <label className="settings-label">Quick Placeholders</label>
+                            <div className="settings-token-grid">
+                                {templatePlaceholders.map((tag) => (
                                     <button
                                         key={tag}
-                                        onClick={() => admin.insertTemplateText && admin.insertTemplateText(tag)}
-                                        onDoubleClick={() => admin.copyText && admin.copyText(tag)}
-                                        className="px-2 py-1 rounded-none text-[11px] mono uppercase bg-[rgba(10,10,20,0.8)] border border-[var(--primary)]/50 text-[var(--primary)] hover:border-[var(--primary)] hover:text-[#000] hover:bg-[var(--primary)] hover:shadow-[0_0_10px_var(--primary)] transition-all cursor-pointer"
+                                        onClick={() => admin.insertTemplateTag && admin.insertTemplateTag(tag)}
+                                        onDoubleClick={() => admin.copyText && admin.copyText(`{{${tag}}}`)}
+                                        className="template-tag-btn"
                                     >
-                                        {tag}
+                                        {`{{${tag}}}`}
                                     </button>
                                 ))}
                             </div>
-                            <p className="text-[10px] text-zinc-500 mt-2">Media tags are generated from uploaded files. Click to insert image source placeholders.</p>
                         </div>
-                    )}
-                    <p className="text-[10px] text-zinc-500 mt-2">Click to insert. Double-click to copy placeholder.</p>
+
+                        {filteredMediaTags.length > 0 ? (
+                            <div className="settings-token-section">
+                                <label className="settings-label">Media Auto Tags</label>
+                                <div className="settings-token-grid settings-token-grid-scrolling custom-scrollbar">
+                                    {filteredMediaTags.map((tag) => (
+                                        <button
+                                            key={tag}
+                                            onClick={() => admin.insertTemplateText && admin.insertTemplateText(tag)}
+                                            onDoubleClick={() => admin.copyText && admin.copyText(tag)}
+                                            className="template-tag-btn media"
+                                        >
+                                            {tag}
+                                        </button>
+                                    ))}
+                                </div>
+                                <p className="settings-helper-text">Media tags are generated from uploaded files and resolve to image source placeholders.</p>
+                            </div>
+                        ) : null}
+
+                        <div className="settings-test-card">
+                            <div className="settings-field">
+                                <label className="settings-label">Test Email Address</label>
+                                <input
+                                    value={templateEditor.testEmail || ''}
+                                    onChange={(event) => { admin.templateEditor.testEmail = event.target.value; }}
+                                    placeholder="test@email.com"
+                                    className="settings-input text-sm w-full"
+                                />
+                            </div>
+                            <div className="settings-actions-grid settings-actions-grid-four">
+                                <button onClick={() => admin.createTemplate && admin.createTemplate()} className="settings-btn settings-btn-primary">Create</button>
+                                <button onClick={() => admin.updateTemplate && admin.updateTemplate()} className="settings-btn settings-btn-soft">Update</button>
+                                <button onClick={() => admin.previewTemplate && admin.previewTemplate()} className="settings-btn settings-btn-soft">Preview</button>
+                                <button onClick={() => admin.testSendTemplate && admin.testSendTemplate()} className="settings-btn settings-btn-soft">Test Send</button>
+                            </div>
+                        </div>
+                    </section>
                 </div>
 
-                <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 w-full">
-                    <button onClick={() => admin.createTemplate && admin.createTemplate()} className="settings-btn settings-btn-primary w-full">Create</button>
-                    <button onClick={() => admin.updateTemplate && admin.updateTemplate()} className="settings-btn settings-btn-soft w-full">Update</button>
-                    <button onClick={() => admin.previewTemplate && admin.previewTemplate()} className="settings-btn settings-btn-soft w-full">Preview</button>
-                    <button onClick={() => admin.testSendTemplate && admin.testSendTemplate()} className="settings-btn settings-btn-soft w-full">Test Send</button>
-                </div>
-
-                <div className="w-full">
-                    <label className="settings-label">Test Email Address</label>
-                    <input
-                        value={templateEditor.testEmail || ''}
-                        onChange={(e) => { admin.templateEditor.testEmail = e.target.value; }}
-                        placeholder="test@email.com"
-                        className="settings-input text-sm w-full"
-                    />
-                </div>
-            </div>
-
-            <div className="settings-card w-full sticky top-6">
-                <h3 className="text-lg font-semibold mb-4">Template Preview</h3>
-                <div className="grid grid-cols-1 gap-4 w-full">
-                    <div className="rounded-none border border-[var(--border)] bg-[rgba(0,0,0,0.4)] p-4 w-full shadow-[inset_0_0_20px_rgba(0,243,255,0.05)]">
-                        <p className="text-[10px] uppercase tracking-[0.14em] text-[var(--secondary)] mb-2 font-bold">Subject</p>
-                        <p className="text-sm text-zinc-100 min-h-[24px] mono">{templatePreview.subject || 'No preview generated yet'}</p>
-                    </div>
-                    <div className="rounded-none border border-[var(--border)] bg-[rgba(0,0,0,0.4)] p-4 min-h-[500px] overflow-y-auto custom-scrollbar w-full shadow-[inset_0_0_20px_rgba(0,243,255,0.05)]">
-                        <p className="text-[10px] uppercase tracking-[0.14em] text-[var(--secondary)] mb-2 font-bold">Rendered HTML</p>
-                        <pre className="text-xs whitespace-pre-wrap leading-6 text-[#00f3ff] mono">{templatePreview.html || 'No preview generated yet'}</pre>
-                    </div>
-                </div>
-            </div>
-        </div>
-    );
-
-    const renderSmtpTab = () => (
-        <div className="max-w-4xl mx-auto w-full">
-            <div className="settings-card w-full">
-                <div className="settings-card-title-row">
-                    <h3>Namecheap SMTP Mailer</h3>
-                    <span className="text-[10px] uppercase tracking-[0.14em] text-zinc-500">Used for all email notifications</span>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full">
-                    <div>
-                        <label className="settings-label">SMTP Host</label>
-                        <input value={smtpSettings.host || ''} onChange={e => { admin.smtpSettings.host = e.target.value }} placeholder="mail.privateemail.com" className="settings-input text-sm w-full" />
-                    </div>
-                    <div>
-                        <label className="settings-label">SMTP Port</label>
-                        <input type="number" value={smtpSettings.port || ''} onChange={e => { admin.smtpSettings.port = parseInt(e.target.value) || '' }} min="1" max="65535" className="settings-input text-sm mono w-full" />
-                    </div>
-                    <div>
-                        <label className="settings-label">SMTP Username</label>
-                        <input value={smtpSettings.username || ''} onChange={e => { admin.smtpSettings.username = e.target.value }} placeholder="no-reply@bidnsteal.com" className="settings-input text-sm w-full" />
-                    </div>
-                    <div>
-                        <label className="settings-label">SMTP Password</label>
-                        <input
-                            type="password"
-                            value={smtpSettings.password || ''}
-                            onChange={e => { admin.smtpSettings.password = e.target.value }}
-                            placeholder={smtpSettings.hasPassword ? 'Leave empty to keep current password' : 'Enter SMTP password'}
-                            className="settings-input text-sm w-full"
+                <aside className="settings-sidebar">
+                    <section className="settings-card settings-surface-card settings-sticky-card">
+                        <SectionHeader
+                            kicker="Rendered Output"
+                            title="Template Preview"
+                            description="Preview the generated subject and HTML before saving or sending a test."
+                            aside={<Eye size={16} className="settings-panel-icon" />}
                         />
-                        {smtpSettings.hasPassword && <p className="text-[10px] text-zinc-500 mt-1">Saved password: <span className="mono">{smtpSettings.passwordMasked}</span></p>}
-                    </div>
-                    <div>
-                        <label className="settings-label">From Email</label>
-                        <input type="email" value={smtpSettings.fromEmail || ''} onChange={e => { admin.smtpSettings.fromEmail = e.target.value }} placeholder="no-reply@bidnsteal.com" className="settings-input text-sm w-full" />
-                    </div>
-                    <div>
-                        <label className="settings-label">From Name</label>
-                        <input value={smtpSettings.fromName || ''} onChange={e => { admin.smtpSettings.fromName = e.target.value }} placeholder="BidnSteal" className="settings-input text-sm w-full" />
-                    </div>
-                    <div className="md:col-span-2">
-                        <label className="settings-label">Reply-To Email (Optional)</label>
-                        <input type="email" value={smtpSettings.replyTo || ''} onChange={e => { admin.smtpSettings.replyTo = e.target.value }} placeholder="support@bidnsteal.com" className="settings-input text-sm w-full" />
-                    </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full mt-6">
-                    <label className="rounded-xl border border-zinc-800 bg-zinc-900/60 p-5 flex items-center justify-between cursor-pointer hover:border-zinc-700 transition">
-                        <div>
-                            <p className="text-sm font-semibold">Enable SMTP</p>
-                            <p className="text-xs text-zinc-500 mt-1">Use Namecheap SMTP for all emails</p>
+                        <div className="settings-preview-box">
+                            <span className="settings-preview-label">Subject</span>
+                            <p className="settings-preview-value mono">{templatePreview.subject || 'No preview generated yet'}</p>
                         </div>
-                        <span className="settings-toggle-wrap">
-                            <input type="checkbox" className="sr-only" checked={!!smtpSettings.enabled} onChange={e => { admin.smtpSettings.enabled = e.target.checked }} />
-                            <span className={`settings-toggle ${smtpSettings.enabled ? 'is-on bg-[var(--primary-orange)] border-[var(--primary-orange)]' : ''}`}></span>
-                        </span>
-                    </label>
-                    <label className="rounded-xl border border-zinc-800 bg-zinc-900/60 p-5 flex items-center justify-between cursor-pointer hover:border-zinc-700 transition">
-                        <div>
-                            <p className="text-sm font-semibold">Use SSL/TLS</p>
-                            <p className="text-xs text-zinc-500 mt-1">Recommended for Namecheap Private Email</p>
+                        <div className="settings-preview-box settings-preview-box-tall custom-scrollbar">
+                            <span className="settings-preview-label">Rendered HTML</span>
+                            <pre className="settings-preview-code">{templatePreview.html || 'No preview generated yet'}</pre>
                         </div>
-                        <span className="settings-toggle-wrap">
-                            <input type="checkbox" className="sr-only" checked={!!smtpSettings.secure} onChange={e => { admin.smtpSettings.secure = e.target.checked }} />
-                            <span className={`settings-toggle ${smtpSettings.secure ? 'is-on bg-[var(--primary-orange)] border-[var(--primary-orange)]' : ''}`}></span>
-                        </span>
-                    </label>
-                </div>
-
-                <label className="rounded-xl border border-zinc-800 bg-zinc-900/60 p-5 flex items-center justify-between cursor-pointer hover:border-zinc-700 transition mt-4 w-full">
-                    <div>
-                        <p className="text-sm font-semibold">Ignore TLS Certificate Validation</p>
-                        <p className="text-xs text-zinc-500 mt-1">Only use if your SMTP certificate chain is misconfigured.</p>
-                    </div>
-                    <span className="settings-toggle-wrap">
-                        <input type="checkbox" className="sr-only" checked={!!smtpSettings.ignoreTLS} onChange={e => { admin.smtpSettings.ignoreTLS = e.target.checked }} />
-                        <span className={`settings-toggle ${smtpSettings.ignoreTLS ? 'is-on bg-[var(--primary-orange)] border-[var(--primary-orange)]' : ''}`}></span>
-                    </span>
-                </label>
-
-                <div className="border border-zinc-800 bg-zinc-900/40 rounded-xl p-5 mt-6 w-full flex flex-col sm:flex-row items-end gap-4">
-                    <div className="flex-1 w-full">
-                        <label className="settings-label">SMTP Test Recipient</label>
-                        <input type="email" value={smtpSettings.testEmail || ''} onChange={e => { admin.smtpSettings.testEmail = e.target.value }} placeholder="test@yourmail.com" className="settings-input text-sm w-full" />
-                    </div>
-                    <div className="flex gap-2 w-full sm:w-auto">
-                        <button onClick={() => admin.saveSmtpSettings && admin.saveSmtpSettings()} className="settings-btn settings-btn-primary px-6 flex-1 sm:flex-auto whitespace-nowrap">
-                            {smtpSettings.saving ? 'Saving...' : 'Save SMTP'}
-                        </button>
-                        <button onClick={() => admin.testSmtpSettings && admin.testSmtpSettings()} className="settings-btn settings-btn-soft px-6 flex-1 sm:flex-auto whitespace-nowrap">
-                            {smtpSettings.testing ? 'Sending...' : 'Send Test'}
-                        </button>
-                    </div>
-                </div>
+                    </section>
+                </aside>
             </div>
         </div>
     );
+    const renderSmtpTab = () => (
+        <div className="settings-workspace">
+            <div className="settings-stat-grid settings-stat-grid-top">
+                <StatCard label="SMTP Status" value={smtpStatusLabel} hint="Global mail transport state" accent={smtpSettings.enabled ? 'accent-primary' : ''} />
+                <StatCard label="Transport" value={smtpTransportLabel} hint="Host + port currently set" />
+                <StatCard label="From Identity" value={smtpSettings.fromEmail || 'Not set'} hint={smtpSettings.fromName || 'Sender display name pending'} />
+                <StatCard label="Security" value={smtpSettings.secure ? 'SSL / TLS' : 'Plain / STARTTLS'} hint={smtpSettings.ignoreTLS ? 'TLS validation ignored' : 'TLS validation enforced'} />
+            </div>
 
+            <div className="settings-layout settings-layout-double">
+                <section className="settings-card settings-surface-card">
+                    <SectionHeader
+                        kicker="Transport"
+                        title="SMTP Connection"
+                        description="Use your Namecheap Private Email or another SMTP host for transactional email delivery."
+                        aside={<Send size={16} className="settings-panel-icon" />}
+                    />
+                    <div className="settings-form-grid">
+                        <div className="settings-field">
+                            <label className="settings-label">SMTP Host</label>
+                            <input value={smtpSettings.host || ''} onChange={(event) => { admin.smtpSettings.host = event.target.value; }} placeholder="mail.privateemail.com" className="settings-input text-sm w-full" />
+                        </div>
+                        <div className="settings-field">
+                            <label className="settings-label">SMTP Port</label>
+                            <input type="number" value={smtpSettings.port || ''} onChange={(event) => { admin.smtpSettings.port = parseInt(event.target.value, 10) || ''; }} min="1" max="65535" className="settings-input text-sm mono w-full" />
+                        </div>
+                        <div className="settings-field">
+                            <label className="settings-label">SMTP Username</label>
+                            <input value={smtpSettings.username || ''} onChange={(event) => { admin.smtpSettings.username = event.target.value; }} placeholder="no-reply@bidnsteal.com" className="settings-input text-sm w-full" />
+                        </div>
+                        <div className="settings-field">
+                            <label className="settings-label">SMTP Password</label>
+                            <input
+                                type="password"
+                                value={smtpSettings.password || ''}
+                                onChange={(event) => { admin.smtpSettings.password = event.target.value; }}
+                                placeholder={smtpSettings.hasPassword ? 'Leave empty to keep current password' : 'Enter SMTP password'}
+                                className="settings-input text-sm w-full"
+                            />
+                            {smtpSettings.hasPassword ? <p className="settings-helper-text">Saved password: <span className="mono">{smtpSettings.passwordMasked}</span></p> : null}
+                        </div>
+                    </div>
+                </section>
+
+                <section className="settings-card settings-surface-card">
+                    <SectionHeader
+                        kicker="Sender Identity"
+                        title="From + Reply Routing"
+                        description="Control the sender identity customers see when receiving order and account emails."
+                        aside={<Mail size={16} className="settings-panel-icon" />}
+                    />
+                    <div className="settings-form-grid">
+                        <div className="settings-field">
+                            <label className="settings-label">From Email</label>
+                            <input type="email" value={smtpSettings.fromEmail || ''} onChange={(event) => { admin.smtpSettings.fromEmail = event.target.value; }} placeholder="no-reply@bidnsteal.com" className="settings-input text-sm w-full" />
+                        </div>
+                        <div className="settings-field">
+                            <label className="settings-label">From Name</label>
+                            <input value={smtpSettings.fromName || ''} onChange={(event) => { admin.smtpSettings.fromName = event.target.value; }} placeholder="BidnSteal" className="settings-input text-sm w-full" />
+                        </div>
+                        <div className="settings-field settings-field-full">
+                            <label className="settings-label">Reply-To Email</label>
+                            <input type="email" value={smtpSettings.replyTo || ''} onChange={(event) => { admin.smtpSettings.replyTo = event.target.value; }} placeholder="support@bidnsteal.com" className="settings-input text-sm w-full" />
+                        </div>
+                    </div>
+                </section>
+
+                <section className="settings-card settings-surface-card">
+                    <SectionHeader
+                        kicker="Operational Flags"
+                        title="Delivery Behavior"
+                        description="These switches control how the backend connects to the SMTP provider and validates its certificate chain."
+                        aside={<ShieldCheck size={16} className="settings-panel-icon" />}
+                    />
+                    <div className="settings-switch-grid">
+                        <label className="settings-switch-card">
+                            <div className="settings-switch-copy">
+                                <p className="settings-switch-title">Enable SMTP</p>
+                                <p className="settings-switch-text">Use the configured SMTP transport for all outgoing emails.</p>
+                            </div>
+                            <span className="settings-toggle-wrap">
+                                <input type="checkbox" className="sr-only" checked={!!smtpSettings.enabled} onChange={(event) => { admin.smtpSettings.enabled = event.target.checked; }} />
+                                <ToggleVisual checked={!!smtpSettings.enabled} />
+                            </span>
+                        </label>
+                        <label className="settings-switch-card">
+                            <div className="settings-switch-copy">
+                                <p className="settings-switch-title">Use SSL / TLS</p>
+                                <p className="settings-switch-text">Recommended for Namecheap Private Email and most production SMTP setups.</p>
+                            </div>
+                            <span className="settings-toggle-wrap">
+                                <input type="checkbox" className="sr-only" checked={!!smtpSettings.secure} onChange={(event) => { admin.smtpSettings.secure = event.target.checked; }} />
+                                <ToggleVisual checked={!!smtpSettings.secure} />
+                            </span>
+                        </label>
+                        <label className="settings-switch-card">
+                            <div className="settings-switch-copy">
+                                <p className="settings-switch-title">Ignore TLS Validation</p>
+                                <p className="settings-switch-text">Use only if the SMTP certificate chain is broken and you explicitly accept the risk.</p>
+                            </div>
+                            <span className="settings-toggle-wrap">
+                                <input type="checkbox" className="sr-only" checked={!!smtpSettings.ignoreTLS} onChange={(event) => { admin.smtpSettings.ignoreTLS = event.target.checked; }} />
+                                <ToggleVisual checked={!!smtpSettings.ignoreTLS} />
+                            </span>
+                        </label>
+                    </div>
+                </section>
+
+                <section className="settings-card settings-surface-card">
+                    <SectionHeader
+                        kicker="Verification"
+                        title="Save + Test"
+                        description="Save the SMTP configuration, then send a test message to validate credentials and routing."
+                        aside={<Activity size={16} className="settings-panel-icon" />}
+                    />
+                    <div className="settings-test-card">
+                        <div className="settings-field">
+                            <label className="settings-label">SMTP Test Recipient</label>
+                            <input type="email" value={smtpSettings.testEmail || ''} onChange={(event) => { admin.smtpSettings.testEmail = event.target.value; }} placeholder="test@yourmail.com" className="settings-input text-sm w-full" />
+                        </div>
+                        <div className="settings-actions-grid">
+                            <button onClick={() => admin.saveSmtpSettings && admin.saveSmtpSettings()} className="settings-btn settings-btn-primary">
+                                {smtpSettings.saving ? 'Saving...' : 'Save SMTP'}
+                            </button>
+                            <button onClick={() => admin.testSmtpSettings && admin.testSmtpSettings()} className="settings-btn settings-btn-soft">
+                                {smtpSettings.testing ? 'Sending...' : 'Send Test'}
+                            </button>
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </div>
+    );
     const renderCourierTab = () => (
-        <div className="max-w-4xl mx-auto w-full">
+        <div className="settings-workspace">
             {courierSettings && typeof courierSettings === 'object' ? (
-                <div className="settings-card w-full">
-                    <div className="settings-card-title-row items-center border-b border-zinc-800 pb-5 mb-5">
-                        <div className="max-w-lg">
-                            <h3 className="text-xl">Courier Integration (Steadfast)</h3>
-                            <span style={{ textTransform: 'none', letterSpacing: 'normal' }} className="text-sm mt-1 block">Configure once, then dispatch orders directly from the Orders Manager panel.</span>
-                        </div>
-                        <button onClick={() => admin.checkCourierBalance && admin.checkCourierBalance()} className="settings-btn settings-btn-soft px-4 py-2 text-sm whitespace-nowrap">
-                            {courierSettings.balanceLoading ? 'Checking...' : 'Check Balance'}
-                        </button>
+                <>
+                    <div className="settings-stat-grid settings-stat-grid-top">
+                        <StatCard label="Dispatch Mode" value={courierDispatchEnabled ? 'Enabled' : 'Disabled'} hint="Direct order push to Steadfast" accent={courierDispatchEnabled ? 'accent-primary' : ''} />
+                        <StatCard label="Provider" value={(courierSettings.provider || 'steadfast').toUpperCase()} hint="Courier backend service" />
+                        <StatCard label="Current Balance" value={courierBalanceLabel} hint="Fetch live balance on demand" />
+                        <StatCard label="Fraud Check" value={courierSettings.fraudCheckerEnabled ? 'Enabled' : 'Disabled'} hint="Customer success history lookup" />
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full mb-6">
-                        <label className="rounded-xl border border-[var(--primary-orange)]/30 bg-[var(--primary-glow)] p-5 flex items-center justify-between cursor-pointer">
-                            <div>
-                                <p className="text-sm font-bold text-white">Enable Courier Dispatch</p>
-                                <p className="text-xs text-zinc-300 mt-1">Turn on direct order push to Steadfast.</p>
+                    <div className="settings-layout settings-layout-double">
+                        <section className="settings-card settings-surface-card">
+                            <SectionHeader
+                                kicker="Dispatch"
+                                title="Courier Control"
+                                description="Enable dispatch when you want orders pushed directly from admin to Steadfast."
+                                aside={<Truck size={16} className="settings-panel-icon" />}
+                            />
+                            <div className="settings-switch-grid">
+                                <div className="settings-switch-card settings-switch-card-highlight">
+                                    <div className="settings-switch-copy">
+                                        <p className="settings-switch-title">Enable Courier Dispatch</p>
+                                        <p className="settings-switch-text">Turn on direct order synchronization to Steadfast from the Orders Manager panel.</p>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        className="settings-toggle-wrap"
+                                        onClick={(event) => {
+                                            event.preventDefault();
+                                            event.stopPropagation();
+                                            admin.toggleCourierDispatchEnabled && admin.toggleCourierDispatchEnabled();
+                                        }}
+                                    >
+                                        <ToggleVisual checked={courierDispatchEnabled} />
+                                    </button>
+                                </div>
                             </div>
-                            <button
-                                type="button"
-                                className="settings-toggle-wrap focus:outline-none"
-                                onClick={(e) => { e.preventDefault(); e.stopPropagation(); admin.toggleCourierDispatchEnabled && admin.toggleCourierDispatchEnabled(); }}
-                            >
-                                <span className={`settings-toggle ${courierDispatchEnabled ? 'is-on bg-[var(--primary-orange)] border-[var(--primary-orange)]' : ''}`}></span>
-                            </button>
-                        </label>
-                        <div className="rounded-xl border border-zinc-800 bg-zinc-900/60 p-5 flex flex-col justify-center">
-                            <p className="text-[10px] uppercase tracking-[0.14em] text-zinc-500">Current Balance</p>
-                            <p className="text-2xl mono mt-1 font-bold text-white tracking-widest">{courierSettings.balance === null ? '-' : (admin.currency ? admin.currency(courierSettings.balance) : '')}</p>
-                        </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full">
-                        <div>
-                            <label className="settings-label">Base URL</label>
-                            <input value={courierSettings.baseUrl || ''} onChange={e => { admin.courierSettings.baseUrl = e.target.value }} placeholder="https://portal.packzy.com/api/v1" className="settings-input mono text-sm w-full" />
-                        </div>
-                        <div>
-                            <label className="settings-label">API Key</label>
-                            <input value={courierSettings.apiKey || ''} onChange={e => { admin.courierSettings.apiKey = e.target.value }} placeholder="Steadfast API key" className="settings-input mono text-sm w-full" />
-                        </div>
-                        <div>
-                            <label className="settings-label">Secret Key</label>
-                            <input type="password" value={courierSettings.secretKey || ''} onChange={e => { admin.courierSettings.secretKey = e.target.value }} placeholder="Enter new secret (leave empty to keep current)" className="settings-input mono text-sm w-full" />
-                            {courierSettings.hasSecret && <p className="text-[10px] text-zinc-500 mt-1">Saved: {courierSettings.secretKeyMasked}</p>}
-                        </div>
-                        <div>
-                            <label className="settings-label">Default Delivery Type</label>
-                            <select value={courierSettings.defaultDeliveryType || ''} onChange={e => { admin.courierSettings.defaultDeliveryType = e.target.value }} className="settings-input text-sm w-full">
-                                <option value="0">Home Delivery</option>
-                                <option value="1">Point / Hub Pickup</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <div className="mt-4 w-full">
-                        <label className="settings-label">Item Description Template</label>
-                        <input value={courierSettings.defaultItemDescription || ''} onChange={e => { admin.courierSettings.defaultItemDescription = e.target.value }} placeholder="Order {{order_number}} - {{items}}" className="settings-input w-full" />
-                        <p className="text-[10px] text-zinc-500 mt-1">Supported placeholders: <span className="mono bg-zinc-800 px-1 rounded">{`{{order_number}}`}</span>, <span className="mono bg-zinc-800 px-1 rounded">{`{{items}}`}</span>, <span className="mono bg-zinc-800 px-1 rounded">{`{{total}}`}</span></p>
-                    </div>
-
-                    <div className="settings-card border-none bg-zinc-900/30 p-5 mt-8 w-full">
-                        <label className="toggle-card p-0 mb-4 bg-transparent border-none">
-                            <div>
-                                <p className="font-semibold text-lg border-b border-zinc-800 pb-2 inline-block">Enable Customer Success Check</p>
-                                <p className="text-[11px] text-zinc-400 mt-1 max-w-lg leading-relaxed">Uses Steadfast merchant login to fetch customer courier history by phone. This enables fraud checking signals when viewing an order.</p>
+                            <div className="settings-actions-grid">
+                                <button onClick={() => admin.checkCourierBalance && admin.checkCourierBalance()} className="settings-btn settings-btn-soft">
+                                    {courierSettings.balanceLoading ? 'Checking...' : 'Check Balance'}
+                                </button>
                             </div>
-                            <button
-                                type="button"
-                                className="settings-toggle-wrap focus:outline-none"
-                                onClick={(e) => { e.preventDefault(); e.stopPropagation(); admin.toggleFraudCheckerEnabled && admin.toggleFraudCheckerEnabled(); }}
-                            >
-                                <span className={`settings-toggle ${courierSettings?.fraudCheckerEnabled ? 'is-on bg-[var(--primary-orange)] border-[var(--primary-orange)]' : ''}`}></span>
-                            </button>
-                        </label>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full">
-                            <div>
-                                <label className="settings-label">Steadfast Login Email</label>
-                                <input type="email" value={courierSettings.fraudCheckerEmail || ''} onChange={e => { admin.courierSettings.fraudCheckerEmail = e.target.value }} placeholder="merchant@email.com" className="settings-input text-sm w-full" />
-                            </div>
-                            <div>
-                                <label className="settings-label">Steadfast Login Password</label>
-                                <input type="password" value={courierSettings.fraudCheckerPassword || ''} onChange={e => { admin.courierSettings.fraudCheckerPassword = e.target.value }} placeholder="Enter new password (leave empty to keep current)" className="settings-input text-sm w-full" />
-                                {courierSettings.fraudCheckerHasPassword && <p className="text-[10px] text-zinc-500 mt-1">Saved: {courierSettings.fraudCheckerPasswordMasked}</p>}
-                            </div>
-                        </div>
-                    </div>
+                        </section>
 
-                    <div className="flex justify-end mt-6 border-t border-zinc-800 pt-6">
-                        <button onClick={() => admin.saveCourierSettings && admin.saveCourierSettings()} className="settings-btn settings-btn-primary px-8 text-sm font-semibold tracking-wider bg-[var(--primary-orange)] hover:bg-[var(--primary-orange)]/80 text-white">
-                            {courierSettings.saving ? 'Saving...' : 'SAVE COURIER SETTINGS'}
-                        </button>
+                        <section className="settings-card settings-surface-card">
+                            <SectionHeader
+                                kicker="API Credentials"
+                                title="Steadfast API Connection"
+                                description="Set the base endpoint and credentials used for order creation, tracking, and delivery sync."
+                                aside={<Activity size={16} className="settings-panel-icon" />}
+                            />
+                            <div className="settings-form-grid">
+                                <div className="settings-field">
+                                    <label className="settings-label">Base URL</label>
+                                    <input value={courierSettings.baseUrl || ''} onChange={(event) => { admin.courierSettings.baseUrl = event.target.value; }} placeholder="https://portal.packzy.com/api/v1" className="settings-input mono text-sm w-full" />
+                                </div>
+                                <div className="settings-field">
+                                    <label className="settings-label">API Key</label>
+                                    <input value={courierSettings.apiKey || ''} onChange={(event) => { admin.courierSettings.apiKey = event.target.value; }} placeholder="Steadfast API key" className="settings-input mono text-sm w-full" />
+                                </div>
+                                <div className="settings-field settings-field-full">
+                                    <label className="settings-label">Secret Key</label>
+                                    <input type="password" value={courierSettings.secretKey || ''} onChange={(event) => { admin.courierSettings.secretKey = event.target.value; }} placeholder="Enter new secret (leave empty to keep current)" className="settings-input mono text-sm w-full" />
+                                    {courierSettings.hasSecret ? <p className="settings-helper-text">Saved: {courierSettings.secretKeyMasked}</p> : null}
+                                </div>
+                            </div>
+                        </section>
+
+                        <section className="settings-card settings-surface-card">
+                            <SectionHeader
+                                kicker="Dispatch Defaults"
+                                title="Order Payload Rules"
+                                description="These defaults are used when an order is pushed to Steadfast from the admin orders screen."
+                                aside={<RefreshCw size={16} className="settings-panel-icon" />}
+                            />
+                            <div className="settings-form-grid">
+                                <div className="settings-field">
+                                    <label className="settings-label">Default Delivery Type</label>
+                                    <select value={courierSettings.defaultDeliveryType || ''} onChange={(event) => { admin.courierSettings.defaultDeliveryType = event.target.value; }} className="settings-input text-sm w-full">
+                                        <option value="0">Home Delivery</option>
+                                        <option value="1">Point / Hub Pickup</option>
+                                    </select>
+                                </div>
+                                <div className="settings-field settings-field-full">
+                                    <label className="settings-label">Item Description Template</label>
+                                    <input value={courierSettings.defaultItemDescription || ''} onChange={(event) => { admin.courierSettings.defaultItemDescription = event.target.value; }} placeholder="Order {{order_number}} - {{items}}" className="settings-input w-full" />
+                                    <p className="settings-helper-text">
+                                        Supported placeholders:
+                                        {' '}
+                                        <span className="settings-code-pill">{`{{order_number}}`}</span>
+                                        {' '}
+                                        <span className="settings-code-pill">{`{{items}}`}</span>
+                                        {' '}
+                                        <span className="settings-code-pill">{`{{total}}`}</span>
+                                    </p>
+                                </div>
+                            </div>
+                        </section>
+
+                        <section className="settings-card settings-surface-card">
+                            <SectionHeader
+                                kicker="Fraud Signals"
+                                title="Customer Success Check"
+                                description="Use Steadfast merchant login credentials to fetch courier history by phone when reviewing orders."
+                                aside={<ShieldCheck size={16} className="settings-panel-icon" />}
+                            />
+                            <div className="settings-switch-grid">
+                                <div className="settings-switch-card">
+                                    <div className="settings-switch-copy">
+                                        <p className="settings-switch-title">Enable Success Check</p>
+                                        <p className="settings-switch-text">Adds courier-history signals to help flag risky buyers before dispatch.</p>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        className="settings-toggle-wrap"
+                                        onClick={(event) => {
+                                            event.preventDefault();
+                                            event.stopPropagation();
+                                            admin.toggleFraudCheckerEnabled && admin.toggleFraudCheckerEnabled();
+                                        }}
+                                    >
+                                        <ToggleVisual checked={!!courierSettings?.fraudCheckerEnabled} />
+                                    </button>
+                                </div>
+                            </div>
+                            <div className="settings-form-grid">
+                                <div className="settings-field">
+                                    <label className="settings-label">Steadfast Login Email</label>
+                                    <input type="email" value={courierSettings.fraudCheckerEmail || ''} onChange={(event) => { admin.courierSettings.fraudCheckerEmail = event.target.value; }} placeholder="merchant@email.com" className="settings-input text-sm w-full" />
+                                </div>
+                                <div className="settings-field">
+                                    <label className="settings-label">Steadfast Login Password</label>
+                                    <input type="password" value={courierSettings.fraudCheckerPassword || ''} onChange={(event) => { admin.courierSettings.fraudCheckerPassword = event.target.value; }} placeholder="Enter new password (leave empty to keep current)" className="settings-input text-sm w-full" />
+                                    {courierSettings.fraudCheckerHasPassword ? <p className="settings-helper-text">Saved: {courierSettings.fraudCheckerPasswordMasked}</p> : null}
+                                </div>
+                            </div>
+                            <div className="settings-actions-grid settings-actions-grid-single">
+                                <button onClick={() => admin.saveCourierSettings && admin.saveCourierSettings()} className="settings-btn settings-btn-primary">
+                                    {courierSettings.saving ? 'Saving...' : 'Save Courier Settings'}
+                                </button>
+                            </div>
+                        </section>
                     </div>
-                </div>
+                </>
             ) : (
-                <div className="settings-card p-8 space-y-4 max-w-xl mx-auto w-full text-center border-red-500/20 bg-red-500/5">
-                    <h3 className="text-xl font-semibold text-red-400">Courier Integration Error</h3>
-                    <p className="text-sm text-zinc-300">Courier settings state became invalid or failed to load correctly.</p>
-                    <p className="text-xs text-zinc-500">Click recover to rebuild this panel state.</p>
-                    <div className="flex justify-center pt-4">
-                        <button onClick={() => admin.resetCourierSettingsState && admin.resetCourierSettingsState()} className="settings-btn settings-btn-primary px-6 bg-red-600 hover:bg-red-500 text-white">
+                <div className="settings-card settings-empty-panel">
+                    <SectionHeader
+                        kicker="Courier State Error"
+                        title="Courier Integration Error"
+                        description="Courier settings state became invalid or failed to load correctly."
+                    />
+                    <p className="settings-helper-text">Use recover to rebuild this panel state and reload the defaults from the backend.</p>
+                    <div className="settings-actions-grid settings-actions-grid-single">
+                        <button onClick={() => admin.resetCourierSettingsState && admin.resetCourierSettingsState()} className="settings-btn settings-btn-primary">
                             Recover Courier Settings
                         </button>
                     </div>
@@ -368,48 +548,97 @@ export function SettingsTab() {
     );
 
     const renderPreferencesTab = () => (
-        <div className="max-w-3xl mx-auto w-full">
-            <div className="settings-card w-full">
-                <h3 className="text-xl mb-6">Local Admin Preferences</h3>
-                <div className="grid gap-4 w-full">
-                    <label className="rounded-xl border border-zinc-800 bg-zinc-900/60 p-5 flex items-center justify-between cursor-pointer hover:border-zinc-700 transition">
-                        <div>
-                            <p className="text-sm font-semibold text-white">Auto Refresh Tabs</p>
-                            <p className="text-xs text-zinc-400 mt-1 max-w-md">Automatically refresh dashboard and table data when switching between tabs. Disabling this saves bandwidth but requires manual reloading.</p>
-                        </div>
-                        <span className="settings-toggle-wrap">
-                            <input type="checkbox" className="sr-only" checked={!!localSettings.autoRefresh} onChange={e => { admin.localSettings.autoRefresh = e.target.checked; if (admin.saveLocalSettings) admin.saveLocalSettings(); }} />
-                            <span className={`settings-toggle ${localSettings.autoRefresh ? 'is-on bg-[var(--primary-orange)] border-[var(--primary-orange)]' : ''}`}></span>
-                        </span>
-                    </label>
-                    <label className="rounded-xl border border-zinc-800 bg-zinc-900/60 p-5 flex items-center justify-between cursor-pointer hover:border-zinc-700 transition">
-                        <div>
-                            <p className="text-sm font-semibold text-white">Developer Debug Logs</p>
-                            <p className="text-xs text-zinc-400 mt-1 max-w-md">Show detailed payload dumps and performance metrics in the browser's developer console.</p>
-                        </div>
-                        <span className="settings-toggle-wrap">
-                            <input type="checkbox" className="sr-only" checked={!!localSettings.debug} onChange={e => { admin.localSettings.debug = e.target.checked; if (admin.saveLocalSettings) admin.saveLocalSettings(); }} />
-                            <span className={`settings-toggle ${localSettings.debug ? 'is-on bg-[var(--primary-orange)] border-[var(--primary-orange)]' : ''}`}></span>
-                        </span>
-                    </label>
-                </div>
+        <div className="settings-workspace">
+            <div className="settings-stat-grid settings-stat-grid-top">
+                <StatCard label="Auto Refresh" value={localSettings.autoRefresh ? 'On' : 'Off'} hint="Refresh data during tab switches" accent={localSettings.autoRefresh ? 'accent-primary' : ''} />
+                <StatCard label="Debug Logging" value={localSettings.debug ? 'Verbose' : 'Quiet'} hint="Browser console diagnostics" />
+                <StatCard label="Persistence" value="Instant Save" hint="Preferences are saved immediately when toggled" />
+            </div>
+
+            <div className="settings-layout settings-layout-single">
+                <section className="settings-card settings-surface-card">
+                    <SectionHeader
+                        kicker="Local Preferences"
+                        title="Admin Console Behavior"
+                        description="These preferences are local to your admin session and affect only how this browser behaves."
+                        aside={<SlidersHorizontal size={16} className="settings-panel-icon" />}
+                    />
+                    <div className="settings-switch-grid">
+                        <label className="settings-switch-card">
+                            <div className="settings-switch-copy">
+                                <p className="settings-switch-title">Auto Refresh Tabs</p>
+                                <p className="settings-switch-text">Refresh dashboard and table data automatically when moving across admin tabs.</p>
+                            </div>
+                            <span className="settings-toggle-wrap">
+                                <input
+                                    type="checkbox"
+                                    className="sr-only"
+                                    checked={!!localSettings.autoRefresh}
+                                    onChange={(event) => {
+                                        admin.localSettings.autoRefresh = event.target.checked;
+                                        if (admin.saveLocalSettings) admin.saveLocalSettings();
+                                    }}
+                                />
+                                <ToggleVisual checked={!!localSettings.autoRefresh} />
+                            </span>
+                        </label>
+                        <label className="settings-switch-card">
+                            <div className="settings-switch-copy">
+                                <p className="settings-switch-title">Developer Debug Logs</p>
+                                <p className="settings-switch-text">Expose payload dumps and timing details in the browser console for troubleshooting.</p>
+                            </div>
+                            <span className="settings-toggle-wrap">
+                                <input
+                                    type="checkbox"
+                                    className="sr-only"
+                                    checked={!!localSettings.debug}
+                                    onChange={(event) => {
+                                        admin.localSettings.debug = event.target.checked;
+                                        if (admin.saveLocalSettings) admin.saveLocalSettings();
+                                    }}
+                                />
+                                <ToggleVisual checked={!!localSettings.debug} />
+                            </span>
+                        </label>
+                    </div>
+                </section>
             </div>
         </div>
     );
 
     return (
-        <div className="settings-page max-w-[1600px] mx-auto overflow-hidden">
-            <div className="settings-head flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-zinc-900/80 pb-6 mb-6">
-                <div>
-                    <h2 className="text-3xl font-bold tracking-tight text-white m-0">System Control</h2>
-                    <p className="text-zinc-500 text-sm mt-1">Manage core infrastructure, integrations, and local ops console preferences.</p>
+        <div className="settings-shell">
+            <div className="settings-hero-card">
+                <div className="settings-hero-copy">
+                    <p className="settings-hero-kicker">Control Center</p>
+                    <h2>System Control</h2>
+                    <p>Manage core infrastructure, integrations, notifications, and browser-level console preferences.</p>
+                    <div className="settings-hero-chip-row">
+                        <span className="settings-hero-chip">
+                            <Activity size={14} />
+                            <span>{templateKeys.length} templates</span>
+                        </span>
+                        <span className="settings-hero-chip">
+                            <Send size={14} />
+                            <span>SMTP {smtpStatusLabel}</span>
+                        </span>
+                        <span className="settings-hero-chip">
+                            <Truck size={14} />
+                            <span>{courierDispatchEnabled ? 'Courier live' : 'Courier idle'}</span>
+                        </span>
+                    </div>
                 </div>
-                <button onClick={() => admin.loadSettings && admin.loadSettings(true)} className="settings-btn settings-btn-soft border-zinc-700 max-w-max">Force Sync Cloud Settings</button>
+                <div className="settings-hero-actions">
+                    <button onClick={() => admin.loadSettings && admin.loadSettings(true)} className="settings-btn settings-btn-soft">
+                        <RefreshCw size={15} />
+                        <span>Force Sync Cloud Settings</span>
+                    </button>
+                </div>
             </div>
 
             {renderNav()}
 
-            <div className="pt-2 w-full animate-in fade-in slide-in-from-bottom-2 duration-300">
+            <div className="settings-content">
                 {activeTab === 'templates' && renderTemplatesTab()}
                 {activeTab === 'smtp' && renderSmtpTab()}
                 {activeTab === 'courier' && renderCourierTab()}

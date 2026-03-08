@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import { apiRequest } from '../lib/api';
-import type { Auction } from '../data/auctions';
+import type { Auction } from '../types/auction';
 import type { Product } from '../data/products';
 
 interface StoreContextValue {

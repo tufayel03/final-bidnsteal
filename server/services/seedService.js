@@ -1,16 +1,12 @@
 const bcrypt = require("bcryptjs");
 const { env } = require("../config/env");
 const User = require("../models/User");
-const Product = require("../models/Product");
-const Auction = require("../models/Auction");
-const Order = require("../models/Order");
 const Subscriber = require("../models/Subscriber");
 const Coupon = require("../models/Coupon");
 const CampaignTemplate = require("../models/CampaignTemplate");
 const Campaign = require("../models/Campaign");
 const Setting = require("../models/Setting");
-const { productSeeds, couponSeeds, campaignTemplateSeeds, auctionSeeds } = require("../data/seedData");
-const { makeOrderNumber } = require("../utils/orderNumbers");
+const { couponSeeds, campaignTemplateSeeds } = require("../data/seedData");
 
 async function upsertAdminUser() {
   const passwordHash = await bcrypt.hash(env.adminPassword, 10);
@@ -52,165 +48,6 @@ async function ensureCustomerUser() {
   });
 
   return user;
-}
-
-async function ensureProducts() {
-  const productMap = new Map();
-  for (const seed of productSeeds) {
-    const product = await Product.findOneAndUpdate(
-      { slug: seed.slug },
-      { $setOnInsert: seed, $set: { deletedAt: null } },
-      { upsert: true, new: true, setDefaultsOnInsert: true }
-    );
-    productMap.set(seed.slug, product);
-  }
-  return productMap;
-}
-
-function buildAuctionStatus(startAt, endAt) {
-  const now = Date.now();
-  if (endAt.getTime() <= now) return "ended";
-  if (startAt.getTime() <= now) return "live";
-  return "scheduled";
-}
-
-async function ensureAuctions(productMap) {
-  for (const seed of auctionSeeds) {
-    const product = productMap.get(seed.slug);
-    if (!product) continue;
-
-    const startAt = new Date(Date.now() + seed.startOffsetHours * 60 * 60 * 1000);
-    const endAt = new Date(Date.now() + seed.endOffsetHours * 60 * 60 * 1000);
-    const status = buildAuctionStatus(startAt, endAt);
-    const bids = seed.bids.map((bid) => ({
-      bidderName: bid.bidderName,
-      bidderEmail: bid.bidderEmail,
-      amount: bid.amount,
-      createdAt: new Date(Date.now() - bid.hoursAgo * 60 * 60 * 1000)
-    }));
-    const lastBid = bids[bids.length - 1] || null;
-
-    await Auction.findOneAndUpdate(
-      { productId: product._id },
-      {
-        productId: product._id,
-        status,
-        startAt,
-        endAt,
-        endedAt: status === "ended" ? endAt : null,
-        startingPrice: seed.startingPrice,
-        currentPrice: seed.currentPrice,
-        reservePrice: seed.reservePrice,
-        reservePriceReached: seed.reservePrice ? seed.currentPrice >= seed.reservePrice : false,
-        minIncrement: seed.minIncrement,
-        totalBids: bids.length,
-        lastBidAt: lastBid ? lastBid.createdAt : null,
-        highestBid: lastBid
-          ? {
-              bidderName: lastBid.bidderName,
-              bidderEmail: lastBid.bidderEmail,
-              amount: lastBid.amount,
-              at: lastBid.createdAt
-            }
-          : {},
-        buyNowPrice: seed.buyNowPrice,
-        viewerCount: seed.viewerCount,
-        year: seed.year,
-        authenticity: seed.authenticity,
-        description: seed.description,
-        bids
-      },
-      { upsert: true, new: true, setDefaultsOnInsert: true }
-    );
-  }
-}
-
-async function ensureOrders(customer, productMap) {
-  if (await Order.countDocuments()) return;
-
-  const deliveredProduct = productMap.get("twin-mill-classic");
-  const pendingProduct = productMap.get("mega-garage-tower");
-  const endedAuction = await Auction.findOne({ status: "ended" });
-
-  await Order.insertMany([
-    {
-      orderNumber: makeOrderNumber(),
-      sourceAuctionId: endedAuction?._id || null,
-      userId: customer._id,
-      customerName: customer.name,
-      customerEmail: customer.email,
-      paymentMethod: "cod",
-      paymentStatus: "paid",
-      fulfillmentStatus: "delivered",
-      subtotal: 19.99,
-      shippingFee: 0,
-      discount: 0,
-      total: 19.99,
-      items: [
-        {
-          productId: deliveredProduct?._id || null,
-          titleSnapshot: deliveredProduct?.title || "Twin Mill Classic",
-          slugSnapshot: deliveredProduct?.slug || "",
-          qty: 1,
-          unitPrice: 19.99,
-          type: "fixed",
-          imageUrl: deliveredProduct?.images?.[0] || ""
-        }
-      ],
-      shippingAddress: customer.shippingAddress
-    },
-    {
-      orderNumber: makeOrderNumber(),
-      userId: customer._id,
-      customerName: customer.name,
-      customerEmail: customer.email,
-      paymentMethod: "cod",
-      paymentStatus: "unpaid",
-      fulfillmentStatus: "processing",
-      subtotal: 89.99,
-      shippingFee: 0,
-      discount: 0,
-      total: 89.99,
-      items: [
-        {
-          productId: pendingProduct?._id || null,
-          titleSnapshot: pendingProduct?.title || "Mega Garage Tower",
-          slugSnapshot: pendingProduct?.slug || "",
-          qty: 1,
-          unitPrice: 89.99,
-          type: "fixed",
-          imageUrl: pendingProduct?.images?.[0] || ""
-        }
-      ],
-      shippingAddress: customer.shippingAddress
-    },
-    {
-      orderNumber: makeOrderNumber(),
-      userId: customer._id,
-      customerName: customer.name,
-      customerEmail: customer.email,
-      paymentMethod: "auction",
-      paymentStatus: "paid",
-      fulfillmentStatus: "pending",
-      subtotal: endedAuction?.currentPrice || 5900,
-      shippingFee: 0,
-      discount: 0,
-      total: endedAuction?.currentPrice || 5900,
-      items: [
-        {
-          productId: endedAuction?.productId || null,
-          auctionId: endedAuction?._id || null,
-          titleSnapshot: "Stunt Arena Playset",
-          slugSnapshot: "stunt-arena-playset",
-          qty: 1,
-          unitPrice: endedAuction?.currentPrice || 5900,
-          type: "auction",
-          imageUrl: productMap.get("stunt-arena-playset")?.images?.[0] || ""
-        }
-      ],
-      shippingAddress: customer.shippingAddress
-    }
-  ]);
 }
 
 async function ensureSubscribers(customer) {
@@ -318,9 +155,6 @@ async function ensureCampaigns() {
 async function seedDatabase() {
   await upsertAdminUser();
   const customer = await ensureCustomerUser();
-  const productMap = await ensureProducts();
-  await ensureAuctions(productMap);
-  await ensureOrders(customer, productMap);
   await ensureSubscribers(customer);
   await ensureCoupons();
   await ensureCampaignTemplates();

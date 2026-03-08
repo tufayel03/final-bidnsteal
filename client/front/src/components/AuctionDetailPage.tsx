@@ -4,10 +4,9 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Timer, Gavel, Users, Activity, Zap, ShieldCheck, Eye, DollarSign, ChevronDown, ChevronUp, ShoppingBag, ShoppingCart, ArrowLeft, ArrowRight } from 'lucide-react';
 import { Navbar } from './Navbar';
 import { CartSidebar } from './CartSidebar';
-import type { Auction } from '../data/auctions';
+import type { Auction } from '../types/auction';
 import { apiRequest, assetUrl } from '../lib/api';
 import { useAuth } from '../context/AuthContext';
-import { useStore } from '../context/StoreContext';
 
 function CountdownTimer({ endTime }: { endTime: string }) {
   const [timeLeft, setTimeLeft] = useState('');
@@ -48,7 +47,6 @@ export function AuctionDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { isAuthenticated } = useAuth();
-  const { auctions } = useStore();
   const [activeAuction, setActiveAuction] = useState<Auction | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [customBidAmount, setCustomBidAmount] = useState('');
@@ -66,10 +64,6 @@ export function AuctionDetailPage() {
       try {
         setIsLoading(true);
         setActionError('');
-        const seeded = auctions.find((auction) => auction.id === id || auction.productSlug === id);
-        if (seeded && !ignore) {
-          setActiveAuction(seeded);
-        }
         const payload = await apiRequest<Auction>(`/auctions/${id}`);
         if (!ignore) {
           setActiveAuction(payload);
@@ -90,7 +84,7 @@ export function AuctionDetailPage() {
     return () => {
       ignore = true;
     };
-  }, [id, auctions]);
+  }, [id]);
 
   useEffect(() => {
     if (!activeAuction || activeAuction.status !== 'LIVE') return;

@@ -25,8 +25,6 @@ export interface Auction {
   totalBids?: number;
   endTime: string;
   viewers: number;
-  status: 'LIVE' | 'UPCOMING' | 'ENDED';
+  status: "LIVE" | "UPCOMING" | "ENDED";
   bids: Bid[];
 }
-
-export const AUCTIONS: Auction[] = [];

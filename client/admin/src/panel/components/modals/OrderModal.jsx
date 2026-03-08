@@ -67,12 +67,12 @@ export function OrderModal() {
             {orderDetailsModal.open && (
                 <AdminModalPortal>
                     <div className="admin-modal-overlay" style={{ zIndex: 1080 }} onClick={(event) => event.target === event.currentTarget && admin.closeOrderDetails && admin.closeOrderDetails()}>
-                        <div className="admin-modal" style={{ maxWidth: '1180px' }}>
-                            <div className="admin-modal-head">
+                        <div className="admin-modal order-details-modal" style={{ maxWidth: '1120px' }}>
+                            <div className="admin-modal-head order-details-head">
                                 <div>
                                     <h3 style={{ margin: 0, fontSize: '24px', fontWeight: 800, color: '#f8fafc' }}>Order Details</h3>
-                                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', alignItems: 'center', marginTop: '6px' }}>
-                                        <span style={{ ...mono, fontSize: '13px', color: 'var(--muted)' }}>{order?.orderNumber || '-'}</span>
+                                    <div className="order-details-meta">
+                                        <span className="order-details-number">{order?.orderNumber || '-'}</span>
                                         {order ? <span className={`status-badge status-${admin.normalizeStatus ? admin.normalizeStatus(order.paymentStatus) : order.paymentStatus}`}>{order.paymentStatus}</span> : null}
                                         {order ? <span className={`status-badge status-${admin.normalizeStatus ? admin.normalizeStatus(order.fulfillmentStatus) : order.fulfillmentStatus}`}>{order.fulfillmentStatus}</span> : null}
                                     </div>
@@ -81,29 +81,28 @@ export function OrderModal() {
                                     <Icon name="x" className="w-5 h-5" />
                                 </button>
                             </div>
-                            <div className="admin-modal-body custom-scrollbar">
+                            <div className="admin-modal-body custom-scrollbar order-details-body">
                                 {orderDetailsModal.loading ? (
                                     <p style={{ margin: 0, color: 'var(--muted)' }}>Loading order details...</p>
                                 ) : order ? (
-                                    <div style={{ display: 'grid', gap: '20px' }}>
-                                    <div style={grid(320)}>
-                                        <section style={{ display: 'grid', gap: '16px' }}>
-                                            <div style={grid(140)}>
-                                                <div style={card}><span style={label}>Total</span><strong style={{ ...mono, fontSize: '20px', color: '#f8fafc' }}>{admin.currency ? admin.currency(order.total) : order.total}</strong></div>
-                                                <div style={card}><span style={label}>Subtotal</span><strong style={{ ...mono, fontSize: '20px', color: '#f8fafc' }}>{admin.currency ? admin.currency(order.subtotal) : order.subtotal}</strong></div>
-                                                <div style={card}><span style={label}>Shipping</span><strong style={{ ...mono, fontSize: '20px', color: '#f8fafc' }}>{admin.currency ? admin.currency(order.shippingFee) : order.shippingFee}</strong></div>
-                                                <div style={card}><span style={label}>Created</span><strong style={{ ...mono, fontSize: '12px', color: '#f8fafc' }}>{admin.dateTime ? admin.dateTime(order.createdAt) : order.createdAt}</strong></div>
+                                    <div className="order-details-shell">
+                                        <section className="order-details-column">
+                                            <div className="order-metric-grid">
+                                                <div className="order-metric-card" style={card}><span className="order-metric-label" style={label}>Total</span><strong className="order-metric-value" style={{ ...mono, color: '#f8fafc' }}>{admin.currency ? admin.currency(order.total) : order.total}</strong></div>
+                                                <div className="order-metric-card" style={card}><span className="order-metric-label" style={label}>Subtotal</span><strong className="order-metric-value" style={{ ...mono, color: '#f8fafc' }}>{admin.currency ? admin.currency(order.subtotal) : order.subtotal}</strong></div>
+                                                <div className="order-metric-card" style={card}><span className="order-metric-label" style={label}>Shipping</span><strong className="order-metric-value" style={{ ...mono, color: '#f8fafc' }}>{admin.currency ? admin.currency(order.shippingFee) : order.shippingFee}</strong></div>
+                                                <div className="order-metric-card" style={card}><span className="order-metric-label" style={label}>Created</span><strong className="order-metric-value order-metric-value-small" style={{ ...mono, color: '#f8fafc' }}>{admin.dateTime ? admin.dateTime(order.createdAt) : order.createdAt}</strong></div>
                                             </div>
-                                            <div className="admin-inset-card" style={{ marginBottom: 0 }}>
-                                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', marginBottom: '12px' }}>
+                                            <div className="admin-inset-card order-section-card" style={{ marginBottom: 0 }}>
+                                                <div className="order-section-head">
                                                     <h4 style={{ margin: 0, fontSize: '15px', fontWeight: 700 }}>Order Items</h4>
                                                     <span style={{ color: 'var(--muted)', fontSize: '12px' }}>{admin.number ? admin.number(items.length) : items.length} item(s)</span>
                                                 </div>
                                                 <div style={{ display: 'grid', gap: '12px' }}>
                                                     {items.length ? items.map((item, index) => (
-                                                        <div key={item.productId || index} style={{ display: 'grid', gap: '12px', padding: '14px', border: '1px solid var(--border)', background: 'rgba(10, 10, 18, 0.86)' }}>
+                                                        <div key={item.productId || index} className="order-item-card">
                                                             <div style={{ display: 'flex', gap: '14px', alignItems: 'flex-start' }}>
-                                                                <div style={{ width: '64px', height: '64px', border: '1px solid var(--border)', background: 'rgba(255,255,255,0.04)', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', flexShrink: 0 }}>
+                                                                <div className="order-item-media">
                                                                     {admin.orderItemImage && admin.orderItemImage(item) ? <img src={admin.orderItemImage(item)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <span style={{ ...mono, color: 'var(--muted)' }}>{admin.orderItemInitial ? admin.orderItemInitial(item) : 'IT'}</span>}
                                                                 </div>
                                                                 <div style={{ display: 'grid', gap: '10px', flex: 1, minWidth: 0 }}>
@@ -115,7 +114,7 @@ export function OrderModal() {
                                                                         <div style={card}><span style={label}>Qty</span><strong style={mono}>{admin.number ? admin.number(item.qty) : item.qty}</strong></div>
                                                                         <div style={card}><span style={label}>Unit</span><strong style={mono}>{admin.currency ? admin.currency(item.unitPrice) : item.unitPrice}</strong></div>
                                                                         <div style={card}><span style={label}>Subtotal</span><strong style={mono}>{admin.currency ? admin.currency(admin.orderItemSubtotal ? admin.orderItemSubtotal(item) : ((Number(item.qty) || 0) * (Number(item.unitPrice) || 0))) : ''}</strong></div>
-                                                                        <div style={card}><span style={label}>Type</span><strong style={{ color: '#f8fafc' }}>{item.type || 'fixed'}</strong></div>
+                                                                        <div style={card}><span style={label}>Type</span><strong style={{ color: '#f8fafc', textTransform: 'uppercase' }}>{item.type || 'fixed'}</strong></div>
                                                                     </div>
                                                                 </div>
                                                             </div>
@@ -125,21 +124,21 @@ export function OrderModal() {
                                             </div>
                                         </section>
 
-                                        <section style={{ display: 'grid', gap: '16px' }}>
-                                            <div className="admin-inset-card" style={{ marginBottom: 0 }}>
+                                        <section className="order-details-column">
+                                            <div className="admin-inset-card order-section-card" style={{ marginBottom: 0 }}>
                                                 <h4 style={{ margin: '0 0 14px 0', fontSize: '15px', fontWeight: 700 }}>Order Summary</h4>
-                                                <div style={grid(180)}>
+                                                <div className="order-summary-grid">
                                                     <div style={card}><span style={label}>Customer</span><strong style={{ color: '#f8fafc' }}>{order.customerName || order.displayCustomer || '-'}</strong></div>
                                                     <div style={card}><span style={label}>Email</span><strong style={{ ...mono, color: '#f8fafc', wordBreak: 'break-all' }}>{order.customerEmail || '-'}</strong></div>
-                                                    <div style={card}><span style={label}>Payment Method</span><strong style={{ color: '#f8fafc' }}>{order.paymentMethod || '-'}</strong></div>
+                                                    <div style={card}><span style={label}>Payment Method</span><strong style={{ color: '#f8fafc', textTransform: 'uppercase' }}>{order.paymentMethod || '-'}</strong></div>
                                                     <div style={card}><span style={label}>Discount</span><strong style={{ ...mono, color: '#f8fafc' }}>{admin.currency ? admin.currency(order.discount) : order.discount}</strong></div>
                                                 </div>
                                             </div>
 
-                                            <div className="admin-inset-card" style={{ marginBottom: 0 }}>
+                                            <div className="admin-inset-card order-section-card" style={{ marginBottom: 0 }}>
                                                 <h4 style={{ margin: '0 0 14px 0', fontSize: '15px', fontWeight: 700 }}>Status + Customer Note</h4>
                                                 <div style={{ display: 'grid', gap: '14px' }}>
-                                                    <div style={grid(180)}>
+                                                    <div className="order-form-grid">
                                                         <div>
                                                             <label style={label}>Payment</label>
                                                             <select value={orderDetailsModal.draft?.paymentStatus || 'unpaid'} onChange={(event) => admin.orderDetailsModal?.draft && (admin.orderDetailsModal.draft.paymentStatus = event.target.value)} className="order-filter-select" style={{ width: '100%' }}>
@@ -166,9 +165,9 @@ export function OrderModal() {
                                                 </div>
                                             </div>
 
-                                            <div className="admin-inset-card" style={{ marginBottom: 0 }}>
+                                            <div className="admin-inset-card order-section-card" style={{ marginBottom: 0 }}>
                                                 <h4 style={{ margin: '0 0 14px 0', fontSize: '15px', fontWeight: 700 }}>Shipping Address</h4>
-                                                <div style={grid(220)}>
+                                                <div className="order-address-grid">
                                                     <div><label style={label}>Full Name</label><input value={orderDetailsModal.draft?.shippingAddress?.fullName || ''} onChange={(event) => admin.orderDetailsModal?.draft?.shippingAddress && (admin.orderDetailsModal.draft.shippingAddress.fullName = event.target.value)} placeholder="Full name" className="admin-search-input" style={{ width: '100%' }} /></div>
                                                     <div><label style={label}>Phone</label><input value={orderDetailsModal.draft?.shippingAddress?.phone || ''} onChange={(event) => admin.orderDetailsModal?.draft?.shippingAddress && (admin.orderDetailsModal.draft.shippingAddress.phone = event.target.value)} placeholder="Phone" className="admin-search-input" style={{ width: '100%' }} /></div>
                                                     <div style={{ gridColumn: '1 / -1' }}><label style={label}>Address Line 1</label><input value={orderDetailsModal.draft?.shippingAddress?.addressLine1 || ''} onChange={(event) => admin.orderDetailsModal?.draft?.shippingAddress && (admin.orderDetailsModal.draft.shippingAddress.addressLine1 = event.target.value)} placeholder="Address line 1" className="admin-search-input" style={{ width: '100%' }} /></div>
@@ -180,7 +179,6 @@ export function OrderModal() {
                                                 </div>
                                             </div>
                                         </section>
-                                    </div>
                                     </div>
                                 ) : <p style={{ margin: 0, color: 'var(--muted)' }}>Order data is not available.</p>}
                             </div>

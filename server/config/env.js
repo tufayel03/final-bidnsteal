@@ -67,7 +67,7 @@ const env = {
   uploadMaxFileSizeBytes: parseNumber(process.env.UPLOAD_MAX_FILE_SIZE_BYTES, 10 * 1024 * 1024),
   redisUrl: String(process.env.REDIS_URL || "").trim(),
   redisPrefix: process.env.REDIS_PREFIX || "bidnsteal:",
-  autoSeed: parseBoolean(process.env.AUTO_SEED, !isProduction),
+  autoSeed: parseBoolean(process.env.AUTO_SEED, false),
   publicRateLimitWindowMs: parseNumber(process.env.PUBLIC_RATE_LIMIT_WINDOW_MS, 15 * 60 * 1000),
   publicRateLimitMax: parseNumber(process.env.PUBLIC_RATE_LIMIT_MAX, 900),
   writeRateLimitWindowMs: parseNumber(process.env.WRITE_RATE_LIMIT_WINDOW_MS, 10 * 60 * 1000),

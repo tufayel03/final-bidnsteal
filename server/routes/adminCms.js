@@ -185,10 +185,10 @@ async function buildTemplateContext() {
       reset_link: siteUrl ? `${siteUrl}/reset-password?token=sample` : "/reset-password?token=sample"
     },
     auction: {
-      title: "Sample auction"
+      title: "Auction title"
     },
     product: {
-      title: "Sample product"
+      title: "Product title"
     }
   };
 }
