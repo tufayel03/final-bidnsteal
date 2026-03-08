@@ -1412,6 +1412,10 @@ tbody tr:hover {
   .settings-grid {
     grid-template-columns: 1fr;
   }
+
+  .orders-compact-table {
+    min-width: 1180px;
+  }
 }
 
 @media (max-width: 980px) {
@@ -1430,6 +1434,10 @@ tbody tr:hover {
 
   .settings-test-row {
     grid-template-columns: 1fr;
+  }
+
+  .order-panel {
+    align-items: stretch;
   }
 }
 
@@ -1497,6 +1505,10 @@ tbody tr:hover {
   padding: 10px 16px;
   font-size: 13px;
   font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
   cursor: pointer;
   border: 1px solid rgba(65, 72, 92, 0.75);
   background: linear-gradient(180deg, rgba(39, 42, 52, 0.95), rgba(31, 34, 43, 0.95));
@@ -1547,6 +1559,219 @@ tbody tr:hover {
 
 .order-selection-meta .mono {
   color: #e2e8f0;
+}
+
+.orders-compact-table th,
+.orders-compact-table td {
+  padding-top: 18px;
+  padding-bottom: 18px;
+  vertical-align: middle;
+}
+
+.orders-compact-table th {
+  white-space: nowrap;
+}
+
+.order-primary-meta {
+  display: grid;
+  gap: 5px;
+}
+
+.order-primary-number {
+  font-family: 'Share Tech Mono', monospace;
+  font-weight: 800;
+  color: #f8fafc;
+  letter-spacing: 0.02em;
+}
+
+.order-primary-caption {
+  font-size: 10px;
+  color: #7f91b0;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.order-total-compact {
+  display: grid;
+  gap: 2px;
+}
+
+.order-total-label {
+  font-size: 10px;
+  color: #7f91b0;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.order-total-compact strong {
+  color: #3b82f6;
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 18px;
+  line-height: 1.1;
+}
+
+.order-inline-select-wrap {
+  position: relative;
+  min-width: 0;
+}
+
+.order-inline-icon {
+  position: absolute;
+  left: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #7f91b0;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.order-inline-select {
+  min-width: 0;
+  width: 100%;
+  padding: 8px 30px 8px 32px;
+  font-size: 12px;
+  line-height: 1.2;
+}
+
+.order-note-compact {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: start;
+  gap: 8px;
+  max-width: 180px;
+  color: #dce6f7;
+}
+
+.order-note-compact svg {
+  margin-top: 1px;
+  color: #8fa0be;
+  flex-shrink: 0;
+}
+
+.order-note-compact span {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.order-courier-compact {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+
+.order-courier-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.order-courier-head svg {
+  color: #8fa0be;
+  flex-shrink: 0;
+}
+
+.order-courier-empty {
+  font-size: 11px;
+  color: #8fa0be;
+}
+
+.order-courier-meta {
+  margin: 0;
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr);
+  gap: 8px;
+  align-items: center;
+  font-size: 10px;
+  color: #8fa0be;
+}
+
+.order-courier-meta span {
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #7184a5;
+}
+
+.order-courier-meta strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 700;
+  color: #d9e7ff;
+}
+
+.order-date-compact {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 8px;
+  align-items: start;
+}
+
+.order-date-compact svg {
+  color: #8fa0be;
+  margin-top: 1px;
+}
+
+.order-date-compact p {
+  margin: 0;
+  font-size: 12px;
+  color: #f8fafc;
+}
+
+.order-date-compact span {
+  display: block;
+  margin-top: 4px;
+  font-size: 10px;
+  color: #8fa0be;
+}
+
+.order-actions-compact {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.order-icon-btn {
+  width: 34px;
+  height: 34px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  border: 1px solid rgba(65, 72, 92, 0.75);
+  background: linear-gradient(180deg, rgba(39, 42, 52, 0.95), rgba(31, 34, 43, 0.95));
+  color: #dce0ea;
+  cursor: pointer;
+  transition: transform 0.18s ease, filter 0.18s ease, border-color 0.18s ease;
+}
+
+.order-icon-btn:hover {
+  filter: brightness(1.15);
+  transform: translateY(-1px);
+}
+
+.order-icon-btn.primary {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: #fff;
+}
+
+.order-icon-btn.danger {
+  background: linear-gradient(130deg, #dc2626, #b91c1c);
+  border-color: rgba(185, 28, 28, 0.9);
+  color: #fff;
+}
+
+.order-icon-btn:disabled,
+.order-filter-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  transform: none;
+  filter: none;
 }
 
 .status-badge {
@@ -1715,6 +1940,33 @@ tbody tr:hover {
   background: var(--primary-soft) !important;
   text-shadow: 0 0 5px var(--primary);
   box-shadow: inset 0 0 10px rgba(0, 243, 255, 0.2) !important;
+}
+
+.order-icon-btn {
+  border-radius: 0 !important;
+  background: rgba(10, 10, 20, 0.8) !important;
+  color: var(--primary) !important;
+  border: 1px solid var(--primary) !important;
+  box-shadow: inset 0 0 10px rgba(0, 243, 255, 0.05);
+  clip-path: polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px);
+}
+
+.order-icon-btn:hover {
+  background: var(--primary-soft) !important;
+  text-shadow: 0 0 5px var(--primary);
+  box-shadow: inset 0 0 10px rgba(0, 243, 255, 0.2), 0 0 10px rgba(0, 243, 255, 0.12) !important;
+}
+
+.order-icon-btn.primary {
+  background: var(--primary) !important;
+  color: #000 !important;
+  border-color: var(--primary) !important;
+}
+
+.order-icon-btn.danger {
+  background: rgba(55, 9, 14, 0.92) !important;
+  color: #ff8484 !important;
+  border-color: rgba(255, 90, 90, 0.9) !important;
 }
 
 input,
@@ -2132,6 +2384,12 @@ textarea:focus,
   background: rgba(38, 10, 14, 0.6);
 }
 
+.order-fraud-status.is-cached {
+  border-color: rgba(0, 243, 255, 0.34);
+  color: #7dd3fc;
+  background: rgba(7, 20, 34, 0.6);
+}
+
 .order-fraud-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -2188,6 +2446,12 @@ textarea:focus,
 .order-fraud-state-error {
   border-color: rgba(239, 68, 68, 0.35);
   color: #fecaca;
+}
+
+.order-fraud-state-warning {
+  border-color: rgba(245, 158, 11, 0.4);
+  color: #fde68a;
+  background: rgba(41, 26, 5, 0.62);
 }
 
 .order-details-modal .admin-modal-foot {

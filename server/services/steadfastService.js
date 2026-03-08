@@ -1,10 +1,13 @@
 const { getSetting, setSetting } = require("./settingsService");
+const { getCachedJson, setCachedJson } = require("../config/redis");
 const { decryptSecret, encryptSecret } = require("../utils/secrets");
 
 const merchantSessionCache = {
   cookies: null,
   expiresAt: 0
 };
+const customerHistoryMemoryCache = new Map();
+const customerHistoryCacheTtlMs = 6 * 60 * 60 * 1000;
 
 function defaultCourierSettings() {
   return {
@@ -252,6 +255,84 @@ async function requestMerchantPage(url, jar, options = {}) {
   };
 }
 
+function customerHistoryCacheKey(phoneNumber) {
+  return `steadfast:history:${phoneNumber}`;
+}
+
+function hydrateCachedCustomerHistory(phoneNumber, entry, options = {}) {
+  const allowExpired = Boolean(options.allowExpired);
+  if (!entry || typeof entry !== "object" || !entry.value || typeof entry.value !== "object") {
+    return null;
+  }
+
+  const expiresAt = Number(entry.expiresAt || 0);
+  const isExpired = Boolean(expiresAt && expiresAt <= Date.now());
+  if (isExpired && !allowExpired) {
+    return null;
+  }
+
+  const value = {
+    ...entry.value,
+    phoneNumber: String(entry.value.phoneNumber || phoneNumber || "").replace(/\D+/g, ""),
+    stale: isExpired
+  };
+
+  if (!isExpired) {
+    customerHistoryMemoryCache.set(phoneNumber, {
+      expiresAt: expiresAt || Date.now() + customerHistoryCacheTtlMs,
+      value
+    });
+  }
+
+  return value;
+}
+
+async function readCachedCustomerHistory(phoneNumber, options = {}) {
+  const normalizedPhone = String(phoneNumber || "").replace(/\D+/g, "");
+  if (!normalizedPhone) return null;
+  const allowExpired = Boolean(options.allowExpired);
+
+  const memoryEntry = customerHistoryMemoryCache.get(normalizedPhone);
+  if (memoryEntry) {
+    if (memoryEntry.expiresAt > Date.now()) {
+      return memoryEntry.value;
+    }
+    customerHistoryMemoryCache.delete(normalizedPhone);
+  }
+
+  const redisEntry = await getCachedJson(customerHistoryCacheKey(normalizedPhone));
+  const redisValue = hydrateCachedCustomerHistory(normalizedPhone, redisEntry, { allowExpired });
+  if (redisValue) {
+    return redisValue;
+  }
+
+  const dbEntry = await getSetting(customerHistoryCacheKey(normalizedPhone), null);
+  return hydrateCachedCustomerHistory(normalizedPhone, dbEntry, { allowExpired });
+}
+
+async function getCachedCustomerHistory(phoneNumber) {
+  return readCachedCustomerHistory(phoneNumber);
+}
+
+async function setCachedCustomerHistory(phoneNumber, value) {
+  const normalizedPhone = String(phoneNumber || "").replace(/\D+/g, "");
+  if (!normalizedPhone || !value || typeof value !== "object") return;
+
+  const entry = {
+    expiresAt: Date.now() + customerHistoryCacheTtlMs,
+    value: {
+      ...value,
+      phoneNumber: normalizedPhone
+    }
+  };
+
+  customerHistoryMemoryCache.set(normalizedPhone, entry);
+  await Promise.allSettled([
+    setCachedJson(customerHistoryCacheKey(normalizedPhone), entry, Math.ceil(customerHistoryCacheTtlMs / 1000)),
+    setSetting(customerHistoryCacheKey(normalizedPhone), entry)
+  ]);
+}
+
 async function followMerchantRedirects(url, jar, referer = "https://steadfast.com.bd/login") {
   let currentUrl = url;
   let currentReferer = referer;
@@ -349,6 +430,27 @@ async function fetchSteadfastCustomerHistory(phoneNumber) {
     };
   }
 
+  const cachedSnapshot = await getCachedCustomerHistory(normalizedPhone);
+  if (cachedSnapshot) {
+    return {
+      ...cachedSnapshot,
+      cached: true
+    };
+  }
+  const staleSnapshot = await readCachedCustomerHistory(normalizedPhone, { allowExpired: true });
+
+  const makeStaleFallback = (message) => {
+    if (!staleSnapshot) {
+      return null;
+    }
+    return {
+      ...staleSnapshot,
+      cached: true,
+      stale: true,
+      warning: message || "Showing the last saved SteadFast result while live lookup is unavailable."
+    };
+  };
+
   for (let attempt = 0; attempt < 2; attempt += 1) {
     const jar = await loginSteadfastMerchant(attempt > 0);
     const response = await requestMerchantPage(`https://steadfast.com.bd/user/frauds/check/${encodeURIComponent(normalizedPhone)}`, jar, {
@@ -372,6 +474,24 @@ async function fetchSteadfastCustomerHistory(phoneNumber) {
       throw new Error("SteadFast returned an invalid customer history response.");
     }
 
+    const serviceError = String(payload.error || payload.message || "").trim();
+    if (response.status >= 400 || serviceError) {
+      const staleFallback = makeStaleFallback(serviceError || `SteadFast request failed (${response.status}). Showing cached result.`);
+      if (staleFallback) {
+        return staleFallback;
+      }
+
+      if (/rate limit/i.test(serviceError)) {
+        const error = new Error("SteadFast search limit reached. Please wait before checking this phone again.");
+        error.status = 429;
+        throw error;
+      }
+
+      const error = new Error(serviceError || `SteadFast request failed (${response.status}).`);
+      error.status = response.status || 500;
+      throw error;
+    }
+
     const totalDelivered = Number(payload.total_delivered || payload.totalDelivered || 0);
     const totalCancelled = Number(payload.total_cancelled || payload.totalCancelled || 0);
     const totalOrders = Number(payload.total_orders || payload.totalOrders || totalDelivered + totalCancelled);
@@ -382,7 +502,7 @@ async function fetchSteadfastCustomerHistory(phoneNumber) {
     merchantSessionCache.cookies = Array.from(jar.entries());
     merchantSessionCache.expiresAt = Date.now() + 10 * 60 * 1000;
 
-    return {
+    const snapshot = {
       phoneNumber: normalizedPhone,
       totalOrders,
       totalDelivered,
@@ -392,6 +512,9 @@ async function fetchSteadfastCustomerHistory(phoneNumber) {
       fraudCount: frauds.length,
       raw: payload
     };
+
+    await setCachedCustomerHistory(normalizedPhone, snapshot);
+    return snapshot;
   }
 
   throw new Error("Unable to load SteadFast customer history.");

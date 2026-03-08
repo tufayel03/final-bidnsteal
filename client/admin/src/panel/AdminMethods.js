@@ -2173,6 +2173,8 @@ export const adminMethods = {
     if (!order?.id) return null;
     const open = Boolean(options.open);
     const silent = Boolean(options.silent);
+    const forceRefresh = Boolean(options.forceRefresh);
+    const orderId = String(order.id || "");
     let settings = this.ensureCourierSettings ? this.ensureCourierSettings() : this.courierSettings;
     const phoneCandidate = String(
       order?.shippingAddress?.phone ||
@@ -2180,6 +2182,27 @@ export const adminMethods = {
       order?.customerPhone ||
       ""
     ).trim();
+    const normalizedPhoneCandidate = phoneCandidate.replace(/\D+/g, "");
+    const cachedSnapshot =
+      !forceRefresh &&
+      this.courierSuccessSnapshots &&
+      typeof this.courierSuccessSnapshots === "object"
+        ? this.courierSuccessSnapshots[orderId]
+        : null;
+
+    const applyCourierSnapshot = (snapshot) => {
+      this.courierSuccessModal.phoneNumber = String(snapshot?.phoneNumber || phoneCandidate || "");
+      this.courierSuccessModal.totalOrders = Number(snapshot?.totalOrders || 0);
+      this.courierSuccessModal.totalDelivered = Number(snapshot?.totalDelivered || 0);
+      this.courierSuccessModal.totalCancelled = Number(snapshot?.totalCancelled || 0);
+      this.courierSuccessModal.successRatio = Number(snapshot?.successRatio || 0);
+      this.courierSuccessModal.hasFraudHistory = Boolean(snapshot?.hasFraudHistory);
+      this.courierSuccessModal.fraudCount = Number(snapshot?.fraudCount || 0);
+      this.courierSuccessModal.cached = Boolean(snapshot?.cached);
+      this.courierSuccessModal.stale = Boolean(snapshot?.stale);
+      this.courierSuccessModal.warning = String(snapshot?.warning || "");
+      this.courierSuccessModal.error = "";
+    };
 
     if (open) {
       this.courierSuccessModal.open = true;
@@ -2194,7 +2217,23 @@ export const adminMethods = {
     this.courierSuccessModal.successRatio = 0;
     this.courierSuccessModal.hasFraudHistory = false;
     this.courierSuccessModal.fraudCount = 0;
+    this.courierSuccessModal.cached = false;
+    this.courierSuccessModal.stale = false;
+    this.courierSuccessModal.warning = "";
     this.courierSuccessModal.error = "";
+
+    if (
+      cachedSnapshot &&
+      String(cachedSnapshot.phoneNumber || "").replace(/\D+/g, "") === normalizedPhoneCandidate
+    ) {
+      applyCourierSnapshot({
+        ...cachedSnapshot,
+        cached: true,
+        warning: cachedSnapshot.warning || "Showing the last fetched courier result from this admin session."
+      });
+      this.courierSuccessModal.loading = false;
+      return cachedSnapshot;
+    }
 
     if (!this.loadedTabs?.settings || !settings?.fraudCheckerEnabled) {
       try {
@@ -2270,14 +2309,14 @@ export const adminMethods = {
         throw lastError || new Error("Unable to fetch courier success rate.");
       }
 
-      this.courierSuccessModal.phoneNumber = String(response.phoneNumber || "");
-      this.courierSuccessModal.totalOrders = Number(response.totalOrders || 0);
-      this.courierSuccessModal.totalDelivered = Number(response.totalDelivered || 0);
-      this.courierSuccessModal.totalCancelled = Number(response.totalCancelled || 0);
-      this.courierSuccessModal.successRatio = Number(response.successRatio || 0);
-      this.courierSuccessModal.hasFraudHistory = Boolean(response.hasFraudHistory);
-      this.courierSuccessModal.fraudCount = Number(response.fraudCount || 0);
-      this.courierSuccessModal.error = "";
+      applyCourierSnapshot(response);
+      this.courierSuccessSnapshots = {
+        ...(this.courierSuccessSnapshots && typeof this.courierSuccessSnapshots === "object" ? this.courierSuccessSnapshots : {}),
+        [orderId]: {
+          ...response,
+          phoneNumber: String(response.phoneNumber || phoneCandidate || "")
+        }
+      };
       return response;
     } catch (error) {
       const message = this.errorMessage(error);
@@ -2310,6 +2349,9 @@ export const adminMethods = {
     this.courierSuccessModal.successRatio = 0;
     this.courierSuccessModal.hasFraudHistory = false;
     this.courierSuccessModal.fraudCount = 0;
+    this.courierSuccessModal.cached = false;
+    this.courierSuccessModal.stale = false;
+    this.courierSuccessModal.warning = "";
     this.courierSuccessModal.error = "";
   },
 

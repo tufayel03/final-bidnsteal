@@ -1,5 +1,18 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
+import {
+    CalendarClock,
+    CreditCard,
+    Download,
+    Eye,
+    MessageSquareText,
+    Package,
+    RefreshCw,
+    Save,
+    Send,
+    Truck,
+    Trash2
+} from 'lucide-react';
 import { useAdmin } from '../AdminContext';
 
 export function OrdersTab() {
@@ -15,8 +28,14 @@ export function OrdersTab() {
                     <p>Track, update, dispatch, and clean orders from one control surface.</p>
                 </div>
                 <div style={{ display: 'flex', gap: '12px' }}>
-                    <button onClick={() => admin.exportOrdersCsv && admin.exportOrdersCsv()} className="order-filter-btn">Export Orders</button>
-                    <button onClick={() => admin.loadOrders && admin.loadOrders(true)} className="order-filter-btn">Reload</button>
+                    <button onClick={() => admin.exportOrdersCsv && admin.exportOrdersCsv()} className="order-filter-btn">
+                        <Download size={14} />
+                        <span>Export Orders</span>
+                    </button>
+                    <button onClick={() => admin.loadOrders && admin.loadOrders(true)} className="order-filter-btn">
+                        <RefreshCw size={14} />
+                        <span>Reload</span>
+                    </button>
                 </div>
             </div>
             <div className="order-panel">
@@ -63,7 +82,7 @@ export function OrdersTab() {
                 </div>
             </div>
             <div className="admin-table-wrap">
-                <table className="admin-table">
+                <table className="admin-table orders-compact-table">
                     <thead>
                         <tr>
                             <th style={{ width: '40px' }}>
@@ -75,14 +94,14 @@ export function OrdersTab() {
                                 />
                             </th>
                             <th style={{ width: '40px' }}>#</th>
-                            <th>Order #</th>
-                            <th>Total</th>
-                            <th>Payment</th>
-                            <th>Fulfillment</th>
-                            <th>Customer Note</th>
-                            <th>Courier</th>
-                            <th>Date</th>
-                            <th>Actions</th>
+                            <th style={{ minWidth: '170px' }}>Order #</th>
+                            <th style={{ minWidth: '90px' }}>Total</th>
+                            <th style={{ minWidth: '152px' }}>Payment</th>
+                            <th style={{ minWidth: '166px' }}>Fulfillment</th>
+                            <th style={{ minWidth: '170px' }}>Customer Note</th>
+                            <th style={{ minWidth: '176px' }}>Courier</th>
+                            <th style={{ minWidth: '126px' }}>Date</th>
+                            <th style={{ minWidth: '178px' }}>Actions</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -97,67 +116,141 @@ export function OrdersTab() {
                                     />
                                 </td>
                                 <td className="mono" style={{ color: '#8fa0be' }}>{admin.orderSerial ? admin.orderSerial(index) : index + 1}</td>
-                                <td className="mono" style={{ fontWeight: 800, color: '#f8fafc' }}>{order.orderNumber}</td>
-                                <td className="mono" style={{ fontWeight: 800, color: '#3b82f6' }}>{admin.currency ? admin.currency(order.total) : ''}</td>
                                 <td>
-                                    <select
-                                        className="order-filter-select" style={{ minWidth: 0, padding: '4px 8px' }}
-                                        value={orderDrafts[order.id]?.paymentStatus || 'unpaid'}
-                                        onChange={(e) => { if (admin.orderDrafts[order.id]) admin.orderDrafts[order.id].paymentStatus = e.target.value; }}
-                                    >
-                                        <option value="unpaid">Unpaid</option>
-                                        <option value="paid">Paid</option>
-                                        <option value="refunded">Refunded</option>
-                                    </select>
+                                    <div className="order-primary-meta">
+                                        <span className="order-primary-number">{order.orderNumber}</span>
+                                        <span className="order-primary-caption">Live order record</span>
+                                    </div>
                                 </td>
                                 <td>
-                                    <select
-                                        className="order-filter-select" style={{ minWidth: 0, padding: '4px 8px' }}
-                                        value={orderDrafts[order.id]?.fulfillmentStatus || 'pending'}
-                                        onChange={(e) => { if (admin.orderDrafts[order.id]) admin.orderDrafts[order.id].fulfillmentStatus = e.target.value; }}
-                                    >
-                                        <option value="pending">Pending</option>
-                                        <option value="processing">Processing</option>
-                                        <option value="shipped">Shipped</option>
-                                        <option value="delivered">Delivered</option>
-                                        <option value="cancelled">Cancelled</option>
-                                    </select>
+                                    <div className="order-total-compact">
+                                        <span className="order-total-label">BDT</span>
+                                        <strong>{admin.currency ? admin.currency(order.total).replace(/^BDT\s?/, '') : order.total}</strong>
+                                    </div>
                                 </td>
                                 <td>
-                                    <p style={{ display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', fontSize: '12px', color: '#e2e8f0', maxWidth: '200px' }} title={order.customerNote || ''}>{order.customerNote || '-'}</p>
+                                    <div className="order-inline-select-wrap">
+                                        <span className="order-inline-icon">
+                                            <CreditCard size={14} />
+                                        </span>
+                                        <select
+                                            className="order-filter-select order-inline-select"
+                                            value={orderDrafts[order.id]?.paymentStatus || 'unpaid'}
+                                            onChange={(e) => { if (admin.orderDrafts[order.id]) admin.orderDrafts[order.id].paymentStatus = e.target.value; }}
+                                        >
+                                            <option value="unpaid">Unpaid</option>
+                                            <option value="paid">Paid</option>
+                                            <option value="refunded">Refunded</option>
+                                        </select>
+                                    </div>
                                 </td>
                                 <td>
-                                    <div style={{ display: 'grid', gap: '4px' }}>
-                                        {order.courier?.trackingCode && <p className="mono" style={{ fontSize: '10px', color: '#93c5fd', margin: 0 }}>Track: {order.courier.trackingCode}</p>}
-                                        {order.courier?.consignmentId && <p className="mono" style={{ fontSize: '10px', color: '#8fa0be', margin: 0 }}>CID: {order.courier.consignmentId}</p>}
-                                        {order.courier?.statusCode && <p className="mono" style={{ fontSize: '10px', color: '#8fa0be', margin: 0 }}>Code: {order.courier.statusCode}</p>}
-                                        {order.courier?.deliveryStatus && (
-                                            <span className={`status-badge ${admin.courierStatusClass ? admin.courierStatusClass(order.courier?.deliveryStatus) : ''}`}>
-                                                {admin.courierStatusLabel ? admin.courierStatusLabel(order.courier?.deliveryStatus) : ''}
-                                            </span>
+                                    <div className="order-inline-select-wrap">
+                                        <span className="order-inline-icon">
+                                            <Package size={14} />
+                                        </span>
+                                        <select
+                                            className="order-filter-select order-inline-select"
+                                            value={orderDrafts[order.id]?.fulfillmentStatus || 'pending'}
+                                            onChange={(e) => { if (admin.orderDrafts[order.id]) admin.orderDrafts[order.id].fulfillmentStatus = e.target.value; }}
+                                        >
+                                            <option value="pending">Pending</option>
+                                            <option value="processing">Processing</option>
+                                            <option value="shipped">Shipped</option>
+                                            <option value="delivered">Delivered</option>
+                                            <option value="cancelled">Cancelled</option>
+                                        </select>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div className="order-note-compact" title={order.customerNote || 'No customer note'}>
+                                        <MessageSquareText size={14} />
+                                        <span>{order.customerNote || 'No note'}</span>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div className="order-courier-compact">
+                                        <div className="order-courier-head">
+                                            <Truck size={14} />
+                                            {order.courier?.deliveryStatus ? (
+                                                <span className={`status-badge ${admin.courierStatusClass ? admin.courierStatusClass(order.courier?.deliveryStatus) : ''}`}>
+                                                    {admin.courierStatusLabel ? admin.courierStatusLabel(order.courier?.deliveryStatus) : ''}
+                                                </span>
+                                            ) : (
+                                                <span className="order-courier-empty">Not sent</span>
+                                            )}
+                                        </div>
+                                        {order.courier?.trackingCode && (
+                                            <p className="order-courier-meta mono">
+                                                <span>TRK</span>
+                                                <strong>{order.courier.trackingCode}</strong>
+                                            </p>
                                         )}
-                                        {!order.courier?.trackingCode && !order.courier?.consignmentId && !order.courier?.statusCode && (
-                                            <p style={{ fontSize: '11px', color: '#8fa0be', margin: 0 }}>Not sent</p>
+                                        {order.courier?.consignmentId && (
+                                            <p className="order-courier-meta mono">
+                                                <span>CID</span>
+                                                <strong>{order.courier.consignmentId}</strong>
+                                            </p>
+                                        )}
+                                        {order.courier?.deliveryStatus && (
+                                            <p className="order-courier-meta mono">
+                                                <span>CODE</span>
+                                                <strong>{order.courier.statusCode || 'unknown'}</strong>
+                                            </p>
                                         )}
                                     </div>
                                 </td>
                                 <td>
-                                    <p style={{ fontSize: '12px', margin: 0, color: '#f8fafc' }}>{admin.date ? admin.date(order.createdAt) : ''}</p>
-                                    <p className="mono" style={{ fontSize: '10px', color: '#8fa0be', margin: '4px 0 0 0' }}>{admin.time ? admin.time(order.createdAt) : ''}</p>
+                                    <div className="order-date-compact">
+                                        <CalendarClock size={14} />
+                                        <div>
+                                            <p>{admin.date ? admin.date(order.createdAt) : ''}</p>
+                                            <span className="mono">{admin.time ? admin.time(order.createdAt) : ''}</span>
+                                        </div>
+                                    </div>
                                 </td>
                                 <td>
-                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                                    <div className="order-actions-compact">
                                         <button
                                             onClick={() => navigate(`/tufayel/panel/orders/${order.id}`)}
-                                            className="order-filter-btn"
-                                            style={{ padding: '4px 8px', fontSize: '11px', gridColumn: 'span 2' }}
+                                            className="order-icon-btn"
+                                            title="Open order details"
+                                            aria-label="Open order details"
                                         >
-                                            Details
+                                            <Eye size={15} />
                                         </button>
-                                        <button onClick={() => admin.saveOrder && admin.saveOrder(order)} className="order-filter-btn primary" style={{ padding: '4px 8px', fontSize: '11px' }}>Save</button>
-                                        <button onClick={() => admin.sendOrderToCourier && admin.sendOrderToCourier(order)} className="order-filter-btn" style={{ padding: '4px 8px', fontSize: '11px' }}>Send</button>
-                                        <button onClick={() => admin.syncOrderCourierStatus && admin.syncOrderCourierStatus(order)} className="order-filter-btn" style={{ padding: '4px 8px', fontSize: '11px' }}>Sync</button>
-                                        <button onClick={() => admin.deleteOrder && admin.deleteOrder(order)} className="order-filter-btn danger" style={{ padding: '4px 8px', fontSize: '11px' }}>Delete</button>
+                                        <button
+                                            onClick={() => admin.saveOrder && admin.saveOrder(order)}
+                                            className="order-icon-btn primary"
+                                            title="Save status changes"
+                                            aria-label="Save status changes"
+                                        >
+                                            <Save size={15} />
+                                        </button>
+                                        <button
+                                            onClick={() => admin.sendOrderToCourier && admin.sendOrderToCourier(order)}
+                                            className="order-icon-btn"
+                                            title="Send to courier"
+                                            aria-label="Send to courier"
+                                        >
+                                            <Send size={15} />
+                                        </button>
+                                        <button
+                                            onClick={() => admin.syncOrderCourierStatus && admin.syncOrderCourierStatus(order)}
+                                            className="order-icon-btn"
+                                            title="Sync courier status"
+                                            aria-label="Sync courier status"
+                                        >
+                                            <RefreshCw size={15} />
+                                        </button>
+                                        <button
+                                            onClick={() => admin.deleteOrder && admin.deleteOrder(order)}
+                                            className="order-icon-btn danger"
+                                            title="Delete order"
+                                            aria-label="Delete order"
+                                        >
+                                            <Trash2 size={15} />
+                                        </button>
                                     </div>
                                 </td>
                             </tr>

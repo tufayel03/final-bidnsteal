@@ -148,8 +148,12 @@
       successRatio: 0,
       hasFraudHistory: false,
       fraudCount: 0,
+      cached: false,
+      stale: false,
+      warning: "",
       error: ""
     },
+    courierSuccessSnapshots: {},
 
     // users
     users: [],

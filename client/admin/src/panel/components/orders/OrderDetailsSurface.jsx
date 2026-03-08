@@ -42,6 +42,8 @@ export function OrderDetailsSurface({ variant = 'modal', onClose }) {
   const courierSuccessRatio = Number(courierSuccessModal.successRatio || 0);
   const courierFraudCount = Number(courierSuccessModal.fraudCount || 0);
   const courierHasFraudHistory = Boolean(courierSuccessModal.hasFraudHistory);
+  const courierWarning = String(courierSuccessModal.warning || '').trim();
+  const courierUsingCachedSnapshot = Boolean(courierSuccessModal.cached);
 
   return (
     <div
@@ -210,7 +212,7 @@ export function OrderDetailsSurface({ variant = 'modal', onClose }) {
                   </div>
                   <button
                     type="button"
-                    onClick={() => admin.loadCourierSuccessRate && admin.loadCourierSuccessRate(order)}
+                    onClick={() => admin.loadCourierSuccessRate && admin.loadCourierSuccessRate(order, { forceRefresh: true })}
                     disabled={courierLoading}
                     className="secondary-btn order-fraud-refresh"
                   >
@@ -224,14 +226,23 @@ export function OrderDetailsSurface({ variant = 'modal', onClose }) {
                   <div className="order-fraud-state order-fraud-state-error">{courierError}</div>
                 ) : courierHasSnapshot ? (
                   <div className="order-fraud-stack">
+                    {courierWarning ? (
+                      <div className="order-fraud-state order-fraud-state-warning">{courierWarning}</div>
+                    ) : null}
+
                     <div className="order-fraud-phone-row">
                       <div>
                         <span className="order-fraud-phone-label">Phone</span>
                         <strong className="order-fraud-phone-value">{courierSuccessModal.phoneNumber || '-'}</strong>
                       </div>
-                      <span className={`order-fraud-status ${courierHasFraudHistory ? 'is-risk' : 'is-clear'}`}>
-                        {courierHasFraudHistory ? `Fraud Flags: ${courierFraudCount}` : 'No Fraud History'}
-                      </span>
+                      <div style={{ display: 'grid', gap: '8px', justifyItems: 'end' }}>
+                        <span className={`order-fraud-status ${courierHasFraudHistory ? 'is-risk' : 'is-clear'}`}>
+                          {courierHasFraudHistory ? `Fraud Flags: ${courierFraudCount}` : 'No Fraud History'}
+                        </span>
+                        {courierUsingCachedSnapshot ? (
+                          <span className="order-fraud-status is-cached">Cached Snapshot</span>
+                        ) : null}
+                      </div>
                     </div>
 
                     <div className="order-fraud-grid">
