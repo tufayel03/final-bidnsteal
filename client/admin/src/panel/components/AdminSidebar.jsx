@@ -77,13 +77,6 @@ export function AdminSidebar() {
             </nav>
 
             <div className="admin-sidebar-footer admin-simple-sidebar-footer">
-                {!collapsed ? (
-                    <div className="admin-soft-sidebar-card">
-                        <span className="admin-soft-sidebar-card__eyebrow">Workspace</span>
-                        <strong>Admin dashboard</strong>
-                        <p>Manage inventory, bids, orders, and campaigns from one place.</p>
-                    </div>
-                ) : null}
                 <button
                     onClick={() => admin.toggleSidebarCollapse()}
                     title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}

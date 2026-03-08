@@ -50,8 +50,8 @@ export function ProductFormTab() {
                     {/* Primary Block */}
                     <div className="admin-card" style={{ display: 'grid', gap: '16px' }}>
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                            <h3 style={{ fontSize: '15px', fontWeight: 800, margin: 0, color: '#f8fafc' }}>Asset Overview</h3>
-                            <span style={{ fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#8fa0be', fontWeight: 700 }}>Core Identification & Pricing</span>
+                            <h3 style={{ fontSize: '15px', fontWeight: 800, margin: 0, color: 'var(--text)' }}>Asset Overview</h3>
+                            <span style={{ fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--muted)', fontWeight: 700 }}>Core Identification & Pricing</span>
                         </div>
                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px' }}>
                             <div style={{ gridColumn: 'span 2' }}>
@@ -120,8 +120,8 @@ export function ProductFormTab() {
                     {/* Description Area */}
                     <div className="admin-card" style={{ display: 'grid', gap: '16px' }}>
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                            <h3 style={{ fontSize: '15px', fontWeight: 800, margin: 0, color: '#f8fafc' }}>Product Description</h3>
-                            <span style={{ fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#8fa0be', fontWeight: 700 }}>Markdown Supported</span>
+                            <h3 style={{ fontSize: '15px', fontWeight: 800, margin: 0, color: 'var(--text)' }}>Product Description</h3>
+                            <span style={{ fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--muted)', fontWeight: 700 }}>Markdown Supported</span>
                         </div>
                         <textarea
                             value={productModal.form?.description || ''}
@@ -130,7 +130,7 @@ export function ProductFormTab() {
                             className="settings-textarea admin-search-input"
                             style={{ width: '100%' }}
                         ></textarea>
-                        <div style={{ textAlign: 'right', fontSize: '11px', color: '#8fa0be' }}>
+                        <div style={{ textAlign: 'right', fontSize: '11px', color: 'var(--muted)' }}>
                             Length: {(productModal.form?.description || '').length} chars
                         </div>
                     </div>
@@ -141,7 +141,7 @@ export function ProductFormTab() {
                     {/* Catalog Logic Card */}
                     <div className="admin-card" style={{ display: 'grid', gap: '16px' }}>
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                            <h3 style={{ fontSize: '15px', fontWeight: 800, margin: 0, color: '#f8fafc' }}>Sales Configuration</h3>
+                            <h3 style={{ fontSize: '15px', fontWeight: 800, margin: 0, color: 'var(--text)' }}>Sales Configuration</h3>
                         </div>
 
                         <div style={{ display: 'grid', gap: '12px' }}>
@@ -173,7 +173,7 @@ export function ProductFormTab() {
                             </div>
 
                             <div style={{ display: 'grid', gap: '8px', marginTop: '8px' }}>
-                                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: '#8fa0be', cursor: 'pointer', fontWeight: 700 }}>
+                                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: 'var(--muted)', cursor: 'pointer', fontWeight: 700 }}>
                                     <input
                                         type="checkbox"
                                         checked={!!productModal.form?.isFeatured}
@@ -182,7 +182,7 @@ export function ProductFormTab() {
                                     />
                                     Featured Item
                                 </label>
-                                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: '#8fa0be', cursor: 'pointer', fontWeight: 700 }}>
+                                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: 'var(--muted)', cursor: 'pointer', fontWeight: 700 }}>
                                     <input
                                         type="checkbox"
                                         checked={!!productModal.form?.isNewDrop}
@@ -253,8 +253,8 @@ export function ProductFormTab() {
             <div className="admin-card" style={{ display: 'grid', gap: '24px' }}>
                 <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: '16px' }}>
                     <div>
-                        <h3 style={{ fontSize: '18px', fontWeight: 800, margin: 0, color: '#f8fafc' }}>Product Imagery</h3>
-                        <p style={{ margin: '4px 0 0 0', color: '#8fa0be', fontSize: '13px' }}>Connect visual assets to the product node</p>
+                        <h3 style={{ fontSize: '18px', fontWeight: 800, margin: 0, color: 'var(--text)' }}>Product Imagery</h3>
+                        <p style={{ margin: '4px 0 0 0', color: 'var(--muted)', fontSize: '13px' }}>Connect visual assets to the product node</p>
                     </div>
                     <div style={{ display: 'flex', gap: '12px' }}>
                         <button type="button" onClick={() => admin.openProductMediaPicker && admin.openProductMediaPicker()} className="order-filter-btn primary">
@@ -279,7 +279,7 @@ export function ProductFormTab() {
                                     </div>
                                 </>
                             ) : (
-                                <div style={{ textAlign: 'center', color: '#8fa0be' }}>
+                                <div style={{ textAlign: 'center', color: 'var(--muted)' }}>
                                     <p style={{ fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 700, margin: 0 }}>Select Visual</p>
                                     <p style={{ fontSize: '10px', marginTop: '4px', opacity: 0.7 }}>Slot Empty</p>
                                 </div>
@@ -304,7 +304,7 @@ export function ProductFormTab() {
                                 <button
                                     type="button"
                                     onClick={() => admin.openProductMediaPicker()}
-                                    style={{ aspectRatio: '1', borderRadius: '8px', border: '1px dashed rgba(61, 67, 84, 0.8)', background: 'rgba(10, 13, 20, 0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#8fa0be' }}
+                                    style={{ aspectRatio: '1', borderRadius: '8px', border: '1px dashed rgba(61, 67, 84, 0.8)', background: 'rgba(10, 13, 20, 0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--muted)' }}
                                 >
                                     <span style={{ fontSize: '24px' }}>+</span>
                                 </button>
@@ -353,10 +353,10 @@ export function ProductFormTab() {
                                                     />
                                                 </div>
                                                 <div style={{ minWidth: 0 }}>
-                                                    <p style={{ fontSize: '11px', color: '#f8fafc', fontWeight: 700, margin: '0 0 4px 0', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={assetName}>
-                                                        {assetName}
-                                                    </p>
-                                                    <p className="mono" style={{ fontSize: '9px', color: '#8fa0be', margin: 0 }}>ID: {String(assetId).slice(-8)}</p>
+                                                        <p style={{ fontSize: '11px', color: 'var(--text)', fontWeight: 700, margin: '0 0 4px 0', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={assetName}>
+                                                            {assetName}
+                                                        </p>
+                                                        <p className="mono" style={{ fontSize: '9px', color: 'var(--muted)', margin: 0 }}>ID: {String(assetId).slice(-8)}</p>
                                                 </div>
                                                 <div style={{ display: 'grid', gap: '8px' }}>
                                                     <button type="button" onClick={() => admin.setProductPrimaryMedia && admin.setProductPrimaryMedia(asset)} className="order-filter-btn primary" style={{ padding: '6px', fontSize: '10px' }}>
@@ -371,7 +371,7 @@ export function ProductFormTab() {
                                     })}
                                 </div>
                                 {filteredProductMediaAssets().length === 0 && (
-                                    <div style={{ textAlign: 'center', color: '#8fa0be', padding: '40px' }}>
+                                    <div style={{ textAlign: 'center', color: 'var(--muted)', padding: '40px' }}>
                                         No media assets found.
                                     </div>
                                 )}

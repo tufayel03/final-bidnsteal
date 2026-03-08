@@ -39,8 +39,8 @@ export function SubscribersTab() {
             </div>
             <div className="admin-card" style={{ display: 'grid', gap: '16px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <h3 style={{ fontSize: '15px', fontWeight: 800, margin: 0, color: '#f8fafc' }}>Add Subscriber Manually</h3>
-                    <span style={{ fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#8fa0be', fontWeight: 700 }}>Admin Insert</span>
+                    <h3 style={{ fontSize: '15px', fontWeight: 800, margin: 0, color: 'var(--text)' }}>Add Subscriber Manually</h3>
+                    <span style={{ fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--muted)', fontWeight: 700 }}>Admin Insert</span>
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px' }}>
                     <input
@@ -67,7 +67,7 @@ export function SubscribersTab() {
                     </select>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: '#8fa0be', cursor: 'pointer', fontWeight: 700 }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: 'var(--muted)', cursor: 'pointer', fontWeight: 700 }}>
                         <input
                             type="checkbox"
                             checked={!!subscriberDraft.isActive}
@@ -96,9 +96,9 @@ export function SubscribersTab() {
                         <tbody>
                             {subscribers.map(subscriber => (
                                 <tr key={subscriber.id}>
-                                    <td className="mono" style={{ fontWeight: 700, color: '#f8fafc' }}>{subscriber.email}</td>
+                                    <td className="mono" style={{ fontWeight: 700, color: 'var(--text)' }}>{subscriber.email}</td>
                                     <td>{subscriber.name || '-'}</td>
-                                    <td style={{ color: '#8fa0be' }}>{subscriber.source || '-'}</td>
+                                    <td style={{ color: 'var(--muted)' }}>{subscriber.source || '-'}</td>
                                     <td>
                                         <span className={`status-badge ${subscriber.isActive ? 'status-live' : 'status-cancelled'}`}>
                                             {subscriber.isActive ? 'active' : 'inactive'}
@@ -115,7 +115,7 @@ export function SubscribersTab() {
                             ))}
                             {subscribers.length === 0 && (
                                 <tr>
-                                    <td colSpan="6" style={{ padding: '40px', textAlign: 'center', color: '#8fa0be' }}>No subscribers found.</td>
+                                        <td colSpan="6" style={{ padding: '40px', textAlign: 'center', color: 'var(--muted)' }}>No subscribers found.</td>
                                 </tr>
                             )}
                         </tbody>

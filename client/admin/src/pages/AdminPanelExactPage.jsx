@@ -18,12 +18,14 @@ import { ReportsTab } from '../panel/tabs/ReportsTab';
 import { ProductFormTab } from '../panel/tabs/ProductFormTab';
 import { AdminModals } from '../panel/components/modals/AdminModals';
 import { OrderDetailsPage } from '../panel/components/orders/OrderDetailsPage';
+import { AuctionDetailsPage } from '../panel/components/auctions/AuctionDetailsPage';
 
 function AdminLayout() {
   const admin = useAdmin();
   const [isLoaded, setIsLoaded] = useState(false);
   const location = useLocation();
   const orderDetailsMatch = useMatch('/tufayel/panel/orders/:orderId');
+  const auctionDetailsMatch = useMatch('/tufayel/panel/auctions/:auctionId');
   const isBasePanelRoute = location.pathname === '/tufayel/panel';
   const requestedTab = isBasePanelRoute ? new URLSearchParams(location.search).get('tab') : null;
 
@@ -58,6 +60,13 @@ function AdminLayout() {
       return;
     }
 
+    if (auctionDetailsMatch) {
+      if (admin.activeTab !== 'auctions' && admin.setActiveTab) {
+        admin.setActiveTab('auctions');
+      }
+      return;
+    }
+
     if (!isBasePanelRoute || !requestedTab) return;
 
     const knownTabs = new Set((admin.menuItems || []).map((item) => item.id));
@@ -66,13 +75,13 @@ function AdminLayout() {
     if (admin.activeTab !== requestedTab && admin.setActiveTab) {
       admin.setActiveTab(requestedTab);
     }
-  }, [admin, isBasePanelRoute, isLoaded, orderDetailsMatch, requestedTab]);
+  }, [admin, auctionDetailsMatch, isBasePanelRoute, isLoaded, orderDetailsMatch, requestedTab]);
 
   if (!isLoaded) {
     return (
       <div className="flex h-screen items-center justify-center bg-zinc-950 text-zinc-100 font-sans">
         <div className="flex flex-col items-center">
-          <div className="w-12 h-12 border-4 border-blue-500/20 border-t-blue-500 rounded-full animate-spin"></div>
+          <div className="w-12 h-12 rounded-full animate-spin" style={{ border: '4px solid rgba(180, 204, 87, 0.18)', borderTopColor: '#b4cc57' }}></div>
           <p className="mt-4 text-sm text-zinc-400">Loading Control Panel...</p>
         </div>
       </div>
@@ -82,6 +91,10 @@ function AdminLayout() {
   const renderActiveTab = () => {
     if (orderDetailsMatch) {
       return <OrderDetailsPage />;
+    }
+
+    if (auctionDetailsMatch) {
+      return <AuctionDetailsPage />;
     }
 
     switch (admin.activeTab) {
@@ -134,7 +147,7 @@ function AdminLayout() {
       <div className="admin-main">
         <AdminTopbar />
 
-        <main className={`admin-content custom-scrollbar ${admin.activeTab === 'dashboard' && !orderDetailsMatch ? 'admin-content--dashboard' : ''}`}>
+        <main className={`admin-content custom-scrollbar ${admin.activeTab === 'dashboard' && !orderDetailsMatch && !auctionDetailsMatch ? 'admin-content--dashboard' : ''}`}>
           {renderActiveTab()}
         </main>
       </div>

@@ -18,7 +18,7 @@ export function CouponsTab() {
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '24px', alignItems: 'start' }}>
                 <div className="admin-card" style={{ display: 'grid', gap: '16px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyItems: 'space-between', gap: '12px' }}>
-                        <h3 style={{ fontSize: '15px', fontWeight: 800, margin: 0, color: '#f8fafc' }}>Create Coupon</h3>
+                        <h3 style={{ fontSize: '15px', fontWeight: 800, margin: 0, color: 'var(--text)' }}>Create Coupon</h3>
                         <button onClick={() => admin.applyCouponFilters && admin.applyCouponFilters()} className="order-filter-btn" style={{ padding: '4px 8px', fontSize: '11px', marginLeft: 'auto' }}>Apply Filter</button>
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -83,7 +83,7 @@ export function CouponsTab() {
                         <option value="auction">Applies to: Auction Only</option>
                     </select>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px' }}>
-                        <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: '#8fa0be', cursor: 'pointer', fontWeight: 700 }}>
+                        <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: 'var(--muted)', cursor: 'pointer', fontWeight: 700 }}>
                             <input
                                 type="checkbox"
                                 checked={!!couponDraft.isActive}
@@ -98,7 +98,7 @@ export function CouponsTab() {
 
                 <div className="admin-card no-pad" style={{ gridColumn: 'span 2' }}>
                     <div style={{ padding: '20px', borderBottom: '1px solid rgba(45, 51, 67, 0.8)' }}>
-                        <h3 style={{ fontSize: '15px', fontWeight: 800, margin: 0, color: '#f8fafc' }}>Existing Coupons</h3>
+                        <h3 style={{ fontSize: '15px', fontWeight: 800, margin: 0, color: 'var(--text)' }}>Existing Coupons</h3>
                     </div>
                     <div style={{ overflowX: 'auto' }}>
                         <table className="admin-table">
@@ -117,7 +117,7 @@ export function CouponsTab() {
                             <tbody>
                                 {coupons.map((coupon, index) => (
                                     <tr key={coupon.id || index}>
-                                        <td className="mono" style={{ fontWeight: 700, color: '#f8fafc' }}>{coupon.code}</td>
+                                        <td className="mono" style={{ fontWeight: 700, color: 'var(--text)' }}>{coupon.code}</td>
                                         <td>
                                             <select
                                                 value={coupon.type || 'percent'}
@@ -161,7 +161,7 @@ export function CouponsTab() {
                                             </select>
                                         </td>
                                         <td>
-                                            <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: '#8fa0be', cursor: 'pointer' }}>
+                                            <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: 'var(--muted)', cursor: 'pointer' }}>
                                                 <input
                                                     type="checkbox"
                                                     checked={!!coupon.isActive}
@@ -181,7 +181,7 @@ export function CouponsTab() {
                                 ))}
                                 {coupons.length === 0 && (
                                     <tr>
-                                        <td colSpan="8" style={{ padding: '40px', textAlign: 'center', color: '#8fa0be' }}>No coupons found.</td>
+                                        <td colSpan="8" style={{ padding: '40px', textAlign: 'center', color: 'var(--muted)' }}>No coupons found.</td>
                                     </tr>
                                 )}
                             </tbody>

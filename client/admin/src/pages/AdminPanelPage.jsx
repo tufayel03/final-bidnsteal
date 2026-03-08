@@ -878,7 +878,7 @@ export function AdminPanelPage() {
                       <strong className="danger-text">{number(lowStockItems)}</strong>
                     </div>
                     <div className="inventory-row">
-                      <span>Reserved Units</span>
+                      <span>Held Stock</span>
                       <strong className="info-text">
                         {number((data.reservations?.active || []).reduce((acc, item) => acc + Number(item.quantity || 0), 0))}
                       </strong>

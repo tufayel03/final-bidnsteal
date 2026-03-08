@@ -46,7 +46,7 @@ export function InventoryTab() {
                 />
                 <DashboardStatCard
                     icon="layers-3"
-                    label="Reserved Units"
+                    label="Held Stock"
                     value={admin.number ? admin.number(reservedUnits) : reservedUnits}
                     meta="Held for active orders"
                     tone="sand"
@@ -142,7 +142,7 @@ export function InventoryTab() {
                             <th>Mode</th>
                             <th>Price</th>
                             <th>Stock</th>
-                            <th>Reserved</th>
+                            <th>Held Stock</th>
                             <th>Available</th>
                             <th>Status</th>
                             <th>Actions</th>
@@ -175,9 +175,9 @@ export function InventoryTab() {
                                     </div>
                                 </td>
                                 <td style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{item.mode}</td>
-                                <td className="mono" style={{ fontWeight: 700, color: '#3b82f6' }}>{admin.currency ? admin.currency(item.price) : ''}</td>
+                                <td className="mono" style={{ fontWeight: 700, color: 'var(--primary)' }}>{admin.currency ? admin.currency(item.price) : ''}</td>
                                 <td className="mono">{admin.number ? admin.number(item.stock) : ''}</td>
-                                <td className="mono" style={{ color: '#8fa0be' }}>{admin.number ? admin.number(item.reserved) : ''}</td>
+                                <td className="mono" style={{ color: 'var(--muted)' }}>{admin.number ? admin.number(item.reserved) : ''}</td>
                                 <td className="mono" style={{ fontWeight: 700 }}>{admin.number ? admin.number(item.stock - item.reserved) : ''}</td>
                                 <td>
                                     <span className={`status-badge ${item.stock < 10 ? 'status-low' : 'status-delivered'}`}>

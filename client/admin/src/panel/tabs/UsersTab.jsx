@@ -60,11 +60,11 @@ export function UsersTab() {
                     <tbody>
                         {users.map((user, index) => (
                             <tr key={user.id}>
-                                <td className="mono" style={{ color: '#8fa0be' }}>{admin.userRowSerial ? admin.userRowSerial(index) : index + 1}</td>
-                                <td style={{ fontWeight: 700, color: '#f8fafc' }}>{user.name}</td>
-                                <td style={{ color: '#8fa0be' }}>{user.email}</td>
-                                <td className="mono" style={{ color: '#e2e8f0' }}>{admin.number ? admin.number(user.orderCount) : ''}</td>
-                                <td className="mono" style={{ color: '#3b82f6', fontWeight: 700 }}>{admin.currency ? admin.currency(user.totalSpent) : ''}</td>
+                                <td className="mono" style={{ color: 'var(--muted)' }}>{admin.userRowSerial ? admin.userRowSerial(index) : index + 1}</td>
+                                <td style={{ fontWeight: 700, color: 'var(--text)' }}>{user.name}</td>
+                                <td style={{ color: 'var(--muted)' }}>{user.email}</td>
+                                <td className="mono" style={{ color: 'var(--text)' }}>{admin.number ? admin.number(user.orderCount) : ''}</td>
+                                <td className="mono" style={{ color: 'var(--primary)', fontWeight: 700 }}>{admin.currency ? admin.currency(user.totalSpent) : ''}</td>
                                 <td>
                                     <select className="order-filter-select" style={{ minWidth: 0, padding: '4px 8px' }} value={user.role || ''} onChange={(e) => admin.setUserRole && admin.setUserRole(user, e.target.value)}>
                                         <option value="customer">customer</option>
@@ -89,13 +89,13 @@ export function UsersTab() {
                         ))}
                         {users.length === 0 && (
                             <tr>
-                                <td colSpan="8" style={{ textAlign: 'center', padding: '40px', color: '#8fa0be' }}>No users found.</td>
+                                <td colSpan="8" style={{ textAlign: 'center', padding: '40px', color: 'var(--muted)' }}>No users found.</td>
                             </tr>
                         )}
                     </tbody>
                 </table>
             </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '13px', color: '#8fa0be', flexWrap: 'wrap', gap: '12px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '13px', color: 'var(--muted)', flexWrap: 'wrap', gap: '12px' }}>
                 <span>Page {usersMeta.page} of {usersMeta.totalPages} • <span className="mono">{admin.number ? admin.number(usersMeta.total) : ''}</span> users</span>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <label>Rows:</label>

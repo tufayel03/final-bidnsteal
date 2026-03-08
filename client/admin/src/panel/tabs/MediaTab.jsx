@@ -1,5 +1,7 @@
 import React from 'react';
 import { useAdmin } from '../AdminContext';
+import { Icon } from '../components/Icon';
+import { DashboardStatCard } from '../components/dashboard/DashboardStatCard';
 import { AdminModalPortal } from '../components/modals/AdminModalPortal';
 
 export function MediaTab() {
@@ -7,6 +9,14 @@ export function MediaTab() {
     const { mediaFilters, mediaUpload } = admin;
 
     const filtered = admin.filteredMediaAssets ? admin.filteredMediaAssets() : [];
+    const selectedCount = admin.selectedMediaCount ? admin.selectedMediaCount() : 0;
+    const totalAssets = admin.mediaMeta?.total || filtered.length;
+    const visibleSize = filtered.reduce((total, item) => total + Number(item.size || 0), 0);
+    const recentUploads = filtered.filter((item) => {
+        if (!item.modifiedAt) return false;
+        const timestamp = new Date(item.modifiedAt).getTime();
+        return Number.isFinite(timestamp) && (Date.now() - timestamp) <= 7 * 24 * 60 * 60 * 1000;
+    }).length;
 
     return (
         <div style={{ display: 'grid', gap: '24px' }}>
@@ -20,12 +30,55 @@ export function MediaTab() {
                 </button>
             </div>
 
+            <div className="dashboard-stat-grid dashboard-stat-grid--primary">
+                <DashboardStatCard
+                    icon="images"
+                    label={admin.mediaTrashMode ? 'Trash Assets' : 'Library Assets'}
+                    value={admin.number ? admin.number(totalAssets) : totalAssets}
+                    meta={admin.mediaTrashMode ? 'Recovery queue' : 'Stored for reuse'}
+                    tone="stone"
+                    featured
+                />
+                <DashboardStatCard
+                    icon="check-check"
+                    label="Selected"
+                    value={admin.number ? admin.number(selectedCount) : selectedCount}
+                    meta="Current selection"
+                    tone="sand"
+                    compact
+                />
+                <DashboardStatCard
+                    icon="hard-drive"
+                    label="Visible Storage"
+                    value={admin.formatBytes ? admin.formatBytes(visibleSize) : visibleSize}
+                    meta="Loaded asset weight"
+                    tone="sage"
+                    compact
+                />
+                <DashboardStatCard
+                    icon="sparkles"
+                    label="Uploaded Recently"
+                    value={admin.number ? admin.number(recentUploads) : recentUploads}
+                    meta="Last 7 days"
+                    tone="olive"
+                    compact
+                />
+            </div>
+
             {!admin.mediaTrashMode && (
-                <div className="admin-card">
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '12px', alignItems: 'center' }}>
-                        <div>
-                            <label className="admin-soft-subtle" style={{ fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.1em', display: 'block', marginBottom: '8px', fontWeight: 700 }}>Upload Images</label>
-                            <div className="admin-soft-upload relative cursor-pointer w-full group">
+                <section className="dashboard-section media-library-upload-shell">
+                    <div className="dashboard-section__head">
+                        <div className="dashboard-section__copy">
+                            <p className="dashboard-section__eyebrow">Asset Intake</p>
+                            <h3 className="dashboard-section__title">Upload + Organize</h3>
+                            <p className="dashboard-section__subtitle">Store image assets once and reuse them in products, auctions, templates, and campaigns without re-uploading files.</p>
+                        </div>
+                    </div>
+
+                    <div className="media-library-hero-grid">
+                        <div className="media-library-upload-card">
+                            <label className="media-library-field-label">Upload Images</label>
+                            <div className="admin-soft-upload media-library-dropzone relative cursor-pointer w-full group">
                                 <input
                                     id="mediaUploadInput"
                                     type="file"
@@ -35,231 +88,282 @@ export function MediaTab() {
                                     style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', opacity: 0, cursor: 'pointer', zIndex: 10 }}
                                 />
                                 <div className="admin-soft-upload__body pointer-events-none">
+                                    <span className="media-library-dropzone__icon">
+                                        <Icon name="image-plus" />
+                                    </span>
                                     <span className="admin-soft-upload__title">
-                                        {mediaUpload.uploading ? 'UPLOADING DATA...' : 'SELECT DIGITAL ASSETS'}
+                                        {mediaUpload.uploading ? 'Uploading assets...' : 'Select digital assets'}
                                     </span>
                                     <span className="admin-soft-upload__caption">
-                                        {mediaUpload.uploading ? 'Please wait while asset is being stored' : 'Drag & drop or Click to browse'}
+                                        {mediaUpload.uploading ? 'Please wait while files are being stored on the server' : 'Drag and drop files here or click to browse your device'}
                                     </span>
                                 </div>
                             </div>
                         </div>
+
+                        <aside className="media-library-side-card">
+                            <p className="media-library-side-title">Reuse Anywhere</p>
+                            <div className="media-library-side-list">
+                                <div className="media-library-side-item">
+                                    <span className="media-library-side-icon"><Icon name="package" /></span>
+                                    <div>
+                                        <strong>Products + Auctions</strong>
+                                        <span>Assign uploaded images directly in catalog items and bidding lots.</span>
+                                    </div>
+                                </div>
+                                <div className="media-library-side-item">
+                                    <span className="media-library-side-icon"><Icon name="mail" /></span>
+                                    <div>
+                                        <strong>Email Templates</strong>
+                                        <span>Copy template tags and drop them into transactional or campaign HTML.</span>
+                                    </div>
+                                </div>
+                                <div className="media-library-side-item">
+                                    <span className="media-library-side-icon"><Icon name="copy" /></span>
+                                    <div>
+                                        <strong>Fast Tag Workflow</strong>
+                                        <span>Use the copy action on any asset to insert the media placeholder wherever you need it.</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </aside>
                     </div>
-                </div>
+                </section>
             )}
 
-            <div className="admin-card">
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <div style={{ display: 'flex', gap: '12px', flex: 1, minWidth: '200px' }}>
-                        <input
-                            value={mediaFilters.search || ''}
-                            onChange={(e) => { admin.mediaFilters.search = e.target.value; }}
-                            placeholder="Search by file name..."
-                            className="admin-search-input"
-                            style={{ flex: 1 }}
-                        />
+            <section className="dashboard-section media-library-tools">
+                <div className="media-library-toolbar">
+                    <div className="media-library-search-row">
+                        <div className="media-library-search-shell">
+                            <Icon name="search" className="media-library-search-icon" />
+                            <input
+                                value={mediaFilters.search || ''}
+                                onChange={(e) => { admin.mediaFilters.search = e.target.value; }}
+                                placeholder="Search by file name..."
+                                className="admin-search-input media-library-search-input"
+                            />
+                        </div>
                         <button onClick={() => admin.loadMedia && admin.loadMedia(null, true)} className="order-filter-btn">
                             Search
                         </button>
                     </div>
-                    <div className="admin-soft-segment">
-                        <button
-                            onClick={() => { admin.mediaViewMode = 'grid'; admin.forceUpdate && admin.forceUpdate(); }}
-                            className={`admin-soft-segment-btn${admin.mediaViewMode === 'grid' ? ' is-active' : ''}`}
-                        >
-                            GRID
+
+                    <div className="media-library-controls-row">
+                        <div className="admin-soft-segment">
+                            <button
+                                onClick={() => { admin.mediaViewMode = 'grid'; admin.forceUpdate && admin.forceUpdate(); }}
+                                className={`admin-soft-segment-btn${admin.mediaViewMode === 'grid' ? ' is-active' : ''}`}
+                            >
+                                Grid
+                            </button>
+                            <button
+                                onClick={() => { admin.mediaViewMode = 'columns'; admin.forceUpdate && admin.forceUpdate(); }}
+                                className={`admin-soft-segment-btn${admin.mediaViewMode === 'columns' ? ' is-active' : ''}`}
+                            >
+                                List
+                            </button>
+                            <button
+                                onClick={() => { admin.mediaTrashMode = !admin.mediaTrashMode; admin.loadMedia && admin.loadMedia(null, true).then(() => admin.forceUpdate && admin.forceUpdate()); }}
+                                className={`admin-soft-segment-btn is-danger${admin.mediaTrashMode ? ' is-active' : ''}`}
+                            >
+                                {admin.mediaTrashMode ? 'View Library' : 'Trash Bin'}
+                            </button>
+                        </div>
+
+                        <div className="media-library-count-pills">
+                            <span className="media-library-count-pill">Selected <strong className="mono">{admin.number ? admin.number(selectedCount) : 0}</strong></span>
+                            <span className="media-library-count-pill">Visible <strong className="mono">{admin.number ? admin.number(filtered.length) : 0}</strong></span>
+                        </div>
+                    </div>
+
+                    <div className="media-library-selection-row">
+                        <button onClick={() => admin.selectAllVisibleMedia && admin.selectAllVisibleMedia()} className="order-filter-btn">
+                            Select Visible
                         </button>
-                        <button
-                            onClick={() => { admin.mediaViewMode = 'columns'; admin.forceUpdate && admin.forceUpdate(); }}
-                            className={`admin-soft-segment-btn${admin.mediaViewMode === 'columns' ? ' is-active' : ''}`}
-                        >
-                            LIST
+                        <button onClick={() => admin.clearMediaSelection && admin.clearMediaSelection()} className="order-filter-btn">
+                            Clear Selection
                         </button>
-                        <button
-                            onClick={() => { admin.mediaTrashMode = !admin.mediaTrashMode; admin.loadMedia && admin.loadMedia(null, true).then(() => admin.forceUpdate && admin.forceUpdate()); }}
-                            className={`admin-soft-segment-btn is-danger${admin.mediaTrashMode ? ' is-active' : ''}`}
-                        >
-                            {admin.mediaTrashMode ? 'VIEW LIBRARY' : 'TRASH BIN'}
+                        {admin.mediaTrashMode && (
+                            <button onClick={() => admin.restoreSelectedMedia && admin.restoreSelectedMedia()} className="order-filter-btn primary">
+                                Restore Selected
+                            </button>
+                        )}
+                        <button onClick={() => admin.deleteSelectedMedia && admin.deleteSelectedMedia()} className="order-filter-btn danger">
+                            {admin.mediaTrashMode ? 'Delete Forever' : 'Trash Selected'}
+                        </button>
+                        <button onClick={() => admin.deleteAllMedia && admin.deleteAllMedia()} className="order-filter-btn danger">
+                            {admin.mediaTrashMode ? 'Empty Trash' : 'Trash All Images'}
                         </button>
                     </div>
                 </div>
-            </div>
+            </section>
 
-            <div className="order-panel">
-                <p className="order-selection-meta">
-                    Selected: <span className="mono">{admin.number ? admin.number(admin.selectedMediaCount ? admin.selectedMediaCount() : 0) : 0}</span>
-                    {' / '}
-                    <span className="mono">{admin.number ? admin.number(filtered.length) : 0}</span> visible
-                </p>
-                <div style={{ marginLeft: 'auto', display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                    <button onClick={() => admin.selectAllVisibleMedia && admin.selectAllVisibleMedia()} className="order-filter-btn" style={{ padding: '6px 12px', fontSize: '12px' }}>
-                        Select Visible
-                    </button>
-                    <button onClick={() => admin.clearMediaSelection && admin.clearMediaSelection()} className="order-filter-btn" style={{ padding: '6px 12px', fontSize: '12px' }}>
-                        Clear Selection
-                    </button>
-                    {admin.mediaTrashMode && (
-                        <button onClick={() => admin.restoreSelectedMedia && admin.restoreSelectedMedia()} className="order-filter-btn primary" style={{ padding: '6px 12px', fontSize: '12px' }}>
-                            Restore Selected
-                        </button>
-                    )}
-                    <button onClick={() => admin.deleteSelectedMedia && admin.deleteSelectedMedia()} className="order-filter-btn danger" style={{ padding: '6px 12px', fontSize: '12px' }}>
-                        {admin.mediaTrashMode ? 'Delete Forever' : 'Trash Selected'}
-                    </button>
-                    <button onClick={() => admin.deleteAllMedia && admin.deleteAllMedia()} className="order-filter-btn danger" style={{ padding: '6px 12px', fontSize: '12px' }}>
-                        {admin.mediaTrashMode ? 'Empty Trash' : 'Trash All Images'}
-                    </button>
+            <section className="dashboard-section media-library-gallery-shell">
+                <div className="dashboard-section__head">
+                    <div className="dashboard-section__copy">
+                        <p className="dashboard-section__eyebrow">{admin.mediaTrashMode ? 'Recycle Bin' : 'Asset Gallery'}</p>
+                        <h3 className="dashboard-section__title">{admin.mediaTrashMode ? 'Deleted Media Records' : 'Library Browser'}</h3>
+                        <p className="dashboard-section__subtitle">{admin.mediaTrashMode ? 'Recover deleted assets or erase them permanently.' : 'Browse uploaded media, inspect metadata, and copy tags for reuse.'}</p>
+                    </div>
+                    <div className="media-library-count-pills">
+                        <span className="media-library-count-pill">Page <strong className="mono">{admin.mediaMeta?.page || 1}</strong> / <strong className="mono">{admin.mediaMeta?.totalPages || 1}</strong></span>
+                    </div>
                 </div>
-            </div>
 
-            <div
-                style={{
-                    display: 'grid',
-                    gridTemplateColumns: admin.mediaViewMode === 'columns'
-                        ? '1fr'
-                        : 'repeat(auto-fill, minmax(120px, 1fr))',
-                    gap: admin.mediaViewMode === 'columns' ? '0px' : '16px',
-                    border: admin.mediaViewMode === 'columns' ? '1px solid var(--border-strong)' : 'none',
-                    borderRadius: admin.mediaViewMode === 'columns' ? '4px' : '0'
-                }}
-            >
-                {filtered.map((item, index) => {
-                    const isSelected = admin.isMediaSelected && admin.isMediaSelected(item);
-
-                    if (admin.mediaViewMode === 'columns') {
-                        // LIST VIEW (Table Row Style)
-                        return (
-                            <div
-                                key={item.id || item.fileName || index}
-                                className={`media-list-row${isSelected ? ' is-selected' : ''}`}
-                            >
-                                <label style={{ flexShrink: 0, display: 'inline-flex', alignItems: 'center', margin: 0, cursor: 'pointer' }}>
-                                    <input
-                                        type="checkbox"
-                                        checked={isSelected}
-                                        onChange={() => admin.toggleMediaSelection && admin.toggleMediaSelection(item)}
-                                        className="order-check"
-                                    />
-                                </label>
-
-                                <div className="admin-soft-thumb media-list-thumb">
-                                    <img src={admin.mediaPreviewUrl ? admin.mediaPreviewUrl(item) : ''} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                                </div>
-
-                                <div style={{ flex: 1, minWidth: 0 }}>
-                                    <p className="media-file-name" style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                                        {item.fileName}
-                                    </p>
-                                    <p className="mono media-tag-hint" style={{ marginTop: '2px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                                        {admin.mediaTemplatePlaceholder ? admin.mediaTemplatePlaceholder(item.fileName) : ''}
-                                    </p>
-                                </div>
-
-                                <div style={{ width: '120px', flexShrink: 0 }}>
-                                    <p className="mono media-meta-text">{admin.formatBytes ? admin.formatBytes(item.size) : ''}</p>
-                                </div>
-
-                                <div style={{ width: '120px', flexShrink: 0 }}>
-                                    <p className="mono media-meta-text">{admin.date ? admin.date(item.modifiedAt) : ''}</p>
-                                </div>
-
-                                <div style={{ display: 'flex', gap: '8px', flexShrink: 0 }}>
-                                    {admin.mediaTrashMode ? (
-                                        <button
-                                            onClick={() => admin.restoreMedia && admin.restoreMedia(item)}
-                                            className="order-filter-btn primary" style={{ padding: '6px 12px' }}
-                                        >
-                                            Restore
-                                        </button>
-                                    ) : (
-                                        <button
-                                            onClick={() => admin.copyMediaTemplateTag && admin.copyMediaTemplateTag(item)}
-                                            className="order-filter-btn" style={{ padding: '6px 12px' }}
-                                        >
-                                            Copy Tag
-                                        </button>
-                                    )}
-                                    <button
-                                        onClick={() => admin.deleteMedia && admin.deleteMedia(item)}
-                                        className="order-filter-btn danger" style={{ padding: '6px 12px' }}
-                                    >
-                                        {admin.mediaTrashMode ? 'Delete Forever' : 'Trash'}
-                                    </button>
-                                </div>
-                            </div>
-                        );
-                    }
-
-                    // GRID VIEW (Thumbnail Cards)
-                    return (
-                        <div
-                            key={item.id || item.fileName || index}
-                            className={`admin-card no-pad media-grid-card${isSelected ? ' is-selected' : ''}`}
-                        >
-                            <div className="media-grid-preview">
-                                <img
-                                    src={admin.mediaPreviewUrl ? admin.mediaPreviewUrl(item) : ''}
-                                    alt=""
-                                    style={{
-                                        width: '100%',
-                                        height: '100%',
-                                        objectFit: 'cover'
-                                    }}
-                                />
-                            </div>
-                            <div className="media-grid-body">
-                                <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '4px' }}>
-                                    <div style={{ overflow: 'hidden' }}>
-                                        <p className="media-grid-name">{item.fileName}</p>
-                                        <p className="mono media-grid-meta" style={{ marginTop: '2px' }}>{admin.formatBytes ? admin.formatBytes(item.size) : ''}</p>
-                                        <p className="mono media-grid-meta" style={{ marginTop: '2px', wordBreak: 'break-all', overflow: 'hidden', textOverflow: 'ellipsis' }} title={admin.mediaTemplatePlaceholder ? admin.mediaTemplatePlaceholder(item.fileName) : ''}>
-                                            {admin.mediaTemplatePlaceholder ? admin.mediaTemplatePlaceholder(item.fileName) : ''}
-                                        </p>
-                                    </div>
-                                    <label style={{ flexShrink: 0, display: 'inline-flex', alignItems: 'center', margin: 0 }}>
-                                        <input
-                                            type="checkbox"
-                                            checked={isSelected}
-                                            onChange={() => admin.toggleMediaSelection && admin.toggleMediaSelection(item)}
-                                            className="order-check"
-                                        />
-                                    </label>
-                                </div>
-                                <div className="media-actions-grid" style={{ marginTop: '2px' }}>
-                                    {admin.mediaTrashMode ? (
-                                        <button
-                                            onClick={() => admin.restoreMedia && admin.restoreMedia(item)}
-                                            className="order-filter-btn primary" style={{ padding: '4px', fontSize: '10px' }}
-                                            title="Restore"
-                                        >
-                                            Restore
-                                        </button>
-                                    ) : (
-                                        <button
-                                            onClick={() => admin.copyMediaTemplateTag && admin.copyMediaTemplateTag(item)}
-                                            className="order-filter-btn" style={{ padding: '4px', fontSize: '10px' }}
-                                            title="Copy Tag"
-                                        >
-                                            Copy
-                                        </button>
-                                    )}
-                                    <button
-                                        onClick={() => admin.deleteMedia && admin.deleteMedia(item)}
-                                        className="order-filter-btn danger" style={{ padding: '4px', fontSize: '10px' }}
-                                        title={admin.mediaTrashMode ? 'Delete Forever' : 'Trash'}
-                                    >
-                                        {admin.mediaTrashMode ? 'Erase' : 'Trash'}
-                                    </button>
-                                </div>
+                <div className="dashboard-section__body">
+                    {filtered.length === 0 ? (
+                        <div className="media-gallery-empty">
+                            <span className="media-gallery-empty__icon"><Icon name="image-off" /></span>
+                            <div>
+                                <strong>No media found</strong>
+                                <p>{admin.mediaTrashMode ? 'Trash is currently empty for this filter set.' : 'Upload images or adjust your filters to populate the library.'}</p>
                             </div>
                         </div>
-                    );
-                })}
-            </div>
-            {filtered.length === 0 && <div className="text-sm text-zinc-500">No media found.</div>}
+                    ) : (
+                        <div className={admin.mediaViewMode === 'columns' ? 'media-list-wrap' : 'media-gallery-grid'}>
+                            {filtered.map((item, index) => {
+                                const isSelected = admin.isMediaSelected && admin.isMediaSelected(item);
 
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '8px' }}>
-                <span className="mono media-paging-copy" style={{ fontSize: '12px' }}>
+                                if (admin.mediaViewMode === 'columns') {
+                                    return (
+                                        <div
+                                            key={item.id || item.fileName || index}
+                                            className={`media-list-row${isSelected ? ' is-selected' : ''}`}
+                                        >
+                                            <label style={{ flexShrink: 0, display: 'inline-flex', alignItems: 'center', margin: 0, cursor: 'pointer' }}>
+                                                <input
+                                                    type="checkbox"
+                                                    checked={isSelected}
+                                                    onChange={() => admin.toggleMediaSelection && admin.toggleMediaSelection(item)}
+                                                    className="order-check"
+                                                />
+                                            </label>
+
+                                            <div className="admin-soft-thumb media-list-thumb">
+                                                <img src={admin.mediaPreviewUrl ? admin.mediaPreviewUrl(item) : ''} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                            </div>
+
+                                            <div className="media-list-copy">
+                                                <p className="media-file-name" style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                                    {item.fileName}
+                                                </p>
+                                                <p className="mono media-tag-hint" style={{ marginTop: '2px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                                    {admin.mediaTemplatePlaceholder ? admin.mediaTemplatePlaceholder(item.fileName) : ''}
+                                                </p>
+                                            </div>
+
+                                            <div className="media-list-metrics">
+                                                <div className="media-list-metric">
+                                                    <strong className="mono">{admin.formatBytes ? admin.formatBytes(item.size) : ''}</strong>
+                                                    <small>Size</small>
+                                                </div>
+                                                <div className="media-list-metric">
+                                                    <strong>{admin.date ? admin.date(item.modifiedAt) : ''}</strong>
+                                                    <small>Updated</small>
+                                                </div>
+                                            </div>
+
+                                            <div className="media-list-actions">
+                                                {admin.mediaTrashMode ? (
+                                                    <button
+                                                        onClick={() => admin.restoreMedia && admin.restoreMedia(item)}
+                                                        className="order-filter-btn primary"
+                                                    >
+                                                        Restore
+                                                    </button>
+                                                ) : (
+                                                    <button
+                                                        onClick={() => admin.copyMediaTemplateTag && admin.copyMediaTemplateTag(item)}
+                                                        className="order-filter-btn"
+                                                    >
+                                                        Copy Tag
+                                                    </button>
+                                                )}
+                                                <button
+                                                    onClick={() => admin.deleteMedia && admin.deleteMedia(item)}
+                                                    className="order-filter-btn danger"
+                                                >
+                                                    {admin.mediaTrashMode ? 'Delete Forever' : 'Trash'}
+                                                </button>
+                                            </div>
+                                        </div>
+                                    );
+                                }
+
+                                return (
+                                    <div
+                                        key={item.id || item.fileName || index}
+                                        className={`admin-card no-pad media-grid-card${isSelected ? ' is-selected' : ''}`}
+                                    >
+                                        <div className="media-grid-preview">
+                                            <img
+                                                src={admin.mediaPreviewUrl ? admin.mediaPreviewUrl(item) : ''}
+                                                alt=""
+                                                style={{
+                                                    width: '100%',
+                                                    height: '100%',
+                                                    objectFit: 'cover'
+                                                }}
+                                            />
+                                        </div>
+                                        <div className="media-grid-body">
+                                            <div className="media-grid-head">
+                                                <div style={{ overflow: 'hidden' }}>
+                                                    <p className="media-grid-name">{item.fileName}</p>
+                                                    <div className="media-grid-chip-row">
+                                                        <span className="media-grid-chip mono">{admin.formatBytes ? admin.formatBytes(item.size) : ''}</span>
+                                                        <span className="media-grid-chip">{admin.date ? admin.date(item.modifiedAt) : ''}</span>
+                                                    </div>
+                                                </div>
+                                                <label style={{ flexShrink: 0, display: 'inline-flex', alignItems: 'center', margin: 0 }}>
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={isSelected}
+                                                        onChange={() => admin.toggleMediaSelection && admin.toggleMediaSelection(item)}
+                                                        className="order-check"
+                                                    />
+                                                </label>
+                                            </div>
+                                            <p className="mono media-grid-meta" title={admin.mediaTemplatePlaceholder ? admin.mediaTemplatePlaceholder(item.fileName) : ''}>
+                                                {admin.mediaTemplatePlaceholder ? admin.mediaTemplatePlaceholder(item.fileName) : ''}
+                                            </p>
+                                            <div className="media-actions-grid">
+                                                {admin.mediaTrashMode ? (
+                                                    <button
+                                                        onClick={() => admin.restoreMedia && admin.restoreMedia(item)}
+                                                        className="order-filter-btn primary"
+                                                        title="Restore"
+                                                    >
+                                                        Restore
+                                                    </button>
+                                                ) : (
+                                                    <button
+                                                        onClick={() => admin.copyMediaTemplateTag && admin.copyMediaTemplateTag(item)}
+                                                        className="order-filter-btn"
+                                                        title="Copy Tag"
+                                                    >
+                                                        Copy Tag
+                                                    </button>
+                                                )}
+                                                <button
+                                                    onClick={() => admin.deleteMedia && admin.deleteMedia(item)}
+                                                    className="order-filter-btn danger"
+                                                    title={admin.mediaTrashMode ? 'Delete Forever' : 'Trash'}
+                                                >
+                                                    {admin.mediaTrashMode ? 'Erase' : 'Trash'}
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    )}
+                </div>
+            </section>
+
+            <div className="media-library-pagination">
+                <span className="mono media-library-pagination__meta">
                     Page {admin.mediaMeta?.page || 1} of {admin.mediaMeta?.totalPages || 1} ({admin.mediaMeta?.total || 0} items)
                 </span>
                 <div style={{ display: 'flex', gap: '8px' }}>
@@ -330,6 +434,6 @@ export function MediaTab() {
                     </div>
                 </AdminModalPortal>
             )}
-        </div >
+        </div>
     );
 }

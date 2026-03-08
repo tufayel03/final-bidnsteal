@@ -235,7 +235,7 @@ export function DashboardTab() {
                     <DashboardSection
                         eyebrow="Stock Control"
                         title="Warehouse Snapshot"
-                        subtitle="Current lot value, shortages, and reserved inventory."
+                        subtitle="Current lot value, shortages, and held inventory."
                     >
                         <div className="dashboard-inventory-list">
                             <div className={`dashboard-inventory-row is-${dashboardInventoryTone('netAssetValue')}`}>
@@ -247,7 +247,7 @@ export function DashboardTab() {
                                 <strong>{admin.number ? admin.number(inventoryStats.outOfStock) : 0}</strong>
                             </div>
                             <div className={`dashboard-inventory-row is-${dashboardInventoryTone('reservedUnits')}`}>
-                                <span>Reserved Units</span>
+                                <span>Held Stock</span>
                                 <strong>{admin.number ? admin.number(inventoryStats.reservedUnits) : 0}</strong>
                             </div>
                             <div className={`dashboard-inventory-row is-${dashboardInventoryTone('totalUnits')}`}>

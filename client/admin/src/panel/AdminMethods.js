@@ -4483,7 +4483,7 @@ export const adminMethods = {
         datasets: [
           {
             data: [values.delivered, values.processing, values.shipped, values.pending, values.cancelled],
-            backgroundColor: ["#22c55e", "#3b82f6", "#a855f7", "#eab308", "#ef4444"],
+            backgroundColor: ["#7fa85b", "#b4cc57", "#c39b59", "#d4b85e", "#c97767"],
             borderWidth: 0,
             cutout: "70%"
           }

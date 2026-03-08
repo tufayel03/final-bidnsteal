@@ -194,7 +194,7 @@ export function CampaignsTab() {
                                                 <span className={`status-badge ${statusClass}`}>{campaign.status}</span>
                                             </td>
                                             <td className="mono admin-soft-value">{admin.number ? admin.number(campaign.totalRecipients) : ''}</td>
-                                            <td className="mono" style={{ color: '#3b82f6', fontWeight: 700 }}>{admin.number ? admin.number(campaign.sentCount) : ''}</td>
+                                            <td className="mono" style={{ color: 'var(--primary)', fontWeight: 700 }}>{admin.number ? admin.number(campaign.sentCount) : ''}</td>
                                             <td className="mono" style={{ color: '#10b981', fontWeight: 700 }}>{admin.number ? admin.number(campaign.openCount) : ''}</td>
                                             <td>
                                                 <div style={{ display: 'flex', gap: '8px' }}>

@@ -215,7 +215,7 @@ export function OrdersTab() {
                                         className="order-check"
                                     />
                                 </td>
-                                <td className="mono" style={{ color: '#8fa0be' }}>{admin.orderSerial ? admin.orderSerial(index) : index + 1}</td>
+                                <td className="mono order-row-index">{admin.orderSerial ? admin.orderSerial(index) : index + 1}</td>
                                 <td>
                                     <div className="order-primary-meta">
                                         <span className="order-primary-number">{order.orderNumber}</span>
@@ -357,13 +357,13 @@ export function OrdersTab() {
                         ))}
                         {orders.length === 0 && (
                             <tr>
-                                <td colSpan="10" style={{ padding: '40px', textAlign: 'center', color: '#8fa0be' }}>No orders found.</td>
+                                <td colSpan="10" className="orders-empty-state">No orders found.</td>
                             </tr>
                         )}
                     </tbody>
                 </table>
             </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '13px', color: '#8fa0be' }}>
+            <div className="orders-pagination-bar">
                 <span>Page {ordersMeta.page} of {ordersMeta.totalPages}</span>
                 <div style={{ display: 'flex', gap: '8px' }}>
                     <button onClick={() => admin.changeOrdersPage && admin.changeOrdersPage(ordersMeta.page - 1)} disabled={ordersMeta.page <= 1} className="order-filter-btn" style={{ padding: '6px 16px' }}>Prev</button>

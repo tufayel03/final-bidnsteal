@@ -161,13 +161,13 @@ export function ProductModal() {
                             </div>
 
                             {productModal.form?.saleMode !== 'fixed' && (
-                                <div className="rounded-xl border border-blue-900/50 bg-blue-950/10 p-4 space-y-3">
+                                <div className="rounded-xl border p-4 space-y-3" style={{ borderColor: 'rgba(180, 204, 87, 0.28)', background: 'rgba(180, 204, 87, 0.08)' }}>
                                     <div className="flex items-center justify-between">
                                         <div>
-                                            <p className="text-sm font-semibold text-blue-200">Auction Setup</p>
+                                            <p className="text-sm font-semibold" style={{ color: '#dbe6b7' }}>Auction Setup</p>
                                             <p className="text-[11px] text-zinc-400">Schedule, floor, reserve, and minimum increment for this product.</p>
                                         </div>
-                                        <span className="text-[10px] uppercase tracking-wider text-blue-300">Auction enabled</span>
+                                        <span className="text-[10px] uppercase tracking-wider" style={{ color: '#c8d88a' }}>Auction enabled</span>
                                     </div>
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                                         <div>

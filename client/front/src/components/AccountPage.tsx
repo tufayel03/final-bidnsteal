@@ -307,7 +307,7 @@ export function AccountPage() {
                               <div className="flex-1">
                                 <div className="flex items-center gap-2 mb-1">
                                   <h3 className="font-mono text-sm uppercase tracking-widest text-white">ID: {order.id}</h3>
-                                  <span className={`px-2 py-0.5 rounded text-[10px] font-mono uppercase tracking-widest border ${isDelivered ? 'bg-green-500/10 text-green-500 border-green-500/20' : 'bg-blue-500/10 text-blue-500 border-blue-500/20'}`}>{order.status}</span>
+                                  <span className={`px-2 py-0.5 rounded text-[10px] font-mono uppercase tracking-widest border ${isDelivered ? 'bg-green-500/10 text-green-500 border-green-500/20' : 'bg-[#FF6A00]/10 text-[#FF6A00] border-[#FF6A00]/20'}`}>{order.status}</span>
                                 </div>
                                 <p className="text-gray-500 text-xs font-mono uppercase tracking-widest">Ordered: {order.orderDate}</p>
                               </div>
@@ -326,7 +326,7 @@ export function AccountPage() {
                                 <div className="p-4 sm:p-6 pt-0 border-t border-white/10 bg-black/20">
                                   <div className="flex items-center gap-4 mb-6 pt-4">
                                     <div className="flex flex-col"><span className="text-[10px] font-mono text-gray-500 uppercase tracking-widest">Order Placed</span><span className="text-sm font-mono text-white">{order.orderDate}</span></div>
-                                    <div className="flex-1 h-px bg-white/10 relative"><div className={`absolute top-0 left-0 h-full transition-all duration-1000 ${isDelivered ? 'w-full bg-green-500/50' : 'w-1/2 bg-blue-500/50'}`} /></div>
+                                    <div className="flex-1 h-px bg-white/10 relative"><div className={`absolute top-0 left-0 h-full transition-all duration-1000 ${isDelivered ? 'w-full bg-green-500/50' : 'w-1/2 bg-[#FF6A00]/50'}`} /></div>
                                     <div className="flex flex-col text-right"><span className="text-[10px] font-mono text-gray-500 uppercase tracking-widest">Delivered</span><span className={`text-sm font-mono ${isDelivered ? 'text-green-500' : 'text-gray-500'}`}>{order.deliveredDate || 'Pending'}</span></div>
                                   </div>
                                   <div className="py-4 space-y-4">
@@ -376,7 +376,7 @@ export function AccountPage() {
                   {auctionMessage && <div className={`text-sm font-mono uppercase tracking-widest rounded-2xl p-4 border ${auctionMessage.includes('created') ? 'text-green-400 border-green-500/20 bg-green-500/5' : 'text-[#FF6A00] border-[#FF6A00]/20 bg-[#FF6A00]/5'}`}>{auctionMessage}</div>}
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
                     <div className="bg-[#111] border border-white/10 rounded-2xl p-4 flex flex-col"><div className="flex items-center gap-2 text-gray-500 mb-2"><Gavel size={14} /> <span className="text-[10px] font-mono uppercase tracking-widest">Total Bids</span></div><span className="font-display text-2xl text-white">{totalBidCount}</span></div>
-                    <div className="bg-[#111] border border-white/10 rounded-2xl p-4 flex flex-col"><div className="flex items-center gap-2 text-blue-500 mb-2"><Activity size={14} /> <span className="text-[10px] font-mono uppercase tracking-widest">Active Bids</span></div><span className="font-display text-2xl text-white">{activeBids}</span></div>
+                    <div className="bg-[#111] border border-white/10 rounded-2xl p-4 flex flex-col"><div className="flex items-center gap-2 text-[#FF6A00] mb-2"><Activity size={14} /> <span className="text-[10px] font-mono uppercase tracking-widest">Active Bids</span></div><span className="font-display text-2xl text-white">{activeBids}</span></div>
                     <div className="bg-[#111] border border-white/10 rounded-2xl p-4 flex flex-col"><div className="flex items-center gap-2 text-green-500 mb-2"><Trophy size={14} /> <span className="text-[10px] font-mono uppercase tracking-widest">Auctions Won</span></div><span className="font-display text-2xl text-white">{wonAuctions.length}</span></div>
                     <div className="bg-[#111] border border-white/10 rounded-2xl p-4 flex flex-col"><div className="flex items-center gap-2 text-[#FF6A00] mb-2"><DollarSign size={14} /> <span className="text-[10px] font-mono uppercase tracking-widest">Total Spent</span></div><span className="font-display text-2xl text-white">{formatCurrency(totalAuctionSpend, true)}</span></div>
                   </div>
@@ -396,7 +396,7 @@ export function AccountPage() {
                       const statusBadge = isEnded ? (
                         isWinning ? <span className="px-2 py-0.5 rounded text-[10px] font-mono uppercase tracking-widest border bg-green-500/10 text-green-500 border-green-500/20 flex items-center gap-1"><Trophy size={10} /> Won</span> : <span className="px-2 py-0.5 rounded text-[10px] font-mono uppercase tracking-widest border bg-red-500/10 text-red-500 border-red-500/20">Lost</span>
                       ) : (
-                        isWinning ? <span className="px-2 py-0.5 rounded text-[10px] font-mono uppercase tracking-widest border bg-blue-500/10 text-blue-500 border-blue-500/20">Winning</span> : <span className="px-2 py-0.5 rounded text-[10px] font-mono uppercase tracking-widest border bg-[#FF6A00]/10 text-[#FF6A00] border-[#FF6A00]/20">Outbid</span>
+                        isWinning ? <span className="px-2 py-0.5 rounded text-[10px] font-mono uppercase tracking-widest border bg-[#D6E74F]/10 text-[#D6E74F] border-[#D6E74F]/20">Winning</span> : <span className="px-2 py-0.5 rounded text-[10px] font-mono uppercase tracking-widest border bg-[#FF6A00]/10 text-[#FF6A00] border-[#FF6A00]/20">Outbid</span>
                       );
                       return (
                         <div key={auction.id} className="bg-[#111] border border-white/10 rounded-2xl overflow-hidden transition-all duration-300 hover:border-white/30 flex flex-col">
