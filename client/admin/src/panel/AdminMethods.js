@@ -4330,6 +4330,16 @@ export const adminMethods = {
     canvas.style.height = "100%";
     canvas.style.width = "100%";
     canvas.style.maxHeight = "260px";
+    const themeHost = canvas.closest(".dashboard-shell") || document.documentElement;
+    const themeStyles = getComputedStyle(themeHost);
+    const chartLineColor = themeStyles.getPropertyValue("--dashboard-chart-line").trim() || "#93bc52";
+    const chartFillColor = themeStyles.getPropertyValue("--dashboard-chart-fill").trim() || "rgba(147, 188, 82, 0.18)";
+    const chartGridColor = themeStyles.getPropertyValue("--dashboard-chart-grid").trim() || "rgba(112, 119, 102, 0.12)";
+    const chartTickColor = themeStyles.getPropertyValue("--dashboard-chart-tick").trim() || "#8a8e81";
+    const tooltipBackground = themeStyles.getPropertyValue("--dashboard-chart-tooltip-bg").trim() || "#ffffff";
+    const tooltipBorder = themeStyles.getPropertyValue("--dashboard-chart-tooltip-border").trim() || "#e2dbc9";
+    const tooltipTitle = themeStyles.getPropertyValue("--dashboard-chart-tooltip-title").trim() || "#1c2118";
+    const tooltipBody = themeStyles.getPropertyValue("--dashboard-chart-tooltip-body").trim() || "#4d5447";
 
     const registeredChart = Chart.getChart(canvas);
     if (registeredChart && registeredChart !== this.charts.revenue) {
@@ -4351,6 +4361,15 @@ export const adminMethods = {
           this.charts.revenue.data.labels = labels;
           this.charts.revenue.data.datasets[0].label = `Revenue (${windowLabel})`;
           this.charts.revenue.data.datasets[0].data = gmv;
+          this.charts.revenue.data.datasets[0].borderColor = chartLineColor;
+          this.charts.revenue.data.datasets[0].backgroundColor = chartFillColor;
+          this.charts.revenue.options.plugins.tooltip.backgroundColor = tooltipBackground;
+          this.charts.revenue.options.plugins.tooltip.borderColor = tooltipBorder;
+          this.charts.revenue.options.plugins.tooltip.titleColor = tooltipTitle;
+          this.charts.revenue.options.plugins.tooltip.bodyColor = tooltipBody;
+          this.charts.revenue.options.scales.y.grid.color = chartGridColor;
+          this.charts.revenue.options.scales.y.ticks.color = chartTickColor;
+          this.charts.revenue.options.scales.x.ticks.color = chartTickColor;
           this.charts.revenue.resize();
           this.charts.revenue.update("none");
           return;
@@ -4376,8 +4395,8 @@ export const adminMethods = {
           {
             label: `Revenue (${windowLabel})`,
             data: gmv,
-            borderColor: "#3b82f6",
-            backgroundColor: "rgba(59,130,246,0.15)",
+            borderColor: chartLineColor,
+            backgroundColor: chartFillColor,
             fill: true,
             tension: 0.35,
             borderWidth: 2,
@@ -4393,6 +4412,11 @@ export const adminMethods = {
         plugins: {
           legend: { display: false },
           tooltip: {
+            backgroundColor: tooltipBackground,
+            borderColor: tooltipBorder,
+            borderWidth: 1,
+            titleColor: tooltipTitle,
+            bodyColor: tooltipBody,
             callbacks: {
               label: (ctx) => ` ${this.currency(ctx.parsed.y || 0)}`
             }
@@ -4401,10 +4425,10 @@ export const adminMethods = {
         scales: {
           y: {
             beginAtZero: true,
-            grid: { color: "#27272a" },
-            ticks: { color: "#71717a", font: { size: 10 } }
+            grid: { color: chartGridColor },
+            ticks: { color: chartTickColor, font: { size: 10 } }
           },
-          x: { grid: { display: false }, ticks: { color: "#71717a", font: { size: 10 } } }
+          x: { grid: { display: false }, ticks: { color: chartTickColor, font: { size: 10 } } }
         }
       }
     });

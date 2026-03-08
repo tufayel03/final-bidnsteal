@@ -2,10 +2,14 @@ import React from 'react';
 import { useAdmin } from '../AdminContext';
 import { Icon } from '../components/Icon';
 import { AdminModalPortal } from '../components/modals/AdminModalPortal';
+import { DashboardStatCard } from '../components/dashboard/DashboardStatCard';
 
 export function InventoryTab() {
     const admin = useAdmin();
     const { inventoryFilters, inventory = [], inventoryDeleting } = admin;
+    const lowStockCount = inventory.filter((item) => Number(item.stock || 0) < 10).length;
+    const reservedUnits = inventory.reduce((total, item) => total + Number(item.reserved || 0), 0);
+    const auctionModeCount = inventory.filter((item) => String(item.mode || '').toLowerCase().includes('auction')).length;
 
     return (
         <div style={{ display: 'grid', gap: '24px' }}>
@@ -22,6 +26,40 @@ export function InventoryTab() {
                         + Add Product
                     </button>
                 )}
+            </div>
+            <div className="dashboard-stat-grid dashboard-stat-grid--primary">
+                <DashboardStatCard
+                    icon="boxes"
+                    label="Catalog Size"
+                    value={admin.number ? admin.number(inventory.length) : inventory.length}
+                    meta={admin.inventoryTrashMode ? 'Trash inventory' : 'Live inventory'}
+                    tone="stone"
+                    featured
+                />
+                <DashboardStatCard
+                    icon="triangle-alert"
+                    label="Low Stock"
+                    value={admin.number ? admin.number(lowStockCount) : lowStockCount}
+                    meta="Below 10 units"
+                    tone="clay"
+                    compact
+                />
+                <DashboardStatCard
+                    icon="layers-3"
+                    label="Reserved Units"
+                    value={admin.number ? admin.number(reservedUnits) : reservedUnits}
+                    meta="Held for active orders"
+                    tone="sand"
+                    compact
+                />
+                <DashboardStatCard
+                    icon="gavel"
+                    label="Auction Mode"
+                    value={admin.number ? admin.number(auctionModeCount) : auctionModeCount}
+                    meta="Products tied to bidding"
+                    tone="olive"
+                    compact
+                />
             </div>
 
             <div className="admin-card" style={{ display: 'flex', flexWrap: 'wrap', gap: '12px', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -51,18 +89,10 @@ export function InventoryTab() {
                         Apply Filters
                     </button>
                 </div>
-                <div style={{ display: 'flex', gap: '8px', background: 'rgba(0, 243, 255, 0.05)', padding: '6px', borderRadius: '4px', border: '1px solid var(--border-strong)', boxShadow: 'inset 0 0 10px rgba(0, 243, 255, 0.05)' }}>
+                <div className="admin-soft-segment">
                     <button
                         onClick={() => { admin.inventoryTrashMode = !admin.inventoryTrashMode; admin.loadInventory && admin.loadInventory(true).then(() => admin.forceUpdate && admin.forceUpdate()); }}
-                        className="order-filter-btn"
-                        style={{
-                            padding: '6px 16px', fontSize: '12px',
-                            background: admin.inventoryTrashMode ? 'var(--primary-magenta)' : 'transparent',
-                            color: admin.inventoryTrashMode ? '#000' : 'var(--primary-magenta)',
-                            border: admin.inventoryTrashMode ? 'none' : '1px solid var(--primary-magenta)',
-                            textShadow: admin.inventoryTrashMode ? 'none' : '0 0 5px var(--primary-magenta)',
-                            boxShadow: admin.inventoryTrashMode ? '0 0 15px rgba(255, 0, 255, 0.4)' : 'none'
-                        }}
+                        className={`admin-soft-segment-btn is-danger${admin.inventoryTrashMode ? ' is-active' : ''}`}
                     >
                         {admin.inventoryTrashMode ? 'VIEW INVENTORY' : 'TRASH BIN'}
                     </button>
@@ -130,7 +160,7 @@ export function InventoryTab() {
                                     />
                                 </td>
                                 <td>
-                                    <div style={{ width: '40px', height: '40px', borderRadius: '6px', overflow: 'hidden', border: '1px solid rgba(63, 77, 103, 0.7)', background: '#101725' }}>
+                                    <div className="admin-soft-thumb" style={{ width: '40px', height: '40px' }}>
                                         {admin.mediaUrl && admin.mediaUrl(item.image) && (
                                             <img src={admin.mediaUrl(item.image)} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="" />
                                         )}
@@ -159,8 +189,7 @@ export function InventoryTab() {
                                         {admin.inventoryTrashMode ? (
                                             <button
                                                 onClick={() => admin.restoreProduct && admin.restoreProduct(item)}
-                                                className="order-filter-btn primary"
-                                                style={{ padding: '6px 10px', color: '#fff' }}
+                                                className="order-icon-btn primary"
                                                 title="Restore"
                                             >
                                                 <Icon name="rotate-ccw" style={{ width: '14px', height: '14px' }} />
@@ -168,16 +197,15 @@ export function InventoryTab() {
                                         ) : (
                                             <button
                                                 onClick={() => admin.openProductEdit && admin.openProductEdit(item)}
-                                                className="order-filter-btn"
-                                                style={{ padding: '6px 10px' }}
+                                                className="order-icon-btn"
+                                                title="Edit product"
                                             >
                                                 <Icon name="edit-3" style={{ width: '14px', height: '14px' }} />
                                             </button>
                                         )}
                                         <button
                                             onClick={() => admin.deleteProduct && admin.deleteProduct(item)}
-                                            className="order-filter-btn danger"
-                                            style={{ padding: '6px 10px' }}
+                                            className="order-icon-btn danger"
                                             title={admin.inventoryTrashMode ? 'Permanent Erase' : 'Move to Trash'}
                                         >
                                             <Icon name={admin.inventoryTrashMode ? 'x-circle' : 'trash-2'} style={{ width: '14px', height: '14px' }} />
@@ -193,13 +221,13 @@ export function InventoryTab() {
             {admin.inventoryDeleteModal && (
                 <AdminModalPortal>
                     <div className="admin-modal-overlay">
-                        <div className="admin-modal" style={{ maxWidth: '400px', textAlign: 'center', boxShadow: '0 0 30px rgba(239, 68, 68, 0.2)', border: '1px solid var(--primary-magenta)' }}>
-                            <h3 style={{ color: 'var(--primary-magenta)', marginBottom: '16px', textTransform: 'uppercase', letterSpacing: '0.1em' }}>
+                        <div className="admin-modal admin-soft-confirm-modal">
+                            <h3 className="admin-soft-confirm-title">
                                 {admin.inventoryTrashMode ? 'Permanent Erase' : 'Move to Trash'}
                             </h3>
-                            <p style={{ color: '#8fa0be', marginBottom: '24px', fontSize: '14px' }}>
+                            <p className="admin-soft-confirm-copy" style={{ marginBottom: '24px' }}>
                                 {admin.inventoryDeleteModal.type === 'single' && (
-                                    <>Are you sure you want to {admin.inventoryTrashMode ? 'forever erase' : 'trash'} <br /><strong style={{ color: '#fff' }}>{admin.inventoryDeleteModal.item?.title || admin.inventoryDeleteModal.item?.slug}</strong>?</>
+                                    <>Are you sure you want to {admin.inventoryTrashMode ? 'forever erase' : 'trash'} <br /><strong className="admin-soft-value">{admin.inventoryDeleteModal.item?.title || admin.inventoryDeleteModal.item?.slug}</strong>?</>
                                 )}
                                 {admin.inventoryDeleteModal.type === 'selected' && (
                                     <>Are you sure you want to {admin.inventoryTrashMode ? 'forever erase' : 'trash'} <strong>{admin.inventoryDeleteModal.count}</strong> selected product(s)?</>
@@ -210,15 +238,15 @@ export function InventoryTab() {
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                                 <button
                                     onClick={() => { admin.inventoryDeleteModal = null; admin.forceUpdate && admin.forceUpdate(); }}
-                                    className="nl-input"
-                                    style={{ textAlign: 'center', cursor: 'pointer' }}
+                                    className="order-filter-btn"
+                                    style={{ textAlign: 'center' }}
                                 >
                                     CANCEL
                                 </button>
                                 <button
                                     onClick={() => admin.executeInventoryDelete && admin.executeInventoryDelete(admin.inventoryDeleteModal)}
                                     className="order-filter-btn danger"
-                                    style={{ height: 'auto', padding: '12px', fontSize: '14px', letterSpacing: '0.1em' }}
+                                    style={{ height: 'auto', padding: '12px', fontSize: '14px' }}
                                 >
                                     CONFIRM
                                 </button>

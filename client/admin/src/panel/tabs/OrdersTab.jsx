@@ -14,6 +14,7 @@ import {
     Trash2
 } from 'lucide-react';
 import { useAdmin } from '../AdminContext';
+import { DashboardStatCard } from '../components/dashboard/DashboardStatCard';
 
 export function OrdersTab() {
     const admin = useAdmin();
@@ -21,6 +22,9 @@ export function OrdersTab() {
     const { orderFilters, orders = [], ordersDeleting, ordersBulkSending, ordersBulkUpdating, orderBulkDraft, orderDrafts, ordersMeta } = admin;
     const selectedCount = admin.selectedOrderCount ? admin.selectedOrderCount() : 0;
     const allVisibleSelected = orders.length > 0 && selectedCount === orders.length;
+    const visibleRevenue = orders.reduce((total, order) => total + Number(order.total || 0), 0);
+    const awaitingDispatchCount = orders.filter((order) => ['pending', 'processing'].includes((order.fulfillmentStatus || '').toLowerCase())).length;
+    const courierSentCount = orders.filter((order) => order.courier?.trackingCode || order.courier?.consignmentId).length;
 
     return (
         <div style={{ display: 'grid', gap: '24px' }}>
@@ -39,6 +43,40 @@ export function OrdersTab() {
                         <span>Reload</span>
                     </button>
                 </div>
+            </div>
+            <div className="dashboard-stat-grid dashboard-stat-grid--primary">
+                <DashboardStatCard
+                    icon="receipt-text"
+                    label="Visible Orders"
+                    value={admin.number ? admin.number(orders.length) : orders.length}
+                    meta="Live queue"
+                    tone="stone"
+                    featured
+                />
+                <DashboardStatCard
+                    icon="clock-3"
+                    label="Awaiting Dispatch"
+                    value={admin.number ? admin.number(awaitingDispatchCount) : awaitingDispatchCount}
+                    meta="Pending + processing"
+                    tone="sand"
+                    compact
+                />
+                <DashboardStatCard
+                    icon="truck"
+                    label="Sent To Courier"
+                    value={admin.number ? admin.number(courierSentCount) : courierSentCount}
+                    meta="Tracked shipments"
+                    tone="sage"
+                    compact
+                />
+                <DashboardStatCard
+                    icon="credit-card"
+                    label="Visible GMV"
+                    value={admin.currency ? admin.currency(visibleRevenue) : visibleRevenue}
+                    meta="Loaded order value"
+                    tone="olive"
+                    compact
+                />
             </div>
             <div className="order-panel">
                 <select

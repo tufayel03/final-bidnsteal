@@ -129,12 +129,12 @@ function AdminLayout() {
   };
 
   return (
-    <div className={`admin-layout ${admin.localSettings?.sidebarCollapsed ? 'sidebar-collapsed' : ''}`}>
+    <div className={`admin-layout admin-layout--soft ${admin.localSettings?.sidebarCollapsed ? 'sidebar-collapsed' : ''}`}>
       <AdminSidebar />
       <div className="admin-main">
         <AdminTopbar />
 
-        <main className="admin-content custom-scrollbar">
+        <main className={`admin-content custom-scrollbar ${admin.activeTab === 'dashboard' && !orderDetailsMatch ? 'admin-content--dashboard' : ''}`}>
           {renderActiveTab()}
         </main>
       </div>

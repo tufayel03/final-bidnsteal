@@ -44,12 +44,12 @@ export function AdminSidebar() {
     };
 
     return (
-        <aside className={`admin-sidebar admin-simple-sidebar ${collapsed ? 'collapsed' : ''}`}>
+        <aside className={`admin-sidebar admin-simple-sidebar admin-sidebar--soft ${collapsed ? 'collapsed' : ''}`}>
             <div className="admin-simple-brand">
                 <div className="admin-simple-brand-mark">BS</div>
                 <div className="admin-simple-brand-copy">
                     <h1>BidnSteal</h1>
-                    <p>Admin Panel</p>
+                    <p>Warehouse Console</p>
                 </div>
             </div>
 
@@ -77,6 +77,13 @@ export function AdminSidebar() {
             </nav>
 
             <div className="admin-sidebar-footer admin-simple-sidebar-footer">
+                {!collapsed ? (
+                    <div className="admin-soft-sidebar-card">
+                        <span className="admin-soft-sidebar-card__eyebrow">Workspace</span>
+                        <strong>Admin dashboard</strong>
+                        <p>Manage inventory, bids, orders, and campaigns from one place.</p>
+                    </div>
+                ) : null}
                 <button
                     onClick={() => admin.toggleSidebarCollapse()}
                     title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}

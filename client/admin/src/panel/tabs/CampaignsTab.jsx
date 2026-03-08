@@ -57,9 +57,9 @@ export function CampaignsTab() {
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))', gap: '24px', alignItems: 'start' }}>
                 <div className="admin-card" style={{ display: 'grid', gap: '16px' }}>
-                    <h3 style={{ fontSize: '15px', fontWeight: 800, margin: 0, color: '#f8fafc' }}>Create Campaign</h3>
-                    <div style={{ padding: '16px', background: 'var(--panel-bg)', border: '1px solid rgba(45, 51, 67, 0.4)', borderRadius: '12px', display: 'grid', gap: '12px' }}>
-                        <p style={{ fontSize: '12px', fontWeight: 700, margin: 0, color: '#e2e8f0' }}>Campaign Templates</p>
+                    <h3 style={{ fontSize: '15px', fontWeight: 800, margin: 0 }}>Create Campaign</h3>
+                    <div className="admin-inset-card" style={{ padding: '16px', borderRadius: '20px', display: 'grid', gap: '12px', marginBottom: 0 }}>
+                        <p className="admin-soft-value" style={{ fontSize: '12px', fontWeight: 700, margin: 0 }}>Campaign Templates</p>
                         <div style={{ display: 'grid', gap: '8px' }}>
                             <input
                                 value={campaignTemplateName || ''}
@@ -86,7 +86,7 @@ export function CampaignsTab() {
                             <button onClick={() => admin.clearCampaignTemplateSelection && admin.clearCampaignTemplateSelection()} className="order-filter-btn" style={{ padding: '6px 0' }}>New</button>
                             <button onClick={() => admin.deleteCampaignTemplate && admin.deleteCampaignTemplate()} className="order-filter-btn danger" style={{ padding: '6px 0' }}>Delete</button>
                         </div>
-                        <p style={{ fontSize: '11px', color: '#8fa0be', margin: 0 }}>Use custom template names and reuse them for future campaigns.</p>
+                        <p className="admin-soft-help" style={{ fontSize: '11px', margin: 0 }}>Use custom template names and reuse them for future campaigns.</p>
                     </div>
                     <input
                         value={campaignDraft.subject || ''}
@@ -104,8 +104,8 @@ export function CampaignsTab() {
                     ></textarea>
                     <div className="admin-inset-card" style={{ marginBottom: 0, display: 'grid', gap: '12px' }}>
                         <div>
-                            <p style={{ fontSize: '12px', fontWeight: 700, margin: '0 0 4px 0', color: '#f8fafc' }}>Sending Rate Control</p>
-                            <p style={{ fontSize: '11px', color: '#8fa0be', margin: 0 }}>Set paced delivery limits. Example: hourly rate <span className="mono">3</span> sends one email every <span className="mono">20</span> minutes.</p>
+                            <p className="admin-soft-value" style={{ fontSize: '12px', fontWeight: 700, margin: '0 0 4px 0' }}>Sending Rate Control</p>
+                            <p className="admin-soft-help" style={{ fontSize: '11px', margin: 0 }}>Set paced delivery limits. Example: hourly rate <span className="mono">3</span> sends one email every <span className="mono">20</span> minutes.</p>
                         </div>
                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '10px' }}>
                             <label style={{ display: 'grid', gap: '6px' }}>
@@ -133,14 +133,14 @@ export function CampaignsTab() {
                                 />
                             </label>
                         </div>
-                        <p style={{ fontSize: '11px', color: '#8fa0be', margin: 0 }}>
-                            Effective pace: <span className="mono" style={{ color: '#f8fafc' }}>{formatPacingLabel(draftIntervalMs)}</span>
+                        <p className="admin-soft-help" style={{ fontSize: '11px', margin: 0 }}>
+                            Effective pace: <span className="mono admin-soft-value">{formatPacingLabel(draftIntervalMs)}</span>
                         </p>
                     </div>
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', alignItems: 'center' }}>
                         <button onClick={() => admin.openEmailMediaPicker && admin.openEmailMediaPicker('campaign')} className="order-filter-btn">Insert Uploaded Image Tag</button>
                         <button onClick={() => admin.setActiveTab && admin.setActiveTab('media')} className="order-filter-btn">Open Media</button>
-                        <p style={{ fontSize: '11px', color: '#8fa0be', margin: '4px 0 0 0', width: '100%' }}>Build campaign HTML with uploaded images quickly.</p>
+                        <p className="admin-soft-help" style={{ fontSize: '11px', margin: '4px 0 0 0', width: '100%' }}>Build campaign HTML with uploaded images quickly.</p>
                     </div>
                     <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: '10px' }}>
                         <button onClick={() => admin.previewCampaignDraft && admin.previewCampaignDraft()} className="order-filter-btn" style={{ width: '100%', padding: '10px', fontSize: '14px' }}>Preview HTML</button>
@@ -148,8 +148,8 @@ export function CampaignsTab() {
                     </div>
                 </div>
                 <div className="admin-card no-pad" style={{ gridColumn: 'span 2' }}>
-                    <div style={{ padding: '20px', borderBottom: '1px solid rgba(45, 51, 67, 0.8)' }}>
-                        <h3 style={{ fontSize: '15px', fontWeight: 800, margin: 0, color: '#f8fafc' }}>Existing Campaigns</h3>
+                    <div style={{ padding: '20px', borderBottom: '1px solid var(--border)' }}>
+                        <h3 style={{ fontSize: '15px', fontWeight: 800, margin: 0 }}>Existing Campaigns</h3>
                     </div>
                     <div style={{ overflowX: 'auto' }}>
                         <table className="admin-table">
@@ -181,10 +181,10 @@ export function CampaignsTab() {
 
                                     return (
                                         <tr key={campaign.id}>
-                                            <td style={{ fontWeight: 700, color: '#f8fafc' }}>
+                                            <td style={{ fontWeight: 700 }}>
                                                 <div style={{ display: 'grid', gap: '6px' }}>
                                                     <span>{campaign.subject}</span>
-                                                    <span className="mono" style={{ fontSize: '11px', color: '#8fa0be' }}>
+                                                    <span className="mono admin-soft-help" style={{ fontSize: '11px' }}>
                                                         H {campaign.hourlyRateLimit || 0}/h | D {campaign.dailyRateLimit || 0}/day | {formatPacingLabel(intervalMs)}
                                                         {campaign.nextSendAt ? ` | Next ${admin.dateTime ? admin.dateTime(campaign.nextSendAt) : campaign.nextSendAt}` : ''}
                                                     </span>
@@ -193,7 +193,7 @@ export function CampaignsTab() {
                                             <td>
                                                 <span className={`status-badge ${statusClass}`}>{campaign.status}</span>
                                             </td>
-                                            <td className="mono" style={{ color: '#e2e8f0' }}>{admin.number ? admin.number(campaign.totalRecipients) : ''}</td>
+                                            <td className="mono admin-soft-value">{admin.number ? admin.number(campaign.totalRecipients) : ''}</td>
                                             <td className="mono" style={{ color: '#3b82f6', fontWeight: 700 }}>{admin.number ? admin.number(campaign.sentCount) : ''}</td>
                                             <td className="mono" style={{ color: '#10b981', fontWeight: 700 }}>{admin.number ? admin.number(campaign.openCount) : ''}</td>
                                             <td>
@@ -208,7 +208,7 @@ export function CampaignsTab() {
                                 })}
                                 {campaigns.length === 0 && (
                                     <tr>
-                                        <td colSpan="6" style={{ padding: '40px', textAlign: 'center', color: '#8fa0be' }}>No campaigns found.</td>
+                                        <td colSpan="6" style={{ padding: '40px', textAlign: 'center' }} className="admin-soft-help">No campaigns found.</td>
                                     </tr>
                                 )}
                             </tbody>

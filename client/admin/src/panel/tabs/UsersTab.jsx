@@ -20,14 +20,14 @@ export function UsersTab() {
             <div className="admin-card" style={{ display: 'grid', gap: '16px' }}>
                 <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: '12px' }}>
                     <div>
-                        <p style={{ fontSize: '14px', fontWeight: 700, margin: '0 0 4px 0', color: '#f8fafc' }}>Import Users CSV</p>
-                        <p style={{ fontSize: '11px', color: '#8fa0be', margin: 0 }}>Columns: <span className="mono" style={{ color: '#e2e8f0' }}>name,email,phone,role,isSuspended,password</span> (password required for new users).</p>
+                        <p className="admin-soft-value" style={{ fontSize: '14px', fontWeight: 700, margin: '0 0 4px 0' }}>Import Users CSV</p>
+                        <p className="admin-soft-help" style={{ fontSize: '11px', margin: 0 }}>Columns: <span className="mono admin-soft-value">name,email,phone,role,isSuspended,password</span> (password required for new users).</p>
                     </div>
                     <button onClick={() => admin.importUsersCsv && admin.importUsersCsv()} className="order-filter-btn primary">
                         {usersImport.importing ? 'Importing...' : 'Import CSV'}
                     </button>
                 </div>
-                <div className="relative cursor-pointer w-full group" style={{ border: '1px dashed var(--primary)', background: 'rgba(0, 243, 255, 0.05)', padding: '16px', borderRadius: '4px', textAlign: 'center', transition: 'all 0.2s', boxShadow: 'inset 0 0 10px rgba(0, 243, 255, 0.1)' }}>
+                <div className="admin-soft-upload relative cursor-pointer w-full group">
                     <input
                         id="usersImportInput"
                         type="file"
@@ -35,11 +35,11 @@ export function UsersTab() {
                         onChange={(e) => admin.onUsersImportFileChange && admin.onUsersImportFileChange(e)}
                         style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', opacity: 0, cursor: 'pointer', zIndex: 10 }}
                     />
-                    <div className="pointer-events-none" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
-                        <span style={{ fontWeight: 700, letterSpacing: '0.1em', color: '#00f3ff', textTransform: 'uppercase', fontSize: '14px', textShadow: '0 0 8px rgba(0, 243, 255, 0.6)' }}>
+                    <div className="admin-soft-upload__body pointer-events-none">
+                        <span className="admin-soft-upload__title">
                             {usersImport.fileName ? `READY: ${usersImport.fileName}` : 'SELECT CSV DATA_MODULE'}
                         </span>
-                        <span style={{ color: '#8fa0be', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Drop CSV file here</span>
+                        <span className="admin-soft-upload__caption">Drop CSV file here</span>
                     </div>
                 </div>
             </div>

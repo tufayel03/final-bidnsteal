@@ -83,35 +83,37 @@ export function AdminLoginPage() {
   }
 
   return (
-    <main className="page-shell center">
-      <section className="card auth-card">
-        <div className="brand-row">
-          <div className="badge">B</div>
-          <div>
+    <main className="page-shell center admin-auth-shell">
+      <section className="card auth-card admin-auth-card">
+        <div className="admin-auth-kicker">Admin Workspace</div>
+
+        <div className="brand-row admin-auth-brand">
+          <div className="badge admin-auth-badge">B</div>
+          <div className="admin-auth-brand-copy">
             <h1>BIDNSTEAL</h1>
             <p>Admin access portal</p>
           </div>
         </div>
 
         {checkingSession ? (
-          <p className="muted">Checking admin session...</p>
+          <p className="muted admin-auth-muted">Checking admin session...</p>
         ) : (
-          <form onSubmit={onSubmit} className="auth-form">
+          <form onSubmit={onSubmit} className="auth-form admin-auth-form">
             <label>Admin Email</label>
             <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="username" required />
 
             <label>Password</label>
             <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="current-password" required />
 
-            {error ? <p className="error-text">{error}</p> : null}
+            {error ? <p className="error-text admin-auth-error">{error}</p> : null}
 
-            <button type="submit" disabled={loading}>
+            <button type="submit" disabled={loading} className="admin-auth-submit">
               {loading ? "Signing in..." : "Sign In"}
             </button>
           </form>
         )}
 
-        <p className="muted">Session stays signed in for 7 days on this browser.</p>
+        <p className="muted admin-auth-muted">Session stays signed in for 7 days on this browser.</p>
       </section>
     </main>
   );
