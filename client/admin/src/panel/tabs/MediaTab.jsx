@@ -396,7 +396,7 @@ export function MediaTab() {
 
             {admin.mediaDeleteModal && (
                 <AdminModalPortal>
-                    <div className="admin-modal-overlay">
+                    <div className="admin-modal-overlay admin-soft-confirm-overlay">
                         <div className="admin-modal admin-soft-confirm-modal">
                             <h3 className="admin-soft-confirm-title">
                                 {admin.mediaTrashMode ? 'Permanent Erase' : 'Move to Trash'}

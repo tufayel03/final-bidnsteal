@@ -5693,6 +5693,67 @@ body::after,
   line-height: 1.65;
 }
 
+.admin-soft-confirm-overlay {
+  background: rgba(239, 243, 236, 0.74) !important;
+  backdrop-filter: blur(10px) !important;
+}
+
+.admin-soft-confirm-modal {
+  max-width: 440px !important;
+  padding: 34px 32px !important;
+  text-align: center;
+  background: #ffffff !important;
+  border: 1px solid #dde4d8 !important;
+  border-radius: 30px !important;
+  box-shadow: 0 26px 60px rgba(31, 38, 29, 0.14) !important;
+}
+
+.admin-soft-confirm-title {
+  margin: 0 0 14px;
+  color: #1f261d !important;
+  font-size: 31px;
+  font-weight: 800;
+  letter-spacing: -0.02em !important;
+  text-transform: none !important;
+}
+
+.admin-soft-confirm-copy {
+  color: #727b6c !important;
+  font-size: 14px;
+  line-height: 1.7;
+}
+
+.admin-soft-confirm-modal .admin-soft-value {
+  color: #1f261d !important;
+  font-weight: 800;
+}
+
+.admin-soft-confirm-modal .order-filter-btn {
+  min-height: 48px;
+  border-radius: 16px !important;
+  border: 1px solid #d9e0d3 !important;
+  background: #ffffff !important;
+  color: #394134 !important;
+  box-shadow: none !important;
+}
+
+.admin-soft-confirm-modal .order-filter-btn:hover {
+  background: #f6f8f3 !important;
+  color: #1f261d !important;
+}
+
+.admin-soft-confirm-modal .order-filter-btn.danger {
+  background: #27331b !important;
+  border-color: #27331b !important;
+  color: #ffffff !important;
+}
+
+.admin-soft-confirm-modal .order-filter-btn.danger:hover {
+  background: #1f2618 !important;
+  border-color: #1f2618 !important;
+  color: #ffffff !important;
+}
+
 .admin-layout--soft .media-library-upload-shell,
 .admin-layout--soft .media-library-tools,
 .admin-layout--soft .media-library-gallery-shell {
