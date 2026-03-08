@@ -101,7 +101,7 @@ export function MiscModals() {
                                     </div>
 
                                     <p className="media-picker-help" style={{ margin: 0, fontSize: '12px' }}>
-                                        For templates, insert uses numeric media placeholders like <span style={mono}>{'{{media.123456789012}}'}</span>. Campaign target inserts direct media URLs.
+                                        For templates, insert uses short media placeholders like <span style={mono}>{'{{media.A1B2}}'}</span>. Campaign target inserts direct media URLs.
                                     </p>
 
                                     <div className="media-picker-grid">

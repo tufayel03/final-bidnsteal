@@ -1,6 +1,7 @@
 const express = require("express");
 const mongoose = require("mongoose");
 const Auction = require("../models/Auction");
+const Order = require("../models/Order");
 const Product = require("../models/Product");
 const ProductCategory = require("../models/ProductCategory");
 const { requireAdmin } = require("../middleware/auth");
@@ -132,6 +133,44 @@ async function findProduct(identifier) {
   return Product.findOne({ slug: lookup });
 }
 
+async function buildProductSalesMap(productIds) {
+  const normalizedIds = (Array.isArray(productIds) ? productIds : [])
+    .map((value) => {
+      if (!value) return null;
+      if (value instanceof mongoose.Types.ObjectId) return value;
+      const stringValue = String(value).trim();
+      return mongoose.Types.ObjectId.isValid(stringValue) ? new mongoose.Types.ObjectId(stringValue) : null;
+    })
+    .filter(Boolean);
+
+  if (!normalizedIds.length) {
+    return new Map();
+  }
+
+  const rows = await Order.aggregate([
+    { $match: { "items.productId": { $in: normalizedIds } } },
+    { $unwind: "$items" },
+    { $match: { "items.productId": { $in: normalizedIds } } },
+    {
+      $group: {
+        _id: "$items.productId",
+        soldUnits: {
+          $sum: {
+            $cond: [{ $ne: ["$fulfillmentStatus", "cancelled"] }, "$items.qty", 0]
+          }
+        }
+      }
+    }
+  ]);
+
+  return new Map(
+    rows.map((row) => [
+      String(row?._id || ""),
+      Number(row?.soldUnits || 0)
+    ])
+  );
+}
+
 router.use(requireAdmin);
 
 router.get("/", async (req, res) => {
@@ -164,13 +203,130 @@ router.get("/", async (req, res) => {
     Product.find(query).sort({ createdAt: -1 }).skip(skip).limit(limit),
     Product.countDocuments(query)
   ]);
+  const salesMap = await buildProductSalesMap(items.map((item) => item._id));
 
   return res.json({
-    items,
+    items: items.map((item) => ({
+      ...item.toJSON(),
+      soldUnits: Number(salesMap.get(String(item._id)) || 0)
+    })),
     page,
     limit,
     total,
     totalPages: Math.max(1, Math.ceil(total / limit))
+  });
+});
+
+router.get("/:identifier/buyers", async (req, res) => {
+  const product = await findProduct(req.params.identifier);
+  if (!product) {
+    return res.status(404).json({ message: "Product not found." });
+  }
+
+  const orders = await Order.find({ "items.productId": product._id }).sort({ createdAt: -1 });
+  const buyers = new Map();
+  const orderLines = [];
+  let soldUnits = 0;
+  let cancelledUnits = 0;
+  let grossRevenue = 0;
+
+  for (const order of orders) {
+    const matchingItems = (order.items || []).filter(
+      (item) => String(item?.productId || "") === String(product._id)
+    );
+
+    if (!matchingItems.length) {
+      continue;
+    }
+
+    const qty = matchingItems.reduce((total, item) => total + Math.max(1, Number(item?.qty || 0)), 0);
+    const revenue = matchingItems.reduce(
+      (total, item) => total + Math.max(1, Number(item?.qty || 0)) * Number(item?.unitPrice || 0),
+      0
+    );
+    const fulfillmentStatus = String(order.fulfillmentStatus || "pending").toLowerCase();
+    const paymentStatus = String(order.paymentStatus || "unpaid").toLowerCase();
+    const phone = String(order.shippingAddress?.phone || "").trim();
+    const email = String(order.customerEmail || "").trim();
+    const buyerKey = (email || phone || `${order.customerName || "customer"}:${order.id}`).toLowerCase();
+    const isCancelled = fulfillmentStatus === "cancelled";
+
+    orderLines.push({
+      id: order.id,
+      orderNumber: order.orderNumber,
+      customerName: order.customerName || "Customer",
+      customerEmail: email,
+      phone,
+      qty,
+      revenue,
+      paymentStatus,
+      fulfillmentStatus,
+      createdAt: order.createdAt
+    });
+
+    if (isCancelled) {
+      cancelledUnits += qty;
+      continue;
+    }
+
+    soldUnits += qty;
+    grossRevenue += revenue;
+
+    const existingBuyer = buyers.get(buyerKey) || {
+      key: buyerKey,
+      customerName: order.customerName || "Customer",
+      customerEmail: email,
+      phone,
+      unitsBought: 0,
+      orderCount: 0,
+      totalSpent: 0,
+      lastOrderedAt: order.createdAt,
+      lastOrderNumber: order.orderNumber,
+      lastFulfillmentStatus: fulfillmentStatus,
+      lastPaymentStatus: paymentStatus
+    };
+
+    existingBuyer.unitsBought += qty;
+    existingBuyer.orderCount += 1;
+    existingBuyer.totalSpent += revenue;
+    if (!existingBuyer.lastOrderedAt || new Date(order.createdAt).getTime() > new Date(existingBuyer.lastOrderedAt).getTime()) {
+      existingBuyer.lastOrderedAt = order.createdAt;
+      existingBuyer.lastOrderNumber = order.orderNumber;
+      existingBuyer.lastFulfillmentStatus = fulfillmentStatus;
+      existingBuyer.lastPaymentStatus = paymentStatus;
+    }
+
+    buyers.set(buyerKey, existingBuyer);
+  }
+
+  const buyersList = Array.from(buyers.values()).sort((left, right) => {
+    if (right.unitsBought !== left.unitsBought) {
+      return right.unitsBought - left.unitsBought;
+    }
+    return new Date(right.lastOrderedAt).getTime() - new Date(left.lastOrderedAt).getTime();
+  });
+
+  return res.json({
+    product: {
+      id: product.id,
+      slug: product.slug,
+      title: product.title,
+      sku: product.sku || product.slug,
+      category: product.category || "",
+      image: Array.isArray(product.images) ? product.images[0] || "" : "",
+      stock: Number(product.stock || 0),
+      saleMode: product.saleMode || "fixed",
+      price: Number(product.price || 0)
+    },
+    summary: {
+      soldUnits,
+      cancelledUnits,
+      uniqueBuyers: buyersList.length,
+      grossRevenue,
+      orderCount: orderLines.filter((line) => line.fulfillmentStatus !== "cancelled").length
+    },
+    buyers: buyersList,
+    orders: orderLines
   });
 });
 

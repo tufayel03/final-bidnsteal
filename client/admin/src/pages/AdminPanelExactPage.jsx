@@ -19,6 +19,7 @@ import { ProductFormTab } from '../panel/tabs/ProductFormTab';
 import { AdminModals } from '../panel/components/modals/AdminModals';
 import { OrderDetailsPage } from '../panel/components/orders/OrderDetailsPage';
 import { AuctionDetailsPage } from '../panel/components/auctions/AuctionDetailsPage';
+import { ProductBuyersPage } from '../panel/components/inventory/ProductBuyersPage';
 import { UserDetailsPage } from '../panel/components/users/UserDetailsPage';
 
 function AdminLayout() {
@@ -27,6 +28,7 @@ function AdminLayout() {
   const location = useLocation();
   const orderDetailsMatch = useMatch('/tufayel/panel/orders/:orderId');
   const auctionDetailsMatch = useMatch('/tufayel/panel/auctions/:auctionId');
+  const productBuyersMatch = useMatch('/tufayel/panel/inventory/:productId/buyers');
   const userDetailsMatch = useMatch('/tufayel/panel/users/:userId');
   const isBasePanelRoute = location.pathname === '/tufayel/panel';
   const requestedTab = isBasePanelRoute ? new URLSearchParams(location.search).get('tab') : null;
@@ -69,6 +71,13 @@ function AdminLayout() {
       return;
     }
 
+    if (productBuyersMatch) {
+      if (admin.activeTab !== 'inventory' && admin.setActiveTab) {
+        admin.setActiveTab('inventory');
+      }
+      return;
+    }
+
     if (userDetailsMatch) {
       if (admin.activeTab !== 'users' && admin.setActiveTab) {
         admin.setActiveTab('users');
@@ -84,7 +93,7 @@ function AdminLayout() {
     if (admin.activeTab !== requestedTab && admin.setActiveTab) {
       admin.setActiveTab(requestedTab);
     }
-  }, [admin, auctionDetailsMatch, isBasePanelRoute, isLoaded, orderDetailsMatch, requestedTab, userDetailsMatch]);
+  }, [admin, auctionDetailsMatch, isBasePanelRoute, isLoaded, orderDetailsMatch, productBuyersMatch, requestedTab, userDetailsMatch]);
 
   if (!isLoaded) {
     return (
@@ -104,6 +113,10 @@ function AdminLayout() {
 
     if (auctionDetailsMatch) {
       return <AuctionDetailsPage />;
+    }
+
+    if (productBuyersMatch) {
+      return <ProductBuyersPage />;
     }
 
     if (userDetailsMatch) {
@@ -160,7 +173,7 @@ function AdminLayout() {
       <div className="admin-main">
         <AdminTopbar />
 
-        <main className={`admin-content custom-scrollbar ${admin.activeTab === 'dashboard' && !orderDetailsMatch && !auctionDetailsMatch && !userDetailsMatch ? 'admin-content--dashboard' : ''}`}>
+        <main className={`admin-content custom-scrollbar ${admin.activeTab === 'dashboard' && !orderDetailsMatch && !auctionDetailsMatch && !productBuyersMatch && !userDetailsMatch ? 'admin-content--dashboard' : ''}`}>
           {renderActiveTab()}
         </main>
       </div>

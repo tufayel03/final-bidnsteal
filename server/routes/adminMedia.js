@@ -97,7 +97,7 @@ router.post("/upload", upload.single("file"), async (req, res) => {
     return res.status(400).json({ message: "File is required." });
   }
 
-  const templateTagId = await generateUniqueMediaTagId((candidate) => MediaAsset.exists({ templateTagId: candidate }), 12);
+  const templateTagId = await generateUniqueMediaTagId((candidate) => MediaAsset.exists({ templateTagId: candidate }), 4);
   const asset = await MediaAsset.create({
     fileName: req.file.filename,
     templateTagId,

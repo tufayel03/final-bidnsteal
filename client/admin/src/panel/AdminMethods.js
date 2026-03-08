@@ -870,6 +870,7 @@ export const adminMethods = {
           reservedByProduct[item._id] ||
           0
         ),
+        soldUnits: Number(item.soldUnits || 0),
         image: this.mediaUrl(firstImage),
         isFeatured: Boolean(item.isFeatured),
         isNewDrop: Boolean(item.isNewDrop),
@@ -1145,7 +1146,7 @@ export const adminMethods = {
         ? itemOrTagId.templateTagId
         : itemOrTagId;
     const normalized = String(rawTagId || "").trim();
-    return /^\d+$/.test(normalized) ? normalized : "";
+    return /^[A-Z0-9]{4}$/i.test(normalized) ? normalized.toUpperCase() : "";
   },
 
   mediaTemplateTag(itemOrTagId) {

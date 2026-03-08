@@ -1,31 +1,32 @@
 const crypto = require("crypto");
+const MEDIA_TAG_LENGTH = 4;
+const MEDIA_TAG_PATTERN = /^[A-Z0-9]{4}$/;
+const MEDIA_TAG_ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
 
 function isDuplicateKeyError(error) {
   return error && Number(error.code) === 11000;
 }
 
-function randomDigitString(length = 12) {
-  const safeLength = Math.max(8, Number(length) || 12);
+function isValidMediaTagId(value) {
+  return MEDIA_TAG_PATTERN.test(String(value || "").trim().toUpperCase());
+}
+
+function randomMediaTag(length = MEDIA_TAG_LENGTH) {
+  const safeLength = Math.max(4, Number(length) || MEDIA_TAG_LENGTH);
   let output = "";
   while (output.length < safeLength) {
-    output += crypto.randomInt(0, 10).toString();
+    output += MEDIA_TAG_ALPHABET[crypto.randomInt(0, MEDIA_TAG_ALPHABET.length)];
   }
   return output.slice(0, safeLength);
 }
 
-async function generateUniqueMediaTagId(exists, length = 12) {
+async function generateUniqueMediaTagId(exists, length = MEDIA_TAG_LENGTH) {
   for (let attempt = 0; attempt < 25; attempt += 1) {
-    const candidate = randomDigitString(length);
+    const candidate = randomMediaTag(length);
     const alreadyExists = await exists(candidate);
     if (!alreadyExists) {
       return candidate;
     }
-  }
-
-  const timestampSeed = `${Date.now()}${randomDigitString(4)}`;
-  const alreadyExists = await exists(timestampSeed);
-  if (!alreadyExists) {
-    return timestampSeed;
   }
 
   throw new Error("Unable to allocate a unique media tag id.");
@@ -36,7 +37,8 @@ async function ensureMediaAssetTagIds(assets, MediaAssetModel) {
 
   for (const asset of list) {
     const current = String(asset?.templateTagId || "").trim();
-    if (/^\d+$/.test(current)) {
+    if (isValidMediaTagId(current)) {
+      asset.templateTagId = current.toUpperCase();
       continue;
     }
 
@@ -47,7 +49,7 @@ async function ensureMediaAssetTagIds(assets, MediaAssetModel) {
             templateTagId: candidate,
             _id: { $ne: asset._id }
           }),
-        12
+        MEDIA_TAG_LENGTH
       );
 
       try {
@@ -68,5 +70,7 @@ async function ensureMediaAssetTagIds(assets, MediaAssetModel) {
 module.exports = {
   ensureMediaAssetTagIds,
   generateUniqueMediaTagId,
-  isDuplicateKeyError
+  isDuplicateKeyError,
+  isValidMediaTagId,
+  MEDIA_TAG_LENGTH
 };

@@ -1,4 +1,5 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAdmin } from '../AdminContext';
 import { Icon } from '../components/Icon';
 import { AdminModalPortal } from '../components/modals/AdminModalPortal';
@@ -6,10 +7,12 @@ import { DashboardStatCard } from '../components/dashboard/DashboardStatCard';
 
 export function InventoryTab() {
     const admin = useAdmin();
+    const navigate = useNavigate();
     const { inventoryFilters, inventory = [], inventoryDeleting, categories = [], categoryFilters = {}, categoryEditor = {} } = admin;
     const inventoryView = admin.inventoryView || 'products';
     const lowStockCount = inventory.filter((item) => Number(item.stock || 0) < 10).length;
     const reservedUnits = inventory.reduce((total, item) => total + Number(item.reserved || 0), 0);
+    const soldUnits = inventory.reduce((total, item) => total + Number(item.soldUnits || 0), 0);
     const auctionModeCount = inventory.filter((item) => String(item.mode || '').toLowerCase().includes('auction')).length;
     const categoriesWithProducts = categories.filter((item) => Number(item.productCount || 0) > 0).length;
     const defaultCategory = categories.find((item) => item.isDefault);
@@ -42,11 +45,19 @@ export function InventoryTab() {
                     compact
                 />
                 <DashboardStatCard
+                    icon="shopping-bag"
+                    label="Sold Units"
+                    value={admin.number ? admin.number(soldUnits) : soldUnits}
+                    meta="Units sold from orders"
+                    tone="olive"
+                    compact
+                />
+                <DashboardStatCard
                     icon="gavel"
                     label="Auction Mode"
                     value={admin.number ? admin.number(auctionModeCount) : auctionModeCount}
                     meta="Products tied to bidding"
-                    tone="olive"
+                    tone="clay"
                     compact
                 />
             </div>
@@ -133,6 +144,7 @@ export function InventoryTab() {
                             <th>Price</th>
                             <th>Stock</th>
                             <th>Held Stock</th>
+                            <th>Sold</th>
                             <th>Available</th>
                             <th>Status</th>
                             <th>Actions</th>
@@ -174,6 +186,7 @@ export function InventoryTab() {
                                 <td className="mono" style={{ fontWeight: 700, color: 'var(--primary)' }}>{admin.currency ? admin.currency(item.price) : ''}</td>
                                 <td className="mono">{admin.number ? admin.number(item.stock) : ''}</td>
                                 <td className="mono" style={{ color: 'var(--muted)' }}>{admin.number ? admin.number(item.reserved) : ''}</td>
+                                <td className="mono" style={{ color: 'var(--text)', fontWeight: 700 }}>{admin.number ? admin.number(item.soldUnits) : ''}</td>
                                 <td className="mono" style={{ fontWeight: 700 }}>{admin.number ? admin.number(item.stock - item.reserved) : ''}</td>
                                 <td>
                                     <span className={`status-badge ${item.stock < 10 ? 'status-low' : 'status-delivered'}`}>
@@ -191,6 +204,15 @@ export function InventoryTab() {
                                                 <Icon name="rotate-ccw" style={{ width: '14px', height: '14px' }} />
                                             </button>
                                         ) : (
+                                            <button
+                                                onClick={() => navigate(`/tufayel/panel/inventory/${item.id || item.slug}/buyers`)}
+                                                className="order-icon-btn"
+                                                title="Buyer list"
+                                            >
+                                                <Icon name="users" style={{ width: '14px', height: '14px' }} />
+                                            </button>
+                                        )}
+                                        {!admin.inventoryTrashMode && (
                                             <button
                                                 onClick={() => admin.openProductEdit && admin.openProductEdit(item)}
                                                 className="order-icon-btn"

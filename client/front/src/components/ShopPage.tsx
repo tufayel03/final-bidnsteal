@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+﻿import React, { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { ShoppingCart, SlidersHorizontal, PackageX, Check, LayoutGrid, Grid3x3, Grid2x2, List, ChevronLeft, ChevronRight, Search } from 'lucide-react';
 import { Link } from 'react-router-dom';
@@ -11,9 +11,9 @@ import { assetUrl } from '../lib/api';
 
 const PRICE_RANGES = [
   { label: 'All Prices', min: 0, max: Infinity },
-  { label: 'Under ৳20', min: 0, max: 20 },
-  { label: '৳20 - ৳50', min: 20, max: 50 },
-  { label: 'Over ৳50', min: 50, max: Infinity },
+  { label: 'Under ৳1000', min: 0, max: 1000 },
+  { label: '৳1000 - ৳1500', min: 1000, max: 1500 },
+  { label: 'Over ৳1500', min: 1500, max: Infinity },
 ];
 
 export function ShopPage() {
@@ -295,7 +295,7 @@ export function ShopPage() {
                         
                         <div className={`mt-auto flex items-center justify-between relative z-20 ${gridColumns === 'list' ? 'mt-4' : ''}`}>
                           <span className={`font-mono text-white ${gridColumns === 'list' ? 'text-lg sm:text-xl' : 'text-sm'}`}>
-                            ৳{product.price.toFixed(2)}
+                            à§³{product.price.toFixed(2)}
                           </span>
                           <button 
                             onClick={(e) => handleAddToCart(e, product)}
@@ -362,3 +362,4 @@ export function ShopPage() {
     </div>
   );
 }
+
