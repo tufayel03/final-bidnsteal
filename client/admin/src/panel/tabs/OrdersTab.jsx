@@ -18,7 +18,9 @@ import { useAdmin } from '../AdminContext';
 export function OrdersTab() {
     const admin = useAdmin();
     const navigate = useNavigate();
-    const { orderFilters, orders = [], ordersDeleting, orderDrafts, ordersMeta } = admin;
+    const { orderFilters, orders = [], ordersDeleting, ordersBulkSending, ordersBulkUpdating, orderBulkDraft, orderDrafts, ordersMeta } = admin;
+    const selectedCount = admin.selectedOrderCount ? admin.selectedOrderCount() : 0;
+    const allVisibleSelected = orders.length > 0 && selectedCount === orders.length;
 
     return (
         <div style={{ display: 'grid', gap: '24px' }}>
@@ -66,7 +68,7 @@ export function OrdersTab() {
 
                 <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
                     <div className="order-selection-meta">
-                        Selected: <span className="mono">{admin.number ? admin.number(admin.selectedOrderCount ? admin.selectedOrderCount() : 0) : 0}</span>
+                        Selected: <span className="mono">{admin.number ? admin.number(selectedCount) : 0}</span>
                         {' / '}
                         <span className="mono">{admin.number ? admin.number(orders.length) : 0}</span>
                     </div>
@@ -74,10 +76,70 @@ export function OrdersTab() {
                     <button onClick={() => admin.clearOrderSelection && admin.clearOrderSelection()} className="order-filter-btn" style={{ padding: '6px 12px', fontSize: '12px' }}>Clear</button>
                     <button
                         onClick={() => admin.deleteSelectedOrders && admin.deleteSelectedOrders()}
-                        disabled={!(admin.selectedOrderCount && admin.selectedOrderCount()) || ordersDeleting}
+                        disabled={!selectedCount || ordersDeleting}
                         className="order-filter-btn danger" style={{ padding: '6px 12px', fontSize: '12px' }}
                     >
                         {ordersDeleting ? 'Deleting...' : 'Delete Selected'}
+                    </button>
+                </div>
+                <div className="order-bulk-bar">
+                    <div className="order-bulk-pill">
+                        <span className="order-bulk-pill-label">Bulk Actions</span>
+                        <strong className="mono">{admin.number ? admin.number(selectedCount) : 0}</strong>
+                    </div>
+                    <div className="order-inline-select-wrap order-bulk-select-wrap">
+                        <span className="order-inline-icon">
+                            <CreditCard size={14} />
+                        </span>
+                        <select
+                            className="order-filter-select order-inline-select"
+                            value={orderBulkDraft?.paymentStatus || ''}
+                            onChange={(e) => { admin.orderBulkDraft.paymentStatus = e.target.value; }}
+                        >
+                            <option value="">Payment Status</option>
+                            <option value="unpaid">Unpaid</option>
+                            <option value="paid">Paid</option>
+                            <option value="refunded">Refunded</option>
+                        </select>
+                    </div>
+                    <div className="order-inline-select-wrap order-bulk-select-wrap">
+                        <span className="order-inline-icon">
+                            <Package size={14} />
+                        </span>
+                        <select
+                            className="order-filter-select order-inline-select"
+                            value={orderBulkDraft?.fulfillmentStatus || ''}
+                            onChange={(e) => { admin.orderBulkDraft.fulfillmentStatus = e.target.value; }}
+                        >
+                            <option value="">Fulfillment Status</option>
+                            <option value="pending">Pending</option>
+                            <option value="processing">Processing</option>
+                            <option value="shipped">Shipped</option>
+                            <option value="delivered">Delivered</option>
+                            <option value="cancelled">Cancelled</option>
+                        </select>
+                    </div>
+                    <button
+                        onClick={() => admin.applyBulkOrderStatus && admin.applyBulkOrderStatus()}
+                        disabled={!selectedCount || ordersBulkUpdating}
+                        className="order-filter-btn"
+                    >
+                        <Save size={14} />
+                        <span>{ordersBulkUpdating ? 'Applying...' : 'Apply Selected'}</span>
+                    </button>
+                    <button
+                        onClick={() => admin.sendSelectedOrdersToCourier && admin.sendSelectedOrdersToCourier()}
+                        disabled={!selectedCount || ordersBulkSending}
+                        className="order-filter-btn primary"
+                    >
+                        <Send size={14} />
+                        <span>{ordersBulkSending ? 'Sending...' : 'Send Selected'}</span>
+                    </button>
+                    <button
+                        onClick={() => admin.resetBulkOrderDraft && admin.resetBulkOrderDraft()}
+                        className="order-filter-btn"
+                    >
+                        Reset Bulk
                     </button>
                 </div>
             </div>
@@ -88,7 +150,7 @@ export function OrdersTab() {
                             <th style={{ width: '40px' }}>
                                 <input
                                     type="checkbox"
-                                    checked={orders.length > 0 && admin.selectedOrderCount && admin.selectedOrderCount() === orders.length}
+                                    checked={allVisibleSelected}
                                     onChange={(e) => e.target.checked ? admin.selectAllVisibleOrders() : admin.clearOrderSelection()}
                                     className="order-check"
                                 />

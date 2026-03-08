@@ -1,5 +1,6 @@
 const express = require("express");
 const mongoose = require("mongoose");
+const Auction = require("../models/Auction");
 const Product = require("../models/Product");
 const { requireAdmin } = require("../middleware/auth");
 const { containsRegex, parsePagination } = require("../utils/http");
@@ -133,6 +134,8 @@ router.patch("/:identifier", async (req, res) => {
     return res.status(404).json({ message: "Product not found." });
   }
 
+  const previousSaleMode = product.saleMode || "fixed";
+
   if (req.body?.title !== undefined) product.title = sanitizeText(req.body.title, 180);
   if (req.body?.slug !== undefined) product.slug = slugify(req.body.slug || product.title);
   if (req.body?.price !== undefined) product.price = Math.max(0, Number(req.body.price || 0));
@@ -151,6 +154,9 @@ router.patch("/:identifier", async (req, res) => {
   product.category = resolveCategory(req.body, product);
 
   await product.save();
+  if (previousSaleMode !== "fixed" && product.saleMode === "fixed") {
+    await Auction.deleteMany({ productId: product._id });
+  }
   return res.json(product);
 });
 
@@ -162,6 +168,7 @@ router.delete("/:identifier", async (req, res) => {
 
   product.deletedAt = new Date();
   await product.save();
+  await Auction.deleteMany({ productId: product._id });
   return res.json({ ok: true });
 });
 
@@ -182,6 +189,7 @@ router.delete("/:identifier/hard", async (req, res) => {
     return res.status(404).json({ message: "Product not found." });
   }
 
+  await Auction.deleteMany({ productId: product._id });
   await Product.findByIdAndDelete(product._id);
   return res.json({ ok: true });
 });

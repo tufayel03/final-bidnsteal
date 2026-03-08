@@ -52,6 +52,24 @@ function normalizePhone(value) {
   return String(value || "").replace(/\D+/g, "");
 }
 
+function normalizeOrderIds(orderIds) {
+  if (!Array.isArray(orderIds)) return [];
+
+  const unique = [];
+  const seen = new Set();
+
+  for (const value of orderIds) {
+    const orderId = String(value || "").trim();
+    if (!orderId || seen.has(orderId) || !/^[a-f0-9]{24}$/i.test(orderId)) {
+      continue;
+    }
+    seen.add(orderId);
+    unique.push(orderId);
+  }
+
+  return unique;
+}
+
 function buildFulfillmentStatusFromCourier(deliveryStatus, currentStatus) {
   const normalized = normalizeDeliveryStatus(deliveryStatus);
   if (["delivered", "partial_delivered"].includes(normalized)) {
@@ -68,6 +86,211 @@ function buildFulfillmentStatusFromCourier(deliveryStatus, currentStatus) {
 
 function roundMoney(value) {
   return Number(Number(value || 0).toFixed(2));
+}
+
+async function dispatchSteadfastOrder(order, options = {}) {
+  if (!order) {
+    throw Object.assign(new Error("Order not found."), { status: 404 });
+  }
+
+  const force = Boolean(options.force);
+  if (order.courier?.consignmentId && !force) {
+    throw Object.assign(new Error("Order is already sent to courier."), { status: 409, code: "already_sent" });
+  }
+
+  const result = await createSteadfastOrder(order);
+  order.courier = {
+    ...(order.courier || {}),
+    provider: "steadfast",
+    trackingCode: result.trackingCode || order.courier?.trackingCode || null,
+    consignmentId: result.consignmentId || order.courier?.consignmentId || null,
+    statusCode: "created",
+    deliveryStatus: result.deliveryStatus || "pending_pickup"
+  };
+  order.fulfillmentStatus = buildFulfillmentStatusFromCourier(order.courier.deliveryStatus, order.fulfillmentStatus);
+  await order.save();
+  return order;
+}
+
+function utcStartOfDay(value) {
+  const date = new Date(value);
+  return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
+}
+
+function utcEndOfDay(value) {
+  const date = utcStartOfDay(value);
+  date.setUTCDate(date.getUTCDate() + 1);
+  date.setUTCMilliseconds(date.getUTCMilliseconds() - 1);
+  return date;
+}
+
+function utcStartOfMonth(value) {
+  const date = new Date(value);
+  return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), 1));
+}
+
+function utcEndOfMonth(value) {
+  const date = utcStartOfMonth(value);
+  date.setUTCMonth(date.getUTCMonth() + 1);
+  date.setUTCMilliseconds(date.getUTCMilliseconds() - 1);
+  return date;
+}
+
+function addUtcDays(value, days) {
+  const date = new Date(value);
+  date.setUTCDate(date.getUTCDate() + Number(days || 0));
+  return date;
+}
+
+function addUtcMonths(value, months) {
+  const date = new Date(value);
+  date.setUTCMonth(date.getUTCMonth() + Number(months || 0));
+  return date;
+}
+
+function formatRevenueDayKey(value) {
+  return new Date(value).toISOString().slice(0, 10);
+}
+
+function formatRevenueMonthKey(value) {
+  return new Date(value).toISOString().slice(0, 7);
+}
+
+function formatRevenueLabel(key, bucket) {
+  if (bucket === "month") {
+    const [year, month] = String(key || "").split("-").map((part) => Number(part || 0));
+    const date = new Date(Date.UTC(year || 1970, Math.max(0, (month || 1) - 1), 1));
+    return date.toLocaleDateString("en-US", { month: "short", year: "numeric", timeZone: "UTC" });
+  }
+
+  const [year, month, day] = String(key || "").split("-").map((part) => Number(part || 0));
+  const date = new Date(Date.UTC(year || 1970, Math.max(0, (month || 1) - 1), day || 1));
+  return date.toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
+}
+
+function resolveRevenueTelemetryWindow(query = {}) {
+  const range = String(query.range || "7d").trim().toLowerCase();
+  const today = utcStartOfDay(new Date());
+
+  if (range === "7d") {
+    return {
+      range,
+      bucket: "day",
+      startDate: addUtcDays(today, -6),
+      endDate: utcEndOfDay(today)
+    };
+  }
+
+  if (range === "1m") {
+    return {
+      range,
+      bucket: "day",
+      startDate: addUtcDays(today, -29),
+      endDate: utcEndOfDay(today)
+    };
+  }
+
+  if (range === "6m") {
+    return {
+      range,
+      bucket: "month",
+      startDate: utcStartOfMonth(addUtcMonths(today, -5)),
+      endDate: utcEndOfMonth(today)
+    };
+  }
+
+  if (range === "12m") {
+    return {
+      range,
+      bucket: "month",
+      startDate: utcStartOfMonth(addUtcMonths(today, -11)),
+      endDate: utcEndOfMonth(today)
+    };
+  }
+
+  if (range === "custom") {
+    const from = String(query.from || "").trim();
+    const to = String(query.to || "").trim();
+    if (!from || !to) {
+      const error = new Error("Both from and to dates are required for a custom revenue range.");
+      error.status = 400;
+      throw error;
+    }
+
+    const rawStart = new Date(from);
+    const rawEnd = new Date(to);
+    if (Number.isNaN(rawStart.getTime()) || Number.isNaN(rawEnd.getTime())) {
+      const error = new Error("Custom revenue dates are invalid.");
+      error.status = 400;
+      throw error;
+    }
+
+    const startDate = utcStartOfDay(rawStart);
+    const endDate = utcEndOfDay(rawEnd);
+    if (startDate > endDate) {
+      const error = new Error("The revenue range start date must be before the end date.");
+      error.status = 400;
+      throw error;
+    }
+
+    const spanDays = Math.floor((utcStartOfDay(rawEnd) - utcStartOfDay(rawStart)) / 86_400_000) + 1;
+    return {
+      range,
+      bucket: spanDays > 62 ? "month" : "day",
+      startDate,
+      endDate
+    };
+  }
+
+  const error = new Error("Unsupported revenue range.");
+  error.status = 400;
+  throw error;
+}
+
+function buildRevenueTelemetrySeries(orders, startDate, endDate, bucket) {
+  const totals = new Map();
+
+  (orders || []).forEach((order) => {
+    const createdAt = new Date(order.createdAt);
+    if (Number.isNaN(createdAt.getTime())) {
+      return;
+    }
+    const key = bucket === "month" ? formatRevenueMonthKey(createdAt) : formatRevenueDayKey(createdAt);
+    totals.set(key, roundMoney((totals.get(key) || 0) + Number(order.total || 0)));
+  });
+
+  const labels = [];
+  const values = [];
+  const keys = [];
+
+  if (bucket === "month") {
+    let cursor = utcStartOfMonth(startDate);
+    const boundary = utcStartOfMonth(endDate);
+    while (cursor <= boundary) {
+      const key = formatRevenueMonthKey(cursor);
+      keys.push(key);
+      labels.push(formatRevenueLabel(key, "month"));
+      values.push(roundMoney(totals.get(key) || 0));
+      cursor = utcStartOfMonth(addUtcMonths(cursor, 1));
+    }
+  } else {
+    let cursor = utcStartOfDay(startDate);
+    const boundary = utcStartOfDay(endDate);
+    while (cursor <= boundary) {
+      const key = formatRevenueDayKey(cursor);
+      keys.push(key);
+      labels.push(formatRevenueLabel(key, "day"));
+      values.push(roundMoney(totals.get(key) || 0));
+      cursor = utcStartOfDay(addUtcDays(cursor, 1));
+    }
+  }
+
+  return {
+    keys,
+    labels,
+    values,
+    total: roundMoney(values.reduce((sum, value) => sum + Number(value || 0), 0))
+  };
 }
 
 async function buildReservationSnapshot() {
@@ -194,6 +417,17 @@ async function buildTemplateContext() {
   };
 }
 
+async function buildCampaignPreviewContext() {
+  const templateContext = await buildTemplateContext();
+  return {
+    ...templateContext,
+    subscriber: {
+      name: "Collector One",
+      email: templateContext.support?.email || env.adminEmail
+    }
+  };
+}
+
 router.use(requireAdmin);
 
 router.get("/campaigns/templates", async (req, res) => {
@@ -250,6 +484,23 @@ router.post("/campaigns", async (req, res) => {
     html: String(req.body?.html || "")
   });
   return res.status(201).json(campaign);
+});
+
+router.post("/campaigns/preview", async (req, res) => {
+  const subject = String(req.body?.subject || "").trim();
+  const html = String(req.body?.html || "");
+  if (!subject && !html.trim()) {
+    return res.status(400).json({ message: "Campaign subject or HTML is required for preview." });
+  }
+
+  const context = await buildCampaignPreviewContext();
+  return res.json({
+    subjectTemplate: subject,
+    htmlTemplate: html,
+    subject: renderTemplateString(subject || "", context),
+    html: renderTemplateString(html || "", context),
+    context
+  });
 });
 
 router.post("/campaigns/:id/send", async (req, res) => {
@@ -452,6 +703,28 @@ router.get("/financial/summary", async (_req, res) => {
     avgAuctionUplift,
     walletBalances: { total: roundMoney(lockedBalance + settledBalance), locked: lockedBalance },
     monthlyReport: Array.from(monthlyMap.values()).sort((a, b) => a.month.localeCompare(b.month))
+  });
+});
+
+router.get("/financial/revenue-telemetry", async (req, res) => {
+  const { range, bucket, startDate, endDate } = resolveRevenueTelemetryWindow(req.query);
+  const orders = await Order.find({
+    createdAt: {
+      $gte: startDate,
+      $lte: endDate
+    }
+  })
+    .select("createdAt total")
+    .sort({ createdAt: 1 })
+    .lean();
+
+  const series = buildRevenueTelemetrySeries(orders, startDate, endDate, bucket);
+  return res.json({
+    range,
+    bucket,
+    from: startDate.toISOString(),
+    to: endDate.toISOString(),
+    ...series
   });
 });
 
@@ -687,6 +960,63 @@ router.get("/courier/steadfast/balance", async (_req, res) => {
   return res.json(balance);
 });
 
+router.post("/courier/steadfast/orders/bulk-create", async (req, res) => {
+  const orderIds = normalizeOrderIds(req.body?.orderIds);
+  if (!orderIds.length) {
+    return res.status(400).json({ message: "Select at least one valid order." });
+  }
+
+  const force = Boolean(req.body?.force);
+  const foundOrders = await Order.find({ _id: { $in: orderIds } });
+  const byId = new Map(foundOrders.map((order) => [String(order._id), order]));
+
+  const updatedOrders = [];
+  const conflicts = [];
+  const failed = [];
+
+  for (const orderId of orderIds) {
+    const order = byId.get(orderId);
+    if (!order) {
+      failed.push({ orderId, message: "Order not found." });
+      continue;
+    }
+
+    try {
+      const updated = await dispatchSteadfastOrder(order, { force });
+      updatedOrders.push(updated);
+    } catch (error) {
+      if (Number(error?.status) === 409) {
+        conflicts.push({
+          orderId,
+          orderNumber: order.orderNumber || "",
+          message: error.message || "Order is already sent to courier."
+        });
+        continue;
+      }
+
+      failed.push({
+        orderId,
+        orderNumber: order.orderNumber || "",
+        message: error.message || "Failed to send order to courier."
+      });
+    }
+  }
+
+  return res.json({
+    ok: failed.length === 0 && conflicts.length === 0,
+    message:
+      updatedOrders.length && !failed.length && !conflicts.length
+        ? `Sent ${updatedOrders.length} order(s) to courier.`
+        : "Bulk courier dispatch completed.",
+    updatedOrders,
+    updatedCount: updatedOrders.length,
+    conflicts,
+    conflictCount: conflicts.length,
+    failed,
+    failedCount: failed.length
+  });
+});
+
 router.post("/courier/steadfast/orders/:id/create", async (req, res) => {
   const order = await Order.findById(req.params.id);
   if (!order) {
@@ -694,21 +1024,16 @@ router.post("/courier/steadfast/orders/:id/create", async (req, res) => {
   }
 
   const force = Boolean(req.body?.force);
-  if (order.courier?.consignmentId && !force) {
-    return res.status(409).json({ message: "Order is already sent to courier.", order });
+
+  try {
+    await dispatchSteadfastOrder(order, { force });
+  } catch (error) {
+    if (Number(error?.status) === 409) {
+      return res.status(409).json({ message: error.message || "Order is already sent to courier.", order });
+    }
+    throw error;
   }
 
-  const result = await createSteadfastOrder(order);
-  order.courier = {
-    ...(order.courier || {}),
-    provider: "steadfast",
-    trackingCode: result.trackingCode || order.courier?.trackingCode || null,
-    consignmentId: result.consignmentId || order.courier?.consignmentId || null,
-    statusCode: "created",
-    deliveryStatus: result.deliveryStatus || "pending_pickup"
-  };
-  order.fulfillmentStatus = buildFulfillmentStatusFromCourier(order.courier.deliveryStatus, order.fulfillmentStatus);
-  await order.save();
   return res.json({
     ok: true,
     message: `Order ${order.orderNumber} sent to courier.`,

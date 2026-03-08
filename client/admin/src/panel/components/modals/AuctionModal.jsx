@@ -280,6 +280,13 @@ export function AuctionModal() {
                                 <button onClick={() => admin.refreshAuctionDetails && admin.refreshAuctionDetails()} className="secondary-btn">
                                     {auctionDetailsModal.loading ? '...' : 'Refresh'}
                                 </button>
+                                <button
+                                    onClick={() => admin.deleteAuction && admin.deleteAuction(auctionDetailsModal.detail)}
+                                    disabled={auctionDetailsModal.loading || auctionDetailsModal.saving}
+                                    className="secondary-btn"
+                                >
+                                    Delete
+                                </button>
                                 <button onClick={() => admin.closeAuctionDetails && admin.closeAuctionDetails()} className="secondary-btn">Close</button>
                                 <button
                                     onClick={() => admin.saveAuctionDetails && admin.saveAuctionDetails()}

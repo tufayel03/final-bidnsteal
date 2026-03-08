@@ -6,7 +6,17 @@ export function DashboardTab() {
     const admin = useAdmin();
 
     // Extract necessary context data
-    const { kpisRow1 = [], kpisRow2 = [], inventoryStats = {}, recentOrders = [], endingAuctions = [], revenueWindow } = admin;
+    const {
+        kpisRow1 = [],
+        kpisRow2 = [],
+        inventoryStats = {},
+        recentOrders = [],
+        endingAuctions = [],
+        revenueWindow,
+        revenueCustomRange = {},
+        revenueTelemetryLoading = false,
+        revenueTelemetryMeta = {}
+    } = admin;
 
     return (
         <div style={{ display: 'grid', gap: '24px' }}>
@@ -68,24 +78,87 @@ export function DashboardTab() {
             <div className="dashboard-main-grid">
                 {/* Revenue Chart */}
                 <div className="card chart-card">
-                    <div className="card-title-row">
-                        <h3 style={{ fontSize: '20px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Revenue Telemetry</h3>
-                        <div className="segment-toggle">
-                            <button
-                                onClick={() => admin.setRevenueWindow && admin.setRevenueWindow('7d')}
-                                className={revenueWindow === '7d' ? 'active' : ''}
-                            >
-                                7D
-                            </button>
-                            <button
-                                onClick={() => admin.setRevenueWindow && admin.setRevenueWindow('30d')}
-                                className={revenueWindow === '30d' ? 'active' : ''}
-                            >
-                                30D
-                            </button>
+                    <div className="revenue-telemetry-head">
+                        <div className="card-title-row" style={{ marginBottom: 0 }}>
+                            <div>
+                                <h3 style={{ fontSize: '20px', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '6px' }}>Revenue Telemetry</h3>
+                                <p className="revenue-telemetry-caption">
+                                    {revenueTelemetryMeta.from && revenueTelemetryMeta.to
+                                        ? `${admin.date ? admin.date(revenueTelemetryMeta.from) : revenueTelemetryMeta.from} to ${admin.date ? admin.date(revenueTelemetryMeta.to) : revenueTelemetryMeta.to} • ${String(revenueTelemetryMeta.bucket || 'day').toUpperCase()} buckets`
+                                        : 'Track revenue movement across short and long sales windows.'}
+                                </p>
+                            </div>
+                            <div className="revenue-telemetry-controls">
+                                <div className="revenue-preset-actions">
+                                    <button
+                                        onClick={() => admin.setRevenueWindow && admin.setRevenueWindow('7d')}
+                                        className={`${revenueWindow === '7d' ? 'primary-btn' : 'secondary-btn'} revenue-preset-btn`}
+                                        disabled={revenueTelemetryLoading}
+                                    >
+                                        7D
+                                    </button>
+                                    <button
+                                        onClick={() => admin.setRevenueWindow && admin.setRevenueWindow('1m')}
+                                        className={`${revenueWindow === '1m' ? 'primary-btn' : 'secondary-btn'} revenue-preset-btn`}
+                                        disabled={revenueTelemetryLoading}
+                                    >
+                                        1M
+                                    </button>
+                                    <button
+                                        onClick={() => admin.setRevenueWindow && admin.setRevenueWindow('6m')}
+                                        className={`${revenueWindow === '6m' ? 'primary-btn' : 'secondary-btn'} revenue-preset-btn`}
+                                        disabled={revenueTelemetryLoading}
+                                    >
+                                        6M
+                                    </button>
+                                    <button
+                                        onClick={() => admin.setRevenueWindow && admin.setRevenueWindow('12m')}
+                                        className={`${revenueWindow === '12m' ? 'primary-btn' : 'secondary-btn'} revenue-preset-btn`}
+                                        disabled={revenueTelemetryLoading}
+                                    >
+                                        12M
+                                    </button>
+                                    <button
+                                        onClick={() => admin.setRevenueWindow && admin.setRevenueWindow('custom')}
+                                        className={`${revenueWindow === 'custom' ? 'primary-btn' : 'secondary-btn'} revenue-preset-btn`}
+                                        disabled={revenueTelemetryLoading}
+                                    >
+                                        Custom
+                                    </button>
+                                </div>
+
+                                <div className="revenue-custom-range">
+                                    <input
+                                        type="date"
+                                        value={revenueCustomRange.from || ''}
+                                        onChange={(event) => admin.setRevenueCustomRange && admin.setRevenueCustomRange('from', event.target.value)}
+                                        className="admin-search-input revenue-date-input"
+                                        aria-label="Revenue start date"
+                                    />
+                                    <span className="revenue-date-separator">to</span>
+                                    <input
+                                        type="date"
+                                        value={revenueCustomRange.to || ''}
+                                        onChange={(event) => admin.setRevenueCustomRange && admin.setRevenueCustomRange('to', event.target.value)}
+                                        className="admin-search-input revenue-date-input"
+                                        aria-label="Revenue end date"
+                                    />
+                                    <button
+                                        onClick={() => admin.applyRevenueCustomRange && admin.applyRevenueCustomRange()}
+                                        className="primary-btn revenue-range-apply"
+                                        disabled={revenueTelemetryLoading}
+                                    >
+                                        Apply
+                                    </button>
+                                </div>
+                            </div>
                         </div>
                     </div>
-                    <div className="mini-chart-wrap" style={{ height: '260px' }}>
+
+                    <div id="revenueChartWrap" className={`mini-chart-wrap ${revenueTelemetryLoading ? 'is-loading' : ''}`} style={{ height: '260px' }}>
+                        {revenueTelemetryLoading ? (
+                            <div className="revenue-chart-loading">Loading revenue telemetry...</div>
+                        ) : null}
                         <canvas id="revenueChart" style={{ display: 'block', width: '100%', height: '100%' }}></canvas>
                     </div>
                 </div>
@@ -99,8 +172,10 @@ export function DashboardTab() {
                     </div>
                     <div className="inventory-list" style={{ marginTop: '24px' }}>
                         <div className="inventory-row" style={{ background: 'rgba(15, 23, 42, 0.4)' }}>
-                            <span style={{ fontSize: '11px', fontWeight: '600', letterSpacing: '0.1em', textTransform: 'uppercase' }}>Total Capacity</span>
-                            <strong style={{ fontSize: '26px', color: 'var(--info)' }}>{admin.number ? admin.number(inventoryStats.totalProducts) : 0}</strong>
+                            <span style={{ fontSize: '11px', fontWeight: '600', letterSpacing: '0.1em', textTransform: 'uppercase' }}>Net Asset</span>
+                            <strong style={{ fontSize: '26px', color: 'var(--info)' }}>
+                                {admin.currency ? admin.currency(inventoryStats.netAssetValue) : inventoryStats.netAssetValue}
+                            </strong>
                         </div>
                         <div className="inventory-row" style={{ background: 'rgba(239, 68, 68, 0.05)', borderColor: 'rgba(239, 68, 68, 0.2)' }}>
                             <span style={{ fontSize: '11px', fontWeight: '600', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--danger)' }}>Critical Shortage</span>

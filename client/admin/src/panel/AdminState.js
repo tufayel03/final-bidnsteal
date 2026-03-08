@@ -1,4 +1,20 @@
-﻿export function getInitialAdminState() {
+function formatInputDate(value) {
+  const date = new Date(value);
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+export function getInitialAdminState() {
+  const today = new Date();
+  const customRangeTo = formatInputDate(today);
+  const customRangeFrom = (() => {
+    const date = new Date(today);
+    date.setDate(date.getDate() - 29);
+    return formatInputDate(date);
+  })();
+
   return {
     activeTab: "dashboard",
     showSearch: false,
@@ -36,6 +52,7 @@
     kpisRow2: [],
     inventoryStats: {
       totalProducts: 0,
+      netAssetValue: 0,
       outOfStock: 0,
       reservedUnits: 0,
       totalUnits: 0,
@@ -115,6 +132,12 @@
     orderDrafts: {},
     orderSelection: {},
     ordersDeleting: false,
+    ordersBulkUpdating: false,
+    ordersBulkSending: false,
+    orderBulkDraft: {
+      paymentStatus: "",
+      fulfillmentStatus: ""
+    },
     orderDetailsModal: {
       open: false,
       loading: false,
@@ -168,7 +191,25 @@
       totalPages: 1
     },
     selectedUserDetails: null,
+    userDetailsDraft: {
+      name: "",
+      email: "",
+      phone: "",
+      role: "customer",
+      isSuspended: false,
+      shippingAddress: {
+        fullName: "",
+        phone: "",
+        addressLine1: "",
+        addressLine2: "",
+        area: "",
+        city: "",
+        postalCode: "",
+        country: "BD"
+      }
+    },
     userDetailsLoading: false,
+    userDetailsSaving: false,
     usersImport: {
       file: null,
       fileName: "",
@@ -196,6 +237,12 @@
     selectedCampaignTemplateId: "",
     campaignTemplateName: "",
     campaignDraft: {
+      subject: "",
+      html: ""
+    },
+    campaignPreview: {
+      open: false,
+      loading: false,
       subject: "",
       html: ""
     },
@@ -376,9 +423,24 @@
       ordersPie: null
     },
     revenueWindow: "7d",
+    revenueTelemetryLoading: false,
+    revenueTelemetryMeta: {
+      range: "7d",
+      bucket: "day",
+      from: "",
+      to: "",
+      total: 0
+    },
+    revenueCustomRange: {
+      from: customRangeFrom,
+      to: customRangeTo
+    },
     revenueSeries: {
       "7d": { labels: [], values: [] },
-      "30d": { labels: [], values: [] }
+      "1m": { labels: [], values: [] },
+      "6m": { labels: [], values: [] },
+      "12m": { labels: [], values: [] },
+      custom: { labels: [], values: [] }
     },
   };
 }

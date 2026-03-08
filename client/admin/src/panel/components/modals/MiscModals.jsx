@@ -8,11 +8,64 @@ const label = { display: 'block', marginBottom: '6px', fontSize: '11px', fontWei
 
 export function MiscModals() {
     const admin = useAdmin();
-    const { emailMediaPicker = {}, toast = {}, showSearch, menuItems = [] } = admin;
+    const { campaignPreview = {}, emailMediaPicker = {}, toast = {}, showSearch, menuItems = [] } = admin;
     const assets = admin.filteredEmailMediaAssets ? admin.filteredEmailMediaAssets() : [];
 
     return (
         <>
+            {campaignPreview.open && (
+                <AdminModalPortal>
+                    <div className="admin-modal-overlay" style={{ zIndex: 1085 }} onClick={(event) => event.target === event.currentTarget && admin.closeCampaignPreview && admin.closeCampaignPreview()}>
+                        <div className="admin-modal" style={{ maxWidth: '1280px', width: 'min(1280px, calc(100vw - 48px))' }}>
+                            <div className="admin-modal-head">
+                                <div>
+                                    <h3 style={{ margin: 0, fontSize: '22px', fontWeight: 800, color: '#f8fafc' }}>Campaign HTML Preview</h3>
+                                    <p style={{ margin: '6px 0 0 0', color: 'var(--muted)', fontSize: '13px' }}>
+                                        Rendered with sample subscriber and site data before sending.
+                                    </p>
+                                </div>
+                                <button onClick={() => admin.closeCampaignPreview && admin.closeCampaignPreview()} className="icon-btn">
+                                    <Icon name="x" className="w-5 h-5" />
+                                </button>
+                            </div>
+
+                            <div className="admin-modal-body custom-scrollbar">
+                                {campaignPreview.loading ? (
+                                    <p style={{ margin: 0, color: 'var(--muted)' }}>Generating campaign preview...</p>
+                                ) : (
+                                    <div style={{ display: 'grid', gap: '16px' }}>
+                                        <div className="admin-inset-card" style={{ marginBottom: 0 }}>
+                                            <span style={label}>Rendered Subject</span>
+                                            <p style={{ margin: 0, color: '#f8fafc', fontSize: '18px', fontWeight: 700 }}>{campaignPreview.subject || 'No subject rendered.'}</p>
+                                        </div>
+
+                                        <div className="admin-inset-card" style={{ marginBottom: 0, display: 'grid', gap: '12px' }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap' }}>
+                                                <span style={label}>Rendered HTML</span>
+                                                <button
+                                                    onClick={() => admin.copyText && admin.copyText(campaignPreview.html || '')}
+                                                    className="secondary-btn"
+                                                    style={{ padding: '10px 14px' }}
+                                                >
+                                                    Copy HTML
+                                                </button>
+                                            </div>
+                                            <div className="campaign-preview-frame-wrap">
+                                                <iframe
+                                                    title="Campaign preview"
+                                                    srcDoc={campaignPreview.html || '<p>No preview generated.</p>'}
+                                                    className="campaign-preview-frame"
+                                                />
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                </AdminModalPortal>
+            )}
+
             {emailMediaPicker.open && (
                 <AdminModalPortal>
                     <div className="admin-modal-overlay" style={{ zIndex: 1090 }} onClick={(event) => event.target === event.currentTarget && admin.closeEmailMediaPicker && admin.closeEmailMediaPicker()}>

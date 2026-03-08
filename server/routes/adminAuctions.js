@@ -16,6 +16,9 @@ async function findAuction(identifier) {
   if (mongoose.Types.ObjectId.isValid(lookup)) {
     const byId = await Auction.findById(lookup).populate("productId");
     if (byId) return byId;
+
+    const byProductId = await Auction.findOne({ productId: lookup }).populate("productId");
+    if (byProductId) return byProductId;
   }
 
   const product = await Product.findOne({ slug: lookup });
@@ -86,6 +89,31 @@ router.get("/:identifier", async (req, res) => {
         }
       : null,
     timeLeftMs: Math.max(0, new Date(auction.endAt).getTime() - Date.now())
+  });
+});
+
+router.delete("/:identifier", async (req, res) => {
+  const auction = await findAuction(req.params.identifier);
+  if (!auction) {
+    return res.status(404).json({ message: "Auction not found." });
+  }
+
+  const product =
+    auction.productId && typeof auction.productId === "object" && auction.productId._id
+      ? auction.productId
+      : await Product.findById(auction.productId);
+
+  await Auction.findByIdAndDelete(auction._id);
+
+  if (product && product.saleMode === "auction") {
+    product.saleMode = "fixed";
+    await product.save();
+  }
+
+  return res.json({
+    ok: true,
+    id: String(auction._id),
+    productId: String(product?._id || auction.productId || "")
   });
 });
 

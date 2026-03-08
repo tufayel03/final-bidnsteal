@@ -22,6 +22,55 @@ function normalizeFulfillmentStatus(value) {
   return "";
 }
 
+function normalizeOrderIds(orderIds) {
+  if (!Array.isArray(orderIds)) return [];
+
+  const unique = [];
+  const seen = new Set();
+
+  for (const value of orderIds) {
+    const orderId = String(value || "").trim();
+    if (!orderId || seen.has(orderId) || !/^[a-f0-9]{24}$/i.test(orderId)) {
+      continue;
+    }
+    seen.add(orderId);
+    unique.push(orderId);
+  }
+
+  return unique;
+}
+
+function buildOrderUpdatePayload(body, options = {}) {
+  const allowCustomerFields = options.allowCustomerFields !== false;
+  const payload = {};
+
+  if (body?.paymentStatus !== undefined) {
+    const paymentStatus = normalizePaymentStatus(body.paymentStatus);
+    if (!paymentStatus) {
+      throw Object.assign(new Error("Invalid payment status."), { status: 400 });
+    }
+    payload.paymentStatus = paymentStatus;
+  }
+
+  if (body?.fulfillmentStatus !== undefined) {
+    const fulfillmentStatus = normalizeFulfillmentStatus(body.fulfillmentStatus);
+    if (!fulfillmentStatus) {
+      throw Object.assign(new Error("Invalid fulfillment status."), { status: 400 });
+    }
+    payload.fulfillmentStatus = fulfillmentStatus;
+  }
+
+  if (allowCustomerFields && body?.customerNote !== undefined) {
+    payload.customerNote = sanitizeText(body.customerNote, 1000);
+  }
+
+  if (allowCustomerFields && body?.shippingAddress && typeof body.shippingAddress === "object") {
+    payload.shippingAddress = body.shippingAddress;
+  }
+
+  return payload;
+}
+
 function fixedInventoryItems(order) {
   const grouped = new Map();
 
@@ -81,6 +130,43 @@ function shouldReleaseInventoryOnDelete(order) {
   return !["shipped", "delivered"].includes(String(order.fulfillmentStatus || "").toLowerCase());
 }
 
+async function applyOrderUpdate(order, payload = {}) {
+  if (!order) return order;
+
+  if (String(order.paymentStatus || "").toLowerCase() === "collected") {
+    order.paymentStatus = "paid";
+  }
+
+  const previousFulfillmentStatus = String(order.fulfillmentStatus || "").toLowerCase();
+
+  if (Object.prototype.hasOwnProperty.call(payload, "paymentStatus")) {
+    order.paymentStatus = payload.paymentStatus;
+  }
+
+  if (Object.prototype.hasOwnProperty.call(payload, "fulfillmentStatus")) {
+    order.fulfillmentStatus = payload.fulfillmentStatus;
+  }
+
+  if (Object.prototype.hasOwnProperty.call(payload, "customerNote")) {
+    order.customerNote = payload.customerNote;
+  }
+
+  if (Object.prototype.hasOwnProperty.call(payload, "shippingAddress")) {
+    order.shippingAddress = normalizeShippingAddress(payload.shippingAddress, order.shippingAddress || {});
+  }
+
+  const nextFulfillmentStatus = String(order.fulfillmentStatus || "").toLowerCase();
+  if (previousFulfillmentStatus !== "cancelled" && nextFulfillmentStatus === "cancelled") {
+    await releaseInventoryForOrder(order);
+  }
+  if (previousFulfillmentStatus === "cancelled" && nextFulfillmentStatus !== "cancelled") {
+    await reclaimInventoryForOrder(order);
+  }
+
+  await order.save();
+  return order;
+}
+
 router.use(requireAdmin);
 
 router.get("/", async (req, res) => {
@@ -114,6 +200,60 @@ router.get("/", async (req, res) => {
   });
 });
 
+router.patch("/bulk/status", async (req, res) => {
+  const orderIds = normalizeOrderIds(req.body?.orderIds);
+  if (!orderIds.length) {
+    return res.status(400).json({ message: "Select at least one valid order." });
+  }
+
+  let payload;
+  try {
+    payload = buildOrderUpdatePayload(req.body, { allowCustomerFields: false });
+  } catch (error) {
+    return res.status(Number(error?.status) || 400).json({ message: error.message || "Invalid order update." });
+  }
+
+  if (
+    !Object.prototype.hasOwnProperty.call(payload, "paymentStatus") &&
+    !Object.prototype.hasOwnProperty.call(payload, "fulfillmentStatus")
+  ) {
+    return res.status(400).json({ message: "Choose a payment status or fulfillment status to apply." });
+  }
+
+  const foundOrders = await Order.find({ _id: { $in: orderIds } });
+  const byId = new Map(foundOrders.map((order) => [String(order._id), order]));
+
+  const updatedOrders = [];
+  const failed = [];
+
+  for (const orderId of orderIds) {
+    const order = byId.get(orderId);
+    if (!order) {
+      failed.push({ orderId, message: "Order not found." });
+      continue;
+    }
+
+    try {
+      await applyOrderUpdate(order, payload);
+      updatedOrders.push(order);
+    } catch (error) {
+      failed.push({
+        orderId,
+        orderNumber: order.orderNumber || "",
+        message: error.message || "Failed to update order."
+      });
+    }
+  }
+
+  return res.json({
+    ok: failed.length === 0,
+    updatedOrders,
+    updatedCount: updatedOrders.length,
+    failed,
+    failedCount: failed.length
+  });
+});
+
 router.get("/:id", async (req, res) => {
   const order = await Order.findById(req.params.id);
   if (!order) {
@@ -128,42 +268,14 @@ router.patch("/:id/status", async (req, res) => {
     return res.status(404).json({ message: "Order not found." });
   }
 
-  if (String(order.paymentStatus || "").toLowerCase() === "collected") {
-    order.paymentStatus = "paid";
+  let payload;
+  try {
+    payload = buildOrderUpdatePayload(req.body, { allowCustomerFields: true });
+  } catch (error) {
+    return res.status(Number(error?.status) || 400).json({ message: error.message || "Invalid order update." });
   }
 
-  const previousFulfillmentStatus = String(order.fulfillmentStatus || "").toLowerCase();
-
-  if (req.body?.paymentStatus !== undefined) {
-    const paymentStatus = normalizePaymentStatus(req.body.paymentStatus);
-    if (!paymentStatus) {
-      return res.status(400).json({ message: "Invalid payment status." });
-    }
-    order.paymentStatus = paymentStatus;
-  }
-  if (req.body?.fulfillmentStatus !== undefined) {
-    const fulfillmentStatus = normalizeFulfillmentStatus(req.body.fulfillmentStatus);
-    if (!fulfillmentStatus) {
-      return res.status(400).json({ message: "Invalid fulfillment status." });
-    }
-    order.fulfillmentStatus = fulfillmentStatus;
-  }
-  if (req.body?.customerNote !== undefined) {
-    order.customerNote = sanitizeText(req.body.customerNote, 1000);
-  }
-  if (req.body?.shippingAddress && typeof req.body.shippingAddress === "object") {
-    order.shippingAddress = normalizeShippingAddress(req.body.shippingAddress, order.shippingAddress || {});
-  }
-
-  const nextFulfillmentStatus = String(order.fulfillmentStatus || "").toLowerCase();
-  if (previousFulfillmentStatus !== "cancelled" && nextFulfillmentStatus === "cancelled") {
-    await releaseInventoryForOrder(order);
-  }
-  if (previousFulfillmentStatus === "cancelled" && nextFulfillmentStatus !== "cancelled") {
-    await reclaimInventoryForOrder(order);
-  }
-
-  await order.save();
+  await applyOrderUpdate(order, payload);
   return res.json(order);
 });
 

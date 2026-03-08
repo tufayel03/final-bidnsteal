@@ -9,7 +9,7 @@ const { sendTemplateEmail } = require("../services/emailService");
 const { getPublicSiteProfile } = require("../services/siteProfileService");
 const { containsRegex, parsePagination } = require("../utils/http");
 const { createPasswordResetToken } = require("../utils/passwordReset");
-const { isValidEmail, normalizeEmail, passwordStrengthError, sanitizeText } = require("../utils/validation");
+const { isValidEmail, normalizeEmail, normalizeShippingAddress, passwordStrengthError, sanitizeText } = require("../utils/validation");
 
 const router = express.Router();
 
@@ -80,6 +80,40 @@ async function enrichUsersWithSpend(users) {
     orderCount: totalsMap.get(user.id)?.orderCount || 0,
     lastOrderAt: totalsMap.get(user.id)?.lastOrderAt || null
   }));
+}
+
+async function buildAdminUserDetails(user) {
+  const match = {
+    $or: [{ userId: user._id }, { customerEmail: user.email }]
+  };
+
+  const [totals = null, recentOrdersRaw = []] = await Promise.all([
+    Order.aggregate([
+      { $match: match },
+      {
+        $group: {
+          _id: null,
+          totalSpent: { $sum: "$total" },
+          orderCount: { $sum: 1 },
+          lastOrderAt: { $max: "$createdAt" }
+        }
+      }
+    ]).then((items) => items[0] || null),
+    Order.find(match).sort({ createdAt: -1 }).limit(10)
+  ]);
+
+  const shippingAddress = normalizePrimaryAddress(user.shippingAddress || {});
+  const addresses = hasAddressFields(shippingAddress) ? [{ ...shippingAddress, label: "Primary" }] : [];
+
+  return {
+    ...user.toJSON(),
+    shippingAddress,
+    addresses,
+    totalSpent: Number(totals?.totalSpent || 0),
+    orderCount: Number(totals?.orderCount || 0),
+    lastOrderAt: totals?.lastOrderAt || null,
+    recentOrders: recentOrdersRaw.map((order) => normalizeAdminOrder(order))
+  };
 }
 
 router.use(requireAdmin);
@@ -208,38 +242,53 @@ router.get("/users/:id", async (req, res) => {
   if (!user) {
     return res.status(404).json({ message: "User not found." });
   }
+  return res.json(await buildAdminUserDetails(user));
+});
 
-  const match = {
-    $or: [{ userId: user._id }, { customerEmail: user.email }]
-  };
+router.patch("/users/:id", async (req, res) => {
+  const user = await User.findById(req.params.id);
+  if (!user) {
+    return res.status(404).json({ message: "User not found." });
+  }
 
-  const [totals = null, recentOrdersRaw = []] = await Promise.all([
-    Order.aggregate([
-      { $match: match },
-      {
-        $group: {
-          _id: null,
-          totalSpent: { $sum: "$total" },
-          orderCount: { $sum: 1 },
-          lastOrderAt: { $max: "$createdAt" }
-        }
-      }
-    ]).then((items) => items[0] || null),
-    Order.find(match).sort({ createdAt: -1 }).limit(10)
-  ]);
+  if (req.body?.name !== undefined) {
+    const name = sanitizeText(req.body.name, 120);
+    if (!name) {
+      return res.status(400).json({ message: "Name is required." });
+    }
+    user.name = name;
+  }
 
-  const shippingAddress = normalizePrimaryAddress(user.shippingAddress || {});
-  const addresses = hasAddressFields(shippingAddress) ? [{ ...shippingAddress, label: "Primary" }] : [];
+  if (req.body?.email !== undefined) {
+    const email = normalizeEmail(req.body.email);
+    if (!email || !isValidEmail(email)) {
+      return res.status(400).json({ message: "A valid email is required." });
+    }
+    const existing = await User.findOne({ email, _id: { $ne: user._id } }).select("_id");
+    if (existing) {
+      return res.status(409).json({ message: "Another user already uses this email address." });
+    }
+    user.email = email;
+  }
 
-  return res.json({
-    ...user.toJSON(),
-    shippingAddress,
-    addresses,
-    totalSpent: Number(totals?.totalSpent || 0),
-    orderCount: Number(totals?.orderCount || 0),
-    lastOrderAt: totals?.lastOrderAt || null,
-    recentOrders: recentOrdersRaw.map((order) => normalizeAdminOrder(order))
-  });
+  if (req.body?.phone !== undefined) {
+    user.phone = sanitizeText(req.body.phone, 40);
+  }
+
+  if (req.body?.role !== undefined) {
+    user.role = req.body.role === "admin" ? "admin" : "customer";
+  }
+
+  if (req.body?.isSuspended !== undefined) {
+    user.isSuspended = Boolean(req.body.isSuspended);
+  }
+
+  if (req.body?.shippingAddress && typeof req.body.shippingAddress === "object") {
+    user.shippingAddress = normalizeShippingAddress(req.body.shippingAddress, user.shippingAddress || {});
+  }
+
+  await user.save();
+  return res.json(await buildAdminUserDetails(user));
 });
 
 router.patch("/users/:id/role", async (req, res) => {

@@ -1,3 +1,5 @@
+import Chart from "chart.js/auto";
+
 const SAFE_HTTP_METHODS = new Set(["GET", "HEAD", "OPTIONS"]);
 export const adminMethods = {
   defaultCourierSettings() {
@@ -598,10 +600,102 @@ export const adminMethods = {
     };
   },
 
+  revenueWindowLabel(windowKey = this.revenueWindow) {
+    const labels = {
+      "7d": "7D",
+      "1m": "1M",
+      "6m": "6M",
+      "12m": "12M",
+      custom: "CUSTOM"
+    };
+    return labels[windowKey] || String(windowKey || "").toUpperCase();
+  },
+
+  setRevenueCustomRange(field, value) {
+    if (!["from", "to"].includes(String(field || ""))) return;
+    this.revenueCustomRange = {
+      ...(this.revenueCustomRange && typeof this.revenueCustomRange === "object" ? this.revenueCustomRange : {}),
+      [field]: String(value || "")
+    };
+  },
+
+  async applyRevenueCustomRange() {
+    const from = String(this.revenueCustomRange?.from || "").trim();
+    const to = String(this.revenueCustomRange?.to || "").trim();
+    if (!from || !to) {
+      this.notify("Select both from and to dates for the custom revenue range.", "error");
+      return;
+    }
+    if (from > to) {
+      this.notify("The custom revenue start date must be before the end date.", "error");
+      return;
+    }
+
+    this.revenueWindow = "custom";
+    await this.loadRevenueTelemetry("custom", { force: true });
+  },
+
+  async loadRevenueTelemetry(windowKey = this.revenueWindow, options = {}) {
+    const normalizedWindow = ["7d", "1m", "6m", "12m", "custom"].includes(String(windowKey || ""))
+      ? String(windowKey)
+      : "7d";
+    const force = Boolean(options.force);
+    const existingSeries = this.revenueSeries?.[normalizedWindow];
+    if (
+      !force &&
+      existingSeries &&
+      Array.isArray(existingSeries.labels) &&
+      existingSeries.labels.length
+    ) {
+      if (this.revenueWindow === normalizedWindow) {
+        this.renderRevenueChart();
+      }
+      return existingSeries;
+    }
+
+    const params = new URLSearchParams({ range: normalizedWindow });
+    if (normalizedWindow === "custom") {
+      params.set("from", String(this.revenueCustomRange?.from || ""));
+      params.set("to", String(this.revenueCustomRange?.to || ""));
+    }
+
+    this.revenueTelemetryLoading = true;
+    try {
+      const response = await this.apiRequest(`/admin/financial/revenue-telemetry?${params.toString()}`);
+      this.revenueSeries = {
+        ...(this.revenueSeries && typeof this.revenueSeries === "object" ? this.revenueSeries : {}),
+        [normalizedWindow]: {
+          labels: Array.isArray(response.labels) ? response.labels : [],
+          values: Array.isArray(response.values) ? response.values : []
+        }
+      };
+      this.revenueTelemetryMeta = {
+        range: normalizedWindow,
+        bucket: String(response.bucket || "day"),
+        from: String(response.from || ""),
+        to: String(response.to || ""),
+        total: Number(response.total || 0)
+      };
+      if (this.revenueWindow === normalizedWindow) {
+        this.renderRevenueChart();
+      }
+      return response;
+    } catch (error) {
+      this.notify(this.errorMessage(error), "error");
+      return null;
+    } finally {
+      this.revenueTelemetryLoading = false;
+    }
+  },
+
   setRevenueWindow(windowKey) {
-    if (windowKey !== "7d" && windowKey !== "30d") return;
+    if (!["7d", "1m", "6m", "12m", "custom"].includes(String(windowKey || ""))) return;
     this.revenueWindow = windowKey;
-    this.renderRevenueChart();
+    if (windowKey === "custom") {
+      void this.loadRevenueTelemetry("custom", { force: true });
+      return;
+    }
+    void this.loadRevenueTelemetry(windowKey);
   },
   async loadDashboard(force = false) {
     const settled = await Promise.allSettled([
@@ -665,6 +759,9 @@ export const adminMethods = {
     const lowStockItems = products.filter((p) => Number(p.stock || 0) <= 5).length;
     const outOfStock = products.filter((p) => Number(p.stock || 0) <= 0).length;
     const totalUnits = products.reduce((sum, p) => sum + Number(p.stock || 0), 0);
+    const netAssetValue = roundMoney(
+      products.reduce((sum, product) => sum + (Number(product.price || 0) * Number(product.stock || 0)), 0)
+    );
     const stockHealth = totalUnits > 0 ? Math.round(Math.max(0, Math.min(100, ((totalUnits - reservedUnits) / totalUnits) * 100))) : 100;
 
     this.kpisRow1 = [
@@ -683,6 +780,7 @@ export const adminMethods = {
 
     this.inventoryStats = {
       totalProducts: Number(productsRes.total || products.length),
+      netAssetValue,
       outOfStock,
       reservedUnits,
       totalUnits,
@@ -694,10 +792,6 @@ export const adminMethods = {
       customer: order.displayCustomer,
       status: order.fulfillmentStatus || "pending"
     }));
-
-    this.revenueSeries["7d"] = this.buildDailyRevenueSeries(orders, 7);
-    this.revenueSeries["30d"] = this.buildDailyRevenueSeries(orders, 30);
-    this.renderRevenueChart();
     this.renderOrdersPie(statusCounts);
     this.financialSummary = { ...this.financialSummary, ...financial };
 
@@ -722,7 +816,10 @@ export const adminMethods = {
       .sort((a, b) => b.percent - a.percent)
       .slice(0, 6);
 
-    await this.loadAuctions(true);
+    await Promise.all([
+      this.loadAuctions(true),
+      this.loadRevenueTelemetry(this.revenueWindow, { force })
+    ]);
     if (force) {
       this.loadedTabs.analytics = false;
     }
@@ -1578,9 +1675,9 @@ export const adminMethods = {
   },
 
   async openAuctionDetails(auction) {
-    const productId = String(auction?.productId || "").trim();
-    if (!productId) {
-      this.notify("Auction product id missing.", "error");
+    const auctionId = String(auction?.id || auction?._id || auction?.productSlug || auction?.productId || "").trim();
+    if (!auctionId) {
+      this.notify("Auction identifier missing.", "error");
       return;
     }
     this.auctionDetailsModal.open = true;
@@ -1590,7 +1687,7 @@ export const adminMethods = {
     this.syncAuctionDetailsDraft(null);
 
     try {
-      const detail = await this.apiRequest(`/admin/auctions/${encodeURIComponent(productId)}`);
+      const detail = await this.apiRequest(`/admin/auctions/${encodeURIComponent(auctionId)}`);
       this.auctionDetailsModal.detail = detail;
       this.syncAuctionDetailsDraft(detail);
     } catch (error) {
@@ -1610,11 +1707,11 @@ export const adminMethods = {
   },
 
   async refreshAuctionDetails() {
-    const productId = String(this.auctionDetailsModal.detail?.productId || "").trim();
-    if (!productId) return;
+    const auctionId = String(this.auctionDetailsModal.detail?.id || this.auctionDetailsModal.detail?._id || this.auctionDetailsModal.detail?.productSlug || this.auctionDetailsModal.detail?.productId || "").trim();
+    if (!auctionId) return;
     this.auctionDetailsModal.loading = true;
     try {
-      const detail = await this.apiRequest(`/admin/auctions/${encodeURIComponent(productId)}`);
+      const detail = await this.apiRequest(`/admin/auctions/${encodeURIComponent(auctionId)}`);
       this.auctionDetailsModal.detail = detail;
       this.syncAuctionDetailsDraft(detail);
     } catch (error) {
@@ -1694,7 +1791,8 @@ export const adminMethods = {
 
   async saveAuctionDetails() {
     const detail = this.auctionDetailsModal.detail;
-    if (!detail?.productId) return;
+    const auctionId = String(detail?.id || detail?._id || detail?.productSlug || detail?.productId || "").trim();
+    if (!auctionId) return;
 
     let payload = {};
     try {
@@ -1711,7 +1809,7 @@ export const adminMethods = {
 
     this.auctionDetailsModal.saving = true;
     try {
-      const updated = await this.apiRequest(`/admin/auctions/${encodeURIComponent(detail.productId)}`, {
+      const updated = await this.apiRequest(`/admin/auctions/${encodeURIComponent(auctionId)}`, {
         method: "PATCH",
         body: payload
       });
@@ -1727,8 +1825,8 @@ export const adminMethods = {
   },
 
   async updateAuctionStatusQuick(auction, nextStatus) {
-    const productId = String(auction?.productId || "").trim();
-    if (!productId || !nextStatus) return;
+    const auctionId = String(auction?.id || auction?._id || auction?.productSlug || auction?.productId || "").trim();
+    if (!auctionId || !nextStatus) return;
     if (
       !confirm(
         `Change auction "${auction.title}" status to ${String(nextStatus).toUpperCase()}?`
@@ -1737,19 +1835,51 @@ export const adminMethods = {
       return;
     }
     try {
-      const updated = await this.apiRequest(`/admin/auctions/${encodeURIComponent(productId)}`, {
+      const updated = await this.apiRequest(`/admin/auctions/${encodeURIComponent(auctionId)}`, {
         method: "PATCH",
         body: { status: nextStatus }
       });
       if (
         this.auctionDetailsModal.open &&
-        String(this.auctionDetailsModal.detail?.productId || "") === productId
+        String(this.auctionDetailsModal.detail?.id || this.auctionDetailsModal.detail?._id || "") === auctionId
       ) {
         this.auctionDetailsModal.detail = updated;
         this.syncAuctionDetailsDraft(updated);
       }
       await this.loadAuctions(true);
       this.notify(`Auction moved to ${String(nextStatus).toUpperCase()}.`, "success");
+    } catch (error) {
+      this.notify(this.errorMessage(error), "error");
+    }
+  },
+
+  async deleteAuction(auction, options = {}) {
+    const auctionId = String(auction?.id || auction?._id || auction?.productSlug || auction?.productId || "").trim();
+    if (!auctionId) return;
+
+    const silent = Boolean(options.silent);
+    const skipConfirm = Boolean(options.skipConfirm);
+    const title = String(auction?.title || auction?.product?.title || auction?.productSlug || auctionId).trim();
+
+    if (!skipConfirm && !confirm(`Delete auction "${title}"? This will remove the active auction record.`)) {
+      return;
+    }
+
+    try {
+      await this.apiRequest(`/admin/auctions/${encodeURIComponent(auctionId)}`, {
+        method: "DELETE"
+      });
+
+      const detailId = String(this.auctionDetailsModal.detail?.id || this.auctionDetailsModal.detail?._id || "").trim();
+      if (detailId === auctionId) {
+        this.closeAuctionDetails();
+      }
+
+      await this.loadAuctions(true);
+      this.loadedTabs.dashboard = false;
+      if (!silent) {
+        this.notify(`Deleted auction "${title}".`, "success");
+      }
     } catch (error) {
       this.notify(this.errorMessage(error), "error");
     }
@@ -1837,6 +1967,11 @@ export const adminMethods = {
     return Object.keys(this.orderSelection).filter((key) => Boolean(this.orderSelection[key]));
   },
 
+  selectedOrders() {
+    const selectedIds = new Set(this.selectedOrderIds());
+    return this.orders.filter((order) => selectedIds.has(String(order?.id || "").trim()));
+  },
+
   selectedOrderCount() {
     return this.selectedOrderIds().length;
   },
@@ -1852,6 +1987,13 @@ export const adminMethods = {
     this.orderFilters.paymentStatus = "";
     this.orderFilters.page = 1;
     this.loadOrders();
+  },
+
+  resetBulkOrderDraft() {
+    this.orderBulkDraft = {
+      paymentStatus: "",
+      fulfillmentStatus: ""
+    };
   },
 
   async saveOrder(order) {
@@ -1938,6 +2080,13 @@ export const adminMethods = {
         shippingAddress: this.normalizeOrderDraftShipping(normalized.shippingAddress || {})
       };
     }
+  },
+
+  applyOrdersToList(updatedOrders) {
+    if (!Array.isArray(updatedOrders)) return;
+    updatedOrders.forEach((updated) => {
+      this.applyOrderToList(updated);
+    });
   },
 
   async openOrderDetails(order) {
@@ -2122,6 +2271,57 @@ export const adminMethods = {
     this.notify("Failed to delete selected orders.", "error");
   },
 
+  async applyBulkOrderStatus() {
+    const selectedIds = this.selectedOrderIds();
+    if (!selectedIds.length) {
+      this.notify("Select at least one order.");
+      return;
+    }
+
+    const paymentStatus = String(this.orderBulkDraft?.paymentStatus || "").trim();
+    const fulfillmentStatus = String(this.orderBulkDraft?.fulfillmentStatus || "").trim();
+
+    if (!paymentStatus && !fulfillmentStatus) {
+      this.notify("Choose a payment or fulfillment status first.");
+      return;
+    }
+
+    this.ordersBulkUpdating = true;
+    try {
+      const response = await this.apiRequest("/admin/orders/bulk/status", {
+        method: "PATCH",
+        body: {
+          orderIds: selectedIds,
+          paymentStatus: paymentStatus || undefined,
+          fulfillmentStatus: fulfillmentStatus || undefined
+        }
+      });
+
+      this.applyOrdersToList(response?.updatedOrders || []);
+      this.loadedTabs.dashboard = false;
+      await this.loadOrders();
+
+      const updatedCount = Number(response?.updatedCount || 0);
+      const failedCount = Number(response?.failedCount || 0);
+
+      if (updatedCount && !failedCount) {
+        this.notify(`Updated ${updatedCount} selected order(s).`, "success");
+        return;
+      }
+
+      if (updatedCount && failedCount) {
+        this.notify(`Updated ${updatedCount} order(s). Failed: ${failedCount}.`, "info");
+        return;
+      }
+
+      this.notify("No selected orders were updated.", "error");
+    } catch (error) {
+      this.notify(this.errorMessage(error), "error");
+    } finally {
+      this.ordersBulkUpdating = false;
+    }
+  },
+
   async sendOrderToCourier(order, force = false) {
     try {
       if (!order?.id) return;
@@ -2147,6 +2347,62 @@ export const adminMethods = {
         }
       }
       this.notify(this.errorMessage(error), "error");
+    }
+  },
+
+  async sendSelectedOrdersToCourier(force = false) {
+    const selectedIds = this.selectedOrderIds();
+    if (!selectedIds.length) {
+      this.notify("Select at least one order.");
+      return;
+    }
+
+    this.ordersBulkSending = true;
+    try {
+      const response = await this.apiRequest("/admin/courier/steadfast/orders/bulk-create", {
+        method: "POST",
+        body: {
+          orderIds: selectedIds,
+          force: Boolean(force)
+        }
+      });
+
+      this.applyOrdersToList(response?.updatedOrders || []);
+      this.loadedTabs.dashboard = false;
+      await this.loadOrders();
+
+      const updatedCount = Number(response?.updatedCount || 0);
+      const conflictCount = Number(response?.conflictCount || 0);
+      const failedCount = Number(response?.failedCount || 0);
+
+      if (conflictCount && !force) {
+        const shouldResend = confirm(
+          `${conflictCount} selected order(s) are already sent to courier. Do you want to force resend them?`
+        );
+        if (shouldResend) {
+          await this.sendSelectedOrdersToCourier(true);
+          return;
+        }
+      }
+
+      if (updatedCount && !conflictCount && !failedCount) {
+        this.notify(`Sent ${updatedCount} selected order(s) to courier.`, "success");
+        return;
+      }
+
+      if (updatedCount || conflictCount) {
+        this.notify(
+          `Courier dispatch finished. Sent: ${updatedCount}. Already sent: ${conflictCount}. Failed: ${failedCount}.`,
+          failedCount ? "info" : "success"
+        );
+        return;
+      }
+
+      this.notify("Failed to send selected orders to courier.", "error");
+    } catch (error) {
+      this.notify(this.errorMessage(error), "error");
+    } finally {
+      this.ordersBulkSending = false;
     }
   },
 
@@ -2487,6 +2743,64 @@ export const adminMethods = {
     return undefined;
   },
 
+  buildUserDetailsDraft(details) {
+    const source = details && typeof details === "object" ? details : {};
+    return {
+      name: String(source.name || "").trim(),
+      email: String(source.email || "").trim(),
+      phone: String(source.phone || "").trim(),
+      role: source.role === "admin" ? "admin" : "customer",
+      isSuspended: Boolean(source.isSuspended),
+      shippingAddress: this.normalizeOrderDraftShipping(source.shippingAddress || {})
+    };
+  },
+
+  hydrateAdminUserDetails(details) {
+    const normalizedOrders = this.normalizeOrderList(details?.recentOrders);
+    const normalizedAddress = this.normalizeOrderDraftShipping(details?.shippingAddress || {});
+    const hasPrimaryAddress = Object.entries(normalizedAddress).some(
+      ([key, value]) => key !== "country" && Boolean(String(value || "").trim())
+    );
+
+    return {
+      ...details,
+      orderCount: Number(details?.orderCount || normalizedOrders.length || 0),
+      totalSpent:
+        details?.totalSpent !== undefined
+          ? Number(details.totalSpent || 0)
+          : normalizedOrders.reduce((sum, order) => sum + Number(order.total || 0), 0),
+      addresses:
+        Array.isArray(details?.addresses) && details.addresses.length
+          ? details.addresses.map((address) => this.normalizeOrderDraftShipping(address))
+          : hasPrimaryAddress
+            ? [{ ...normalizedAddress, label: "Primary" }]
+            : [],
+      shippingAddress: normalizedAddress,
+      recentOrders: normalizedOrders
+    };
+  },
+
+  applyUserSummary(updated) {
+    const userId = String(updated?.id || updated?._id || "").trim();
+    if (!userId || !Array.isArray(this.users)) return;
+
+    this.users = this.users.map((item) =>
+      String(item?.id || item?._id || "").trim() === userId
+        ? {
+            ...item,
+            name: updated.name ?? item.name,
+            email: updated.email ?? item.email,
+            phone: updated.phone ?? item.phone,
+            role: updated.role ?? item.role,
+            isSuspended: updated.isSuspended ?? item.isSuspended,
+            orderCount: updated.orderCount ?? item.orderCount,
+            totalSpent: updated.totalSpent ?? item.totalSpent,
+            lastOrderAt: updated.lastOrderAt ?? item.lastOrderAt
+          }
+        : item
+    );
+  },
+
   async importUsersCsv() {
     if (!this.usersImport.file) {
       this.notify("Select a CSV file first.", "error");
@@ -2585,27 +2899,9 @@ export const adminMethods = {
         return;
       }
       this.userDetailsLoading = true;
-      const details = await this.apiRequest(`/admin/users/${user.id}`);
-      const normalizedOrders = this.normalizeOrderList(details?.recentOrders);
-      const normalizedAddress = this.normalizeOrderDraftShipping(details?.shippingAddress || {});
-      const hasPrimaryAddress = Object.entries(normalizedAddress).some(
-        ([key, value]) => key !== "country" && Boolean(String(value || "").trim())
-      );
-      this.selectedUserDetails = {
-        ...details,
-        orderCount: Number(details?.orderCount || normalizedOrders.length || 0),
-        totalSpent:
-          details?.totalSpent !== undefined
-            ? Number(details.totalSpent || 0)
-            : normalizedOrders.reduce((sum, order) => sum + Number(order.total || 0), 0),
-        addresses:
-          Array.isArray(details?.addresses) && details.addresses.length
-            ? details.addresses.map((address) => this.normalizeOrderDraftShipping(address))
-            : hasPrimaryAddress
-              ? [{ ...normalizedAddress, label: "Primary" }]
-              : [],
-        recentOrders: normalizedOrders
-      };
+      const details = this.hydrateAdminUserDetails(await this.apiRequest(`/admin/users/${user.id}`));
+      this.selectedUserDetails = details;
+      this.userDetailsDraft = this.buildUserDetailsDraft(details);
     } catch (error) {
       this.notify(this.errorMessage(error), "error");
     } finally {
@@ -2616,6 +2912,53 @@ export const adminMethods = {
   closeUserDetails() {
     this.selectedUserDetails = null;
     this.userDetailsLoading = false;
+    this.userDetailsSaving = false;
+    this.userDetailsDraft = this.buildUserDetailsDraft(null);
+  },
+
+  async saveUserDetails() {
+    const details = this.selectedUserDetails;
+    const draft = this.userDetailsDraft || {};
+    const userId = String(details?.id || details?._id || "").trim();
+    if (!userId || !details) return;
+
+    const payload = {};
+    const trimmedName = String(draft.name || "").trim();
+    const trimmedEmail = String(draft.email || "").trim();
+    const trimmedPhone = String(draft.phone || "").trim();
+    const shippingAddress = this.normalizeOrderDraftShipping(draft.shippingAddress || {});
+
+    if (trimmedName !== String(details.name || "").trim()) payload.name = trimmedName;
+    if (trimmedEmail !== String(details.email || "").trim()) payload.email = trimmedEmail;
+    if (trimmedPhone !== String(details.phone || "").trim()) payload.phone = trimmedPhone;
+    if (String(draft.role || "customer") !== String(details.role || "customer")) payload.role = draft.role;
+    if (Boolean(draft.isSuspended) !== Boolean(details.isSuspended)) payload.isSuspended = Boolean(draft.isSuspended);
+    if (JSON.stringify(shippingAddress) !== JSON.stringify(this.normalizeOrderDraftShipping(details.shippingAddress || {}))) {
+      payload.shippingAddress = shippingAddress;
+    }
+
+    if (!Object.keys(payload).length) {
+      this.notify("No user detail changes to save.");
+      return;
+    }
+
+    this.userDetailsSaving = true;
+    try {
+      const updated = this.hydrateAdminUserDetails(
+        await this.apiRequest(`/admin/users/${userId}`, {
+          method: "PATCH",
+          body: payload
+        })
+      );
+      this.selectedUserDetails = updated;
+      this.userDetailsDraft = this.buildUserDetailsDraft(updated);
+      this.applyUserSummary(updated);
+      this.notify(`Updated ${updated.email}.`, "success");
+    } catch (error) {
+      this.notify(this.errorMessage(error), "error");
+    } finally {
+      this.userDetailsSaving = false;
+    }
   },
 
   async setUserRole(user, role) {
@@ -2624,6 +2967,17 @@ export const adminMethods = {
       body: { role }
     });
     user.role = updated.role;
+    this.applyUserSummary(updated);
+    if (String(this.selectedUserDetails?.id || "") === String(user.id || "")) {
+      this.selectedUserDetails = {
+        ...this.selectedUserDetails,
+        role: updated.role
+      };
+      this.userDetailsDraft = {
+        ...this.userDetailsDraft,
+        role: updated.role
+      };
+    }
     this.notify(`Role updated for ${user.email}.`, "success");
   },
 
@@ -2633,6 +2987,17 @@ export const adminMethods = {
       body: { suspend: !user.isSuspended }
     });
     user.isSuspended = updated.isSuspended;
+    this.applyUserSummary(updated);
+    if (String(this.selectedUserDetails?.id || "") === String(user.id || "")) {
+      this.selectedUserDetails = {
+        ...this.selectedUserDetails,
+        isSuspended: updated.isSuspended
+      };
+      this.userDetailsDraft = {
+        ...this.userDetailsDraft,
+        isSuspended: updated.isSuspended
+      };
+    }
     this.notify(`User ${user.email} ${user.isSuspended ? "suspended" : "unsuspended"}.`, "success");
   },
 
@@ -2868,6 +3233,46 @@ export const adminMethods = {
 
     if (this.selectedCampaignTemplateId && !this.campaignTemplateById(this.selectedCampaignTemplateId)) {
       this.clearCampaignTemplateSelection();
+    }
+  },
+
+  closeCampaignPreview() {
+    this.campaignPreview = {
+      open: false,
+      loading: false,
+      subject: "",
+      html: ""
+    };
+  },
+
+  async previewCampaignDraft() {
+    const subject = String(this.campaignDraft?.subject || "").trim();
+    const html = String(this.campaignDraft?.html || "");
+
+    if (!subject && !html.trim()) {
+      this.notify("Enter campaign subject or HTML first.", "error");
+      return;
+    }
+
+    this.campaignPreview.open = true;
+    this.campaignPreview.loading = true;
+    this.campaignPreview.subject = "";
+    this.campaignPreview.html = "";
+
+    try {
+      const preview = await this.apiRequest("/admin/campaigns/preview", {
+        method: "POST",
+        body: { subject, html }
+      });
+      this.campaignPreview = {
+        open: true,
+        loading: false,
+        subject: String(preview?.subject || ""),
+        html: String(preview?.html || "")
+      };
+    } catch (error) {
+      this.closeCampaignPreview();
+      this.notify(this.errorMessage(error), "error");
     }
   },
 
@@ -3868,6 +4273,7 @@ export const adminMethods = {
     const series = this.revenueSeries[this.revenueWindow] || { labels: [], values: [] };
     const labels = series.labels.length ? series.labels : ["No data"];
     const gmv = series.values.length ? series.values : [0];
+    const windowLabel = this.revenueWindowLabel ? this.revenueWindowLabel(this.revenueWindow) : String(this.revenueWindow || "").toUpperCase();
     const wrap = document.getElementById("revenueChartWrap");
     const canvas = document.getElementById("revenueChart");
     if (!canvas || !wrap) return;
@@ -3878,6 +4284,15 @@ export const adminMethods = {
     canvas.style.width = "100%";
     canvas.style.maxHeight = "260px";
 
+    const registeredChart = Chart.getChart(canvas);
+    if (registeredChart && registeredChart !== this.charts.revenue) {
+      try {
+        registeredChart.destroy();
+      } catch {
+        // ignore chart destroy failure
+      }
+    }
+
     if (this.charts.revenue) {
       try {
         const boundCanvas = this.charts.revenue.canvas;
@@ -3887,7 +4302,7 @@ export const adminMethods = {
           this.charts.revenue = null;
         } else {
           this.charts.revenue.data.labels = labels;
-          this.charts.revenue.data.datasets[0].label = `Revenue (${this.revenueWindow.toUpperCase()})`;
+          this.charts.revenue.data.datasets[0].label = `Revenue (${windowLabel})`;
           this.charts.revenue.data.datasets[0].data = gmv;
           this.charts.revenue.resize();
           this.charts.revenue.update("none");
@@ -3912,7 +4327,7 @@ export const adminMethods = {
         labels,
         datasets: [
           {
-            label: `Revenue (${this.revenueWindow.toUpperCase()})`,
+            label: `Revenue (${windowLabel})`,
             data: gmv,
             borderColor: "#3b82f6",
             backgroundColor: "rgba(59,130,246,0.15)",
@@ -3953,6 +4368,15 @@ export const adminMethods = {
     if (!canvas) return;
     const context = canvas.getContext("2d");
     if (!context) return;
+
+    const registeredChart = Chart.getChart(canvas);
+    if (registeredChart && registeredChart !== this.charts.ordersPie) {
+      try {
+        registeredChart.destroy();
+      } catch {
+        // ignore chart destroy failure
+      }
+    }
 
     if (this.charts.ordersPie) {
       try {

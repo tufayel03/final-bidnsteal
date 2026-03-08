@@ -64,7 +64,10 @@ export function CampaignsTab() {
                         <button onClick={() => admin.setActiveTab && admin.setActiveTab('media')} className="order-filter-btn">Open Media</button>
                         <p style={{ fontSize: '11px', color: '#8fa0be', margin: '4px 0 0 0', width: '100%' }}>Build campaign HTML with uploaded images quickly.</p>
                     </div>
-                    <button onClick={() => admin.createCampaign && admin.createCampaign()} className="order-filter-btn primary" style={{ width: '100%', padding: '10px', fontSize: '14px' }}>Create Draft</button>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: '10px' }}>
+                        <button onClick={() => admin.previewCampaignDraft && admin.previewCampaignDraft()} className="order-filter-btn" style={{ width: '100%', padding: '10px', fontSize: '14px' }}>Preview HTML</button>
+                        <button onClick={() => admin.createCampaign && admin.createCampaign()} className="order-filter-btn primary" style={{ width: '100%', padding: '10px', fontSize: '14px' }}>Create Draft</button>
+                    </div>
                 </div>
                 <div className="admin-card no-pad" style={{ gridColumn: 'span 2' }}>
                     <div style={{ padding: '20px', borderBottom: '1px solid rgba(45, 51, 67, 0.8)' }}>
