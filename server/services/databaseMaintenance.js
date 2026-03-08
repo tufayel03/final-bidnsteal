@@ -1,3 +1,5 @@
+const Campaign = require("../models/Campaign");
+const CampaignDelivery = require("../models/CampaignDelivery");
 const Order = require("../models/Order");
 
 function isExpectedAuctionOrderIndex(index) {
@@ -49,6 +51,8 @@ async function ensureOrderIndexes() {
 }
 
 async function ensureRuntimeIndexes() {
+  await Campaign.init();
+  await CampaignDelivery.init();
   await ensureOrderIndexes();
 }
 

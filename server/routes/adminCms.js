@@ -1,6 +1,7 @@
 const express = require("express");
 const Auction = require("../models/Auction");
 const Campaign = require("../models/Campaign");
+const CampaignDelivery = require("../models/CampaignDelivery");
 const CampaignTemplate = require("../models/CampaignTemplate");
 const Coupon = require("../models/Coupon");
 const Order = require("../models/Order");
@@ -10,6 +11,7 @@ const { env } = require("../config/env");
 const { requireAdmin } = require("../middleware/auth");
 const { createTransport, getSmtpSettings, renderTemplateString, sendEmail, sendTemplateEmail } = require("../services/emailService");
 const { syncAuctions } = require("../services/auctionService");
+const { normalizeCampaignForAdmin, queueCampaignDispatch } = require("../services/campaignDispatchService");
 const { getPublicSiteProfile } = require("../services/siteProfileService");
 const {
   createSteadfastOrder,
@@ -86,6 +88,11 @@ function buildFulfillmentStatusFromCourier(deliveryStatus, currentStatus) {
 
 function roundMoney(value) {
   return Number(Number(value || 0).toFixed(2));
+}
+
+function normalizeCampaignRateLimit(value) {
+  const parsed = Math.max(0, Math.floor(Number(value || 0)));
+  return Number.isFinite(parsed) ? parsed : 0;
 }
 
 async function dispatchSteadfastOrder(order, options = {}) {
@@ -475,15 +482,17 @@ router.delete("/campaigns/templates/:id", async (req, res) => {
 
 router.get("/campaigns", async (_req, res) => {
   const items = await Campaign.find().sort({ createdAt: -1 });
-  return res.json({ items, total: items.length });
+  return res.json({ items: items.map((item) => normalizeCampaignForAdmin(item)), total: items.length });
 });
 
 router.post("/campaigns", async (req, res) => {
   const campaign = await Campaign.create({
     subject: String(req.body?.subject || "").trim(),
-    html: String(req.body?.html || "")
+    html: String(req.body?.html || ""),
+    hourlyRateLimit: normalizeCampaignRateLimit(req.body?.hourlyRateLimit),
+    dailyRateLimit: normalizeCampaignRateLimit(req.body?.dailyRateLimit)
   });
-  return res.status(201).json(campaign);
+  return res.status(201).json(normalizeCampaignForAdmin(campaign));
 });
 
 router.post("/campaigns/preview", async (req, res) => {
@@ -509,47 +518,14 @@ router.post("/campaigns/:id/send", async (req, res) => {
     return res.status(404).json({ message: "Campaign not found." });
   }
 
-  const recipients = await Subscriber.find({ isActive: true }).sort({ createdAt: 1 });
-  if (!recipients.length) {
-    return res.status(400).json({ message: "No active subscribers found." });
-  }
-  const siteProfile = await getPublicSiteProfile();
-
-  let queued = 0;
-  for (const subscriber of recipients) {
-    if (!isValidEmail(subscriber.email)) {
-      continue;
-    }
-
-    await sendEmail({
-      to: subscriber.email,
-      subject: renderTemplateString(campaign.subject || "", {
-        subscriber: {
-          email: subscriber.email,
-          name: subscriber.name || ""
-        },
-        site: {
-          name: siteProfile.siteName || "BidnSteal"
-        }
-      }),
-      html: renderTemplateString(campaign.html || "", {
-        subscriber: {
-          email: subscriber.email,
-          name: subscriber.name || ""
-        },
-        site: {
-          name: siteProfile.siteName || "BidnSteal"
-        }
-      })
-    });
-    queued += 1;
-  }
-
-  campaign.status = "sent";
-  campaign.sentAt = new Date();
-  campaign.recipientCount = queued;
-  await campaign.save();
-  return res.json({ ok: true, queued });
+  const result = await queueCampaignDispatch(campaign);
+  return res.json({
+    ok: true,
+    queued: result.queued,
+    intervalMs: result.intervalMs,
+    intervalMinutes: result.intervalMs ? Number((result.intervalMs / 60000).toFixed(2)) : 0,
+    campaign: result.campaign
+  });
 });
 
 router.post("/campaigns/:id/resend-non-openers", async (req, res) => {
@@ -557,37 +533,15 @@ router.post("/campaigns/:id/resend-non-openers", async (req, res) => {
   if (!campaign) {
     return res.status(404).json({ message: "Campaign not found." });
   }
-  const recipients = await Subscriber.find({ isActive: true }).sort({ createdAt: 1 });
-  const siteProfile = await getPublicSiteProfile();
-  let queued = 0;
-  for (const subscriber of recipients) {
-    if (!isValidEmail(subscriber.email)) {
-      continue;
-    }
-    await sendEmail({
-      to: subscriber.email,
-      subject: renderTemplateString(campaign.subject || "", {
-        subscriber: {
-          email: subscriber.email,
-          name: subscriber.name || ""
-        },
-        site: {
-          name: siteProfile.siteName || "BidnSteal"
-        }
-      }),
-      html: renderTemplateString(campaign.html || "", {
-        subscriber: {
-          email: subscriber.email,
-          name: subscriber.name || ""
-        },
-        site: {
-          name: siteProfile.siteName || "BidnSteal"
-        }
-      })
-    });
-    queued += 1;
-  }
-  return res.json({ ok: true, queued });
+
+  const result = await queueCampaignDispatch(campaign, { force: true });
+  return res.json({
+    ok: true,
+    queued: result.queued,
+    intervalMs: result.intervalMs,
+    intervalMinutes: result.intervalMs ? Number((result.intervalMs / 60000).toFixed(2)) : 0,
+    campaign: result.campaign
+  });
 });
 
 router.delete("/campaigns/:id", async (req, res) => {
@@ -595,6 +549,7 @@ router.delete("/campaigns/:id", async (req, res) => {
   if (!campaign) {
     return res.status(404).json({ message: "Campaign not found." });
   }
+  await CampaignDelivery.deleteMany({ campaignId: campaign._id });
   return res.json({ ok: true });
 });
 

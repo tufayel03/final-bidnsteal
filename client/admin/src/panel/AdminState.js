@@ -238,7 +238,9 @@ export function getInitialAdminState() {
     campaignTemplateName: "",
     campaignDraft: {
       subject: "",
-      html: ""
+      html: "",
+      hourlyRateLimit: "0",
+      dailyRateLimit: "0"
     },
     campaignPreview: {
       open: false,

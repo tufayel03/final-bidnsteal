@@ -8,24 +8,10 @@ export function AdminSidebar() {
     const navigate = useNavigate();
     const location = useLocation();
 
-    // Extract necessary state from Proxy
-    const collapsed = admin.localSettings?.sidebarCollapsed;
+    const collapsed = Boolean(admin.localSettings?.sidebarCollapsed);
     const activeTab = admin.activeTab;
     const menuItems = admin.menuItems || [];
-    const navMeta = {
-        dashboard: 'Overview',
-        inventory: 'Products',
-        media: 'Assets',
-        auctions: 'Live bids',
-        orders: 'Fulfillment',
-        users: 'Accounts',
-        subscribers: 'Mail list',
-        campaigns: 'Promotions',
-        coupons: 'Offers',
-        analytics: 'Signals',
-        reports: 'Exports',
-        settings: 'Config'
-    };
+
     const menuGroups = [
         {
             id: 'operations',
@@ -34,23 +20,19 @@ export function AdminSidebar() {
         },
         {
             id: 'audience',
-            label: 'Audience & CRM',
+            label: 'Audience',
             items: menuItems.filter((item) => ['users', 'subscribers', 'campaigns', 'coupons'].includes(item.id))
         },
         {
-            id: 'intelligence',
-            label: 'Intelligence',
-            items: menuItems.filter((item) => ['analytics', 'reports'].includes(item.id))
-        },
-        {
-            id: 'system',
-            label: 'System',
-            items: menuItems.filter((item) => ['settings'].includes(item.id))
+            id: 'insights',
+            label: 'Insights',
+            items: menuItems.filter((item) => ['analytics', 'reports', 'settings'].includes(item.id))
         }
     ].filter((group) => group.items.length > 0);
 
     const handleTabChange = (tabId) => {
         if (!tabId) return;
+
         if (admin.setActiveTab) {
             admin.setActiveTab(tabId);
         }
@@ -62,41 +44,31 @@ export function AdminSidebar() {
     };
 
     return (
-        <aside className={`admin-sidebar ${collapsed ? 'collapsed' : ''}`}>
-            <div className="admin-brand">
-                <div className="admin-brand-mark">
-                    <div className="admin-brand-badge">B</div>
-                    <span className="admin-brand-pulse" />
-                </div>
-                <div className="admin-brand-copy">
-                    <p className="admin-brand-eyebrow">Control Node</p>
-                    <h1>BIDNSTEAL</h1>
-                    <div className="admin-brand-meta">
-                        <p>Admin Panel</p>
-                        <span className="admin-brand-chip">SYS-OP</span>
-                    </div>
+        <aside className={`admin-sidebar admin-simple-sidebar ${collapsed ? 'collapsed' : ''}`}>
+            <div className="admin-simple-brand">
+                <div className="admin-simple-brand-mark">BS</div>
+                <div className="admin-simple-brand-copy">
+                    <h1>BidnSteal</h1>
+                    <p>Admin Panel</p>
                 </div>
             </div>
 
-            <nav className="admin-nav custom-scrollbar" style={{ overflowY: 'auto' }}>
+            <nav className="admin-nav admin-simple-nav custom-scrollbar" style={{ overflowY: 'auto' }}>
                 {menuGroups.map((group) => (
-                    <section key={group.id} className="admin-sidebar-section">
-                        <div className="admin-sidebar-section-label">{group.label}</div>
-                        <div className="admin-sidebar-section-items">
+                    <section key={group.id} className="admin-simple-nav-group">
+                        {!collapsed ? <div className="admin-simple-nav-group-label">{group.label}</div> : null}
+                        <div className="admin-simple-nav-list">
                             {group.items.map((item) => (
                                 <button
                                     key={item.id}
                                     onClick={() => handleTabChange(item.id)}
                                     title={collapsed ? item.label : ''}
-                                    className={`admin-nav-item ${activeTab === item.id ? 'active' : ''}`}
+                                    className={`admin-nav-item admin-simple-nav-item ${activeTab === item.id ? 'active' : ''}`}
                                 >
                                     <span className="admin-nav-item-icon">
                                         <Icon name={item.icon} />
                                     </span>
-                                    <span className="admin-nav-item-copy">
-                                        <span className="admin-nav-item-label">{item.label}</span>
-                                        <span className="admin-nav-item-caption">{navMeta[item.id] || 'Module'}</span>
-                                    </span>
+                                    <span className="admin-simple-nav-item-label">{item.label}</span>
                                 </button>
                             ))}
                         </div>
@@ -104,39 +76,26 @@ export function AdminSidebar() {
                 ))}
             </nav>
 
-            <div className="admin-sidebar-footer">
-                <div className="admin-sidebar-status">
-                    <span className="admin-sidebar-status-dot" />
-                    <div className="admin-sidebar-status-copy">
-                        <strong>Secure Link</strong>
-                        <span>Admin session active</span>
-                    </div>
-                </div>
+            <div className="admin-sidebar-footer admin-simple-sidebar-footer">
                 <button
                     onClick={() => admin.toggleSidebarCollapse()}
                     title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-                    className="admin-link-btn"
+                    className="admin-link-btn admin-simple-link-btn"
                 >
                     <span className="admin-nav-item-icon">
                         <Icon name="panel-left-close" className={`sidebar-toggle-icon ${collapsed ? 'is-collapsed' : ''}`} />
                     </span>
-                    <span className="admin-nav-item-copy">
-                        <span className="admin-nav-item-label">{collapsed ? 'Expand Sidebar' : 'Collapse Sidebar'}</span>
-                        <span className="admin-nav-item-caption">Workspace layout</span>
-                    </span>
+                    <span className="admin-simple-nav-item-label">{collapsed ? 'Expand' : 'Collapse'}</span>
                 </button>
                 <button
                     onClick={() => admin.logout && admin.logout()}
                     title={collapsed ? 'Logout' : ''}
-                    className="admin-link-btn logout"
+                    className="admin-link-btn admin-simple-link-btn logout"
                 >
                     <span className="admin-nav-item-icon">
                         <Icon name="log-out" />
                     </span>
-                    <span className="admin-nav-item-copy">
-                        <span className="admin-nav-item-label">Logout</span>
-                        <span className="admin-nav-item-caption">End current session</span>
-                    </span>
+                    <span className="admin-simple-nav-item-label">Logout</span>
                 </button>
             </div>
         </aside>

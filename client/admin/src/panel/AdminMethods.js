@@ -1,6 +1,11 @@
 import Chart from "chart.js/auto";
 
 const SAFE_HTTP_METHODS = new Set(["GET", "HEAD", "OPTIONS"]);
+
+function roundMoney(value) {
+  return Number(Number(value || 0).toFixed(2));
+}
+
 export const adminMethods = {
   defaultCourierSettings() {
     return {
@@ -3225,7 +3230,15 @@ export const adminMethods = {
       this.apiRequest("/admin/campaigns?page=1&limit=50"),
       this.apiRequest("/admin/campaigns/templates?page=1&limit=100")
     ]);
-    this.campaigns = campaignResponse.items || [];
+    this.campaigns = (campaignResponse.items || []).map((item) => ({
+      ...item,
+      totalRecipients: Number(item?.totalRecipients ?? item?.recipientCount ?? 0),
+      sentCount: Number(item?.sentCount ?? 0),
+      failedCount: Number(item?.failedCount ?? 0),
+      openCount: Number(item?.openCount ?? item?.openedCount ?? 0),
+      hourlyRateLimit: Number(item?.hourlyRateLimit || 0),
+      dailyRateLimit: Number(item?.dailyRateLimit || 0)
+    }));
     this.campaignTemplates = (templateResponse.items || []).map((item) => ({
       ...item,
       id: this.campaignTemplateRef(item)
@@ -3277,39 +3290,73 @@ export const adminMethods = {
   },
 
   async createCampaign() {
-    if (!this.campaignDraft.subject || !this.campaignDraft.html) {
-      throw new Error("Campaign subject and html are required.");
-    }
-    await this.apiRequest("/admin/campaigns", {
-      method: "POST",
-      body: {
-        subject: this.campaignDraft.subject,
-        html: this.campaignDraft.html
+    try {
+      if (!this.campaignDraft.subject || !this.campaignDraft.html) {
+        throw new Error("Campaign subject and html are required.");
       }
-    });
-    this.campaignDraft.subject = "";
-    this.campaignDraft.html = "";
-    this.notify("Campaign draft created.", "success");
-    await this.loadCampaigns();
+
+      const hourlyRateLimit = Math.max(0, Math.floor(Number(this.campaignDraft.hourlyRateLimit || 0)));
+      const dailyRateLimit = Math.max(0, Math.floor(Number(this.campaignDraft.dailyRateLimit || 0)));
+
+      await this.apiRequest("/admin/campaigns", {
+        method: "POST",
+        body: {
+          subject: this.campaignDraft.subject,
+          html: this.campaignDraft.html,
+          hourlyRateLimit,
+          dailyRateLimit
+        }
+      });
+      this.campaignDraft.subject = "";
+      this.campaignDraft.html = "";
+      this.campaignDraft.hourlyRateLimit = "0";
+      this.campaignDraft.dailyRateLimit = "0";
+      this.notify("Campaign draft created.", "success");
+      await this.loadCampaigns();
+    } catch (error) {
+      this.notify(this.errorMessage(error), "error");
+    }
   },
 
   async sendCampaign(campaign) {
-    const result = await this.apiRequest(`/admin/campaigns/${campaign.id}/send`, { method: "POST" });
-    this.notify(`Campaign queued for ${this.number(result.queued || 0)} recipients.`, "success");
-    await this.loadCampaigns();
+    try {
+      const result = await this.apiRequest(`/admin/campaigns/${campaign.id}/send`, { method: "POST" });
+      this.notify(
+        result?.intervalMinutes
+          ? `Campaign queued for ${this.number(result.queued || 0)} recipients at one send every ${result.intervalMinutes} minute(s).`
+          : `Campaign queued for ${this.number(result.queued || 0)} recipients with immediate delivery.`,
+        "success"
+      );
+      await this.loadCampaigns();
+    } catch (error) {
+      this.notify(this.errorMessage(error), "error");
+    }
   },
 
   async resendCampaign(campaign) {
-    const result = await this.apiRequest(`/admin/campaigns/${campaign.id}/resend-non-openers`, { method: "POST" });
-    this.notify(`Resend queued for ${this.number(result.queued || 0)} recipients.`, "success");
-    await this.loadCampaigns();
+    try {
+      const result = await this.apiRequest(`/admin/campaigns/${campaign.id}/resend-non-openers`, { method: "POST" });
+      this.notify(
+        result?.intervalMinutes
+          ? `Resend queued for ${this.number(result.queued || 0)} recipients at one send every ${result.intervalMinutes} minute(s).`
+          : `Resend queued for ${this.number(result.queued || 0)} recipients with immediate delivery.`,
+        "success"
+      );
+      await this.loadCampaigns();
+    } catch (error) {
+      this.notify(this.errorMessage(error), "error");
+    }
   },
 
   async deleteCampaign(campaign) {
-    if (!confirm(`Delete campaign ${campaign.subject}?`)) return;
-    await this.apiRequest(`/admin/campaigns/${campaign.id}`, { method: "DELETE" });
-    this.notify("Campaign deleted.", "success");
-    await this.loadCampaigns();
+    try {
+      if (!confirm(`Delete campaign ${campaign.subject}?`)) return;
+      await this.apiRequest(`/admin/campaigns/${campaign.id}`, { method: "DELETE" });
+      this.notify("Campaign deleted.", "success");
+      await this.loadCampaigns();
+    } catch (error) {
+      this.notify(this.errorMessage(error), "error");
+    }
   },
 
   async loadAnalytics() {

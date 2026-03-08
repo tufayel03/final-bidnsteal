@@ -26,6 +26,7 @@ const { attachUser } = require("./middleware/auth");
 const { createRateLimiter, csrfTokenRoute, requireCsrf } = require("./middleware/security");
 const { bootstrapData } = require("./services/seedService");
 const { syncAuctions } = require("./services/auctionService");
+const { startCampaignDispatcher } = require("./services/campaignDispatchService");
 const { ensureRuntimeIndexes } = require("./services/databaseMaintenance");
 
 const app = express();
@@ -240,6 +241,7 @@ async function start() {
   await ensureRuntimeIndexes();
   await bootstrapData();
   await syncAuctions();
+  startCampaignDispatcher();
   app.listen(env.port, () => {
     console.log(`BidnSteal API running on http://localhost:${env.port}`);
   });
