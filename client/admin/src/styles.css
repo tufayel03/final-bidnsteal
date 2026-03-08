@@ -2648,7 +2648,7 @@ textarea:focus,
   width: 100%;
   max-width: none;
   max-height: none;
-  min-height: calc(100vh - 150px);
+  min-height: calc(100vh - 128px);
   display: flex;
   flex-direction: column;
 }
@@ -2676,8 +2676,14 @@ textarea:focus,
   min-width: 148px;
 }
 
+.order-details-title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 800;
+}
+
 .order-details-head {
-  padding: 12px 16px;
+  padding: 10px 14px;
   background:
     linear-gradient(90deg, rgba(0, 243, 255, 0.08), rgba(255, 0, 255, 0.03) 72%, transparent),
     rgba(0, 243, 255, 0.04);
@@ -2699,38 +2705,78 @@ textarea:focus,
 }
 
 .order-details-body {
-  padding: 12px 14px 16px;
+  padding: 8px 10px 12px;
 }
 
-.order-details-shell {
+.order-details-content-stack {
   display: grid;
-  grid-template-columns: minmax(0, 1.08fr) minmax(410px, 0.92fr);
-  gap: 12px;
+  gap: 8px;
+}
+
+.order-details-workspace-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.14fr) minmax(320px, 0.86fr);
+  gap: 8px;
   align-items: start;
 }
 
 .order-details-column {
   display: grid;
-  gap: 12px;
+  gap: 8px;
   min-width: 0;
 }
 
 .order-metric-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 8px;
 }
 
-.order-metric-card {
-  min-height: 102px;
-  align-content: space-between;
-  padding: 10px;
-  border-color: rgba(63, 77, 112, 0.45) !important;
-  background:
-    linear-gradient(180deg, rgba(12, 16, 26, 0.94), rgba(8, 10, 18, 0.96)) !important;
+.order-detail-info-card {
+  display: grid;
+  gap: 5px;
+  padding: 10px 11px;
+  border: 1px solid rgba(63, 77, 112, 0.45);
+  background: linear-gradient(180deg, rgba(12, 16, 26, 0.94), rgba(8, 10, 18, 0.96));
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.03),
     0 0 0 1px rgba(0, 243, 255, 0.03);
+}
+
+.order-detail-info-card--compact {
+  min-height: 64px;
+  padding: 8px 10px;
+}
+
+.order-detail-info-label {
+  margin-bottom: 0;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #7e8678;
+}
+
+.order-detail-info-value {
+  display: block;
+  color: #f8fafc;
+  font-size: 17px;
+  line-height: 1.15;
+}
+
+.order-detail-info-value--small {
+  font-size: 14px;
+  line-height: 1.35;
+  word-break: break-word;
+}
+
+.order-detail-info-value--upper {
+  text-transform: uppercase;
+}
+
+.order-metric-card {
+  min-height: 78px;
+  align-content: space-between;
 }
 
 .order-metric-label {
@@ -2739,7 +2785,7 @@ textarea:focus,
 
 .order-metric-value {
   display: block;
-  font-size: clamp(22px, 1.7vw, 27px);
+  font-size: clamp(20px, 1.5vw, 25px);
   line-height: 1.08;
   letter-spacing: 0.01em;
 }
@@ -2752,7 +2798,7 @@ textarea:focus,
 
 .order-section-card {
   margin-bottom: 0;
-  padding: 12px;
+  padding: 10px 12px;
   background:
     linear-gradient(180deg, rgba(10, 13, 24, 0.9), rgba(6, 8, 16, 0.94)),
     rgba(15, 15, 25, 0.6);
@@ -2760,11 +2806,28 @@ textarea:focus,
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
 }
 
+.order-section-title {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.order-section-caption {
+  margin: 3px 0 0;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.45;
+}
+
 .order-section-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.order-section-head-tight {
   margin-bottom: 8px;
 }
 
@@ -2776,17 +2839,217 @@ textarea:focus,
   gap: 8px;
 }
 
-.order-item-card {
+.order-summary-panel {
+  align-content: start;
+}
+
+.order-items-panel {
+  padding-top: 14px;
+}
+
+.order-detail-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 28px;
+  padding: 0 10px;
+  border: 1px solid rgba(63, 77, 112, 0.45);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.04);
+  color: #f8fafc;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.order-detail-pill.is-locked {
+  background: rgba(217, 134, 110, 0.12);
+  border-color: rgba(217, 134, 110, 0.26);
+  color: #d9866e;
+}
+
+.order-items-editor-head {
+  align-items: flex-start;
+}
+
+.order-editor-toolbar {
   display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(220px, 0.9fr) auto;
   gap: 8px;
-  padding: 10px;
+  margin-bottom: 10px;
+}
+
+.order-editor-add-btn {
+  min-width: 142px;
+}
+
+.order-editor-table {
+  display: grid;
+  gap: 6px;
+}
+
+.order-editor-table-head,
+.order-editor-row {
+  display: grid;
+  grid-template-columns: minmax(260px, 2.1fr) minmax(64px, 82px) minmax(92px, 116px) minmax(104px, 124px) minmax(72px, 90px) 48px;
+  gap: 8px;
+  align-items: center;
+}
+
+.order-editor-table-head > *,
+.order-editor-row > * {
+  min-width: 0;
+}
+
+.order-editor-table-head {
+  padding: 0 6px;
+  color: #7e8678;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.order-editor-table-body {
+  display: grid;
+  gap: 6px;
+}
+
+.order-editor-row {
+  padding: 8px 10px;
   border: 1px solid rgba(46, 54, 84, 0.9);
   background: linear-gradient(180deg, rgba(12, 14, 24, 0.9), rgba(7, 9, 16, 0.96));
 }
 
+.order-editor-product-cell {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.order-editor-product-copy {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.order-editor-stock-note,
+.order-editor-lock-note {
+  color: #7e8678;
+  font-size: 11px;
+  line-height: 1.45;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.order-editor-lock-note {
+  color: #d9866e;
+}
+
+.order-editor-input-cell,
+.order-editor-total-cell,
+.order-editor-type-cell,
+.order-editor-action-cell {
+  display: grid;
+  gap: 6px;
+}
+
+.order-editor-input-cell input {
+  text-align: center;
+  min-width: 0;
+  padding-left: 8px;
+  padding-right: 8px;
+}
+
+.order-editor-total-cell strong {
+  font-size: 15px;
+}
+
+.order-editor-type-cell {
+  justify-items: start;
+}
+
+.order-editor-action-cell {
+  justify-items: center;
+}
+
+.order-editor-mobile-label {
+  display: none;
+}
+
+.order-editor-financials {
+  display: grid;
+  grid-template-columns: minmax(120px, 0.9fr) minmax(120px, 0.9fr) minmax(160px, 1fr) minmax(160px, 1fr);
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.order-editor-financials--side {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin-top: 0;
+}
+
+.order-editor-financial-input {
+  display: grid;
+  gap: 6px;
+}
+
+.order-item-stack {
+  display: grid;
+  gap: 10px;
+}
+
+.order-item-card {
+  display: grid;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid rgba(46, 54, 84, 0.9);
+  background: linear-gradient(180deg, rgba(12, 14, 24, 0.9), rgba(7, 9, 16, 0.96));
+}
+
+.order-item-head {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.order-item-copy {
+  display: grid;
+  gap: 4px;
+  flex: 1;
+  min-width: 0;
+}
+
+.order-item-title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+  color: #f8fafc;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.order-item-code {
+  margin: 0;
+  font-size: 11px;
+  color: #7e8678;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.order-item-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
 .order-item-media {
-  width: 56px;
-  height: 56px;
+  width: 52px;
+  height: 52px;
   border: 1px solid rgba(63, 77, 112, 0.58);
   background: rgba(255, 255, 255, 0.03);
   display: flex;
@@ -2798,11 +3061,14 @@ textarea:focus,
 
 .order-item-media img {
   display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 .order-fraud-panel {
   display: grid;
-  gap: 10px;
+  gap: 6px;
 }
 
 .order-fraud-head {
@@ -2810,28 +3076,28 @@ textarea:focus,
 }
 
 .order-fraud-caption {
-  margin: 5px 0 0;
+  margin: 4px 0 0;
   color: #7e8678;
-  font-size: 12px;
+  font-size: 11px;
   line-height: 1.45;
 }
 
 .order-fraud-refresh {
-  min-width: 154px;
+  min-width: 128px;
   white-space: nowrap;
 }
 
 .order-fraud-stack {
   display: grid;
-  gap: 10px;
+  gap: 6px;
 }
 
 .order-fraud-phone-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 10px;
-  padding: 10px 12px;
+  gap: 8px;
+  padding: 8px 10px;
   border: 1px solid rgba(43, 52, 80, 0.92);
   background: rgba(6, 8, 14, 0.68);
 }
@@ -2839,6 +3105,12 @@ textarea:focus,
 .order-fraud-phone-row > div {
   display: grid;
   gap: 4px;
+}
+
+.order-fraud-status-stack {
+  display: grid;
+  gap: 8px;
+  justify-items: end;
 }
 
 .order-fraud-phone-label,
@@ -2891,14 +3163,14 @@ textarea:focus,
 .order-fraud-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 8px;
+  gap: 6px;
 }
 
 .order-fraud-card {
   display: grid;
-  gap: 8px;
-  min-height: 94px;
-  padding: 10px;
+  gap: 6px;
+  min-height: 80px;
+  padding: 8px 10px;
   border: 1px solid rgba(43, 52, 80, 0.92);
   background: linear-gradient(180deg, rgba(7, 10, 18, 0.88), rgba(5, 7, 14, 0.94));
 }
@@ -2916,7 +3188,7 @@ textarea:focus,
 }
 
 .order-fraud-value {
-  font-size: 24px;
+  font-size: 21px;
   line-height: 1.08;
 }
 
@@ -2933,11 +3205,11 @@ textarea:focus,
 }
 
 .order-fraud-state {
-  padding: 12px;
+  padding: 10px;
   border: 1px solid rgba(43, 52, 80, 0.92);
   background: rgba(6, 8, 14, 0.68);
   color: #9db0cf;
-  font-size: 13px;
+  font-size: 12px;
   line-height: 1.5;
 }
 
@@ -2952,12 +3224,37 @@ textarea:focus,
   background: rgba(41, 26, 5, 0.62);
 }
 
+.order-status-note-stack {
+  display: grid;
+  gap: 10px;
+}
+
+.order-empty-card {
+  text-align: center;
+  color: var(--muted);
+}
+
 .order-details-modal .admin-modal-foot {
   padding: 12px 16px;
 }
 
+@media (max-width: 1380px) {
+  .order-details-workspace-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .order-metric-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
 @media (max-width: 1180px) {
-  .order-details-shell {
+  .order-details-workspace-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .order-editor-toolbar,
+  .order-editor-financials {
     grid-template-columns: 1fr;
   }
 
@@ -2985,8 +3282,30 @@ textarea:focus,
   .order-fraud-grid,
   .order-summary-grid,
   .order-form-grid,
-  .order-address-grid {
+  .order-address-grid,
+  .order-item-stats-grid,
+  .order-editor-financials--side {
     grid-template-columns: 1fr;
+  }
+
+  .order-editor-table-head {
+    display: none;
+  }
+
+  .order-editor-row {
+    grid-template-columns: 1fr;
+  }
+
+  .order-editor-mobile-label {
+    display: inline-flex;
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  .order-editor-action-cell {
+    justify-items: start;
   }
 
   .product-buyers-head,
@@ -3007,15 +3326,12 @@ textarea:focus,
   }
 
   .order-section-card {
-    padding: 12px;
-  }
-
-  .order-item-card > div:first-child {
-    flex-direction: column;
+    padding: 10px;
   }
 
   .order-fraud-phone-row,
-  .order-fraud-head {
+  .order-fraud-head,
+  .order-item-head {
     flex-direction: column;
     align-items: flex-start;
   }
@@ -5333,8 +5649,10 @@ body::after,
 .admin-layout--soft .order-details-modal,
 .admin-layout--soft .order-details-page,
 .admin-layout--soft .order-section-card,
+.admin-layout--soft .order-detail-info-card,
 .admin-layout--soft .order-metric-card,
 .admin-layout--soft .order-item-card,
+.admin-layout--soft .order-editor-row,
 .admin-layout--soft .order-fraud-card,
 .admin-layout--soft .order-fraud-state,
 .admin-layout--soft .order-fraud-phone-row,
@@ -5375,7 +5693,8 @@ body::after,
 .admin-layout--soft .settings-card h2,
 .admin-layout--soft .settings-card h3,
 .admin-layout--soft .settings-subnav-title,
-.admin-layout--soft .order-details-modal h3 {
+.admin-layout--soft .order-details-modal h3,
+.admin-layout--soft .order-details-title {
   color: var(--text) !important;
   text-shadow: none !important;
 }
@@ -5394,6 +5713,49 @@ body::after,
 .admin-layout--soft .order-fraud-phone-label,
 .admin-layout--soft .order-fraud-state,
 .admin-layout--soft .campaign-preview-frame-wrap + p {
+  color: var(--muted) !important;
+}
+
+.admin-layout--soft .order-details-head {
+  background: linear-gradient(90deg, rgba(214, 231, 79, 0.12), rgba(214, 231, 79, 0.03)) !important;
+  border-bottom: 1px solid var(--border) !important;
+}
+
+.admin-layout--soft .order-detail-info-card {
+  background: #f8faf6 !important;
+  border-color: #e2e7dc !important;
+  box-shadow: none !important;
+}
+
+.admin-layout--soft .order-detail-info-label,
+.admin-layout--soft .order-item-code {
+  color: var(--muted) !important;
+}
+
+.admin-layout--soft .order-detail-info-value,
+.admin-layout--soft .order-item-title,
+.admin-layout--soft .order-fraud-phone-value,
+.admin-layout--soft .order-fraud-value {
+  color: var(--text) !important;
+}
+
+.admin-layout--soft .order-item-media {
+  background: #ffffff !important;
+  border-color: var(--border) !important;
+}
+
+.admin-layout--soft .order-detail-pill {
+  background: #f8faf6 !important;
+  border-color: var(--border) !important;
+  color: var(--text) !important;
+}
+
+.admin-layout--soft .order-detail-pill.is-locked,
+.admin-layout--soft .order-editor-lock-note {
+  color: #c26f5f !important;
+}
+
+.admin-layout--soft .order-editor-stock-note {
   color: var(--muted) !important;
 }
 

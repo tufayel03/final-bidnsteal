@@ -156,10 +156,18 @@ export function getInitialAdminState() {
       loading: false,
       saving: false,
       order: null,
+      catalog: [],
+      catalogQuery: "",
+      catalogLoading: false,
+      productSearch: "",
+      productToAddId: "",
       draft: {
         paymentStatus: "unpaid",
         fulfillmentStatus: "pending",
         customerNote: "",
+        shippingFee: "0",
+        discount: "0",
+        items: [],
         shippingAddress: {
           fullName: "",
           phone: "",

@@ -6,6 +6,7 @@ const { parsePagination } = require("../utils/http");
 const { normalizeShippingAddress, sanitizeText } = require("../utils/validation");
 
 const router = express.Router();
+const OBJECT_ID_PATTERN = /^[a-f0-9]{24}$/i;
 
 function normalizePaymentStatus(value) {
   const normalized = String(value || "").trim().toLowerCase();
@@ -30,7 +31,7 @@ function normalizeOrderIds(orderIds) {
 
   for (const value of orderIds) {
     const orderId = String(value || "").trim();
-    if (!orderId || seen.has(orderId) || !/^[a-f0-9]{24}$/i.test(orderId)) {
+    if (!orderId || seen.has(orderId) || !OBJECT_ID_PATTERN.test(orderId)) {
       continue;
     }
     seen.add(orderId);
@@ -40,7 +41,100 @@ function normalizeOrderIds(orderIds) {
   return unique;
 }
 
-function buildOrderUpdatePayload(body, options = {}) {
+function moneyError(fieldName) {
+  return `${fieldName} must be a valid non-negative amount.`;
+}
+
+function normalizeMoneyValue(value, fieldName) {
+  const amount = Number(value);
+  if (!Number.isFinite(amount) || amount < 0) {
+    throw Object.assign(new Error(moneyError(fieldName)), { status: 400 });
+  }
+  return Number(amount.toFixed(2));
+}
+
+function normalizeOrderItemType(value) {
+  const normalized = String(value || "").trim().toLowerCase();
+  return normalized === "auction" ? "auction" : "fixed";
+}
+
+function computeOrderSubtotal(items = []) {
+  return Number(
+    items.reduce((sum, item) => {
+      const qty = Number(item?.qty || 0);
+      const unitPrice = Number(item?.unitPrice || 0);
+      return sum + (qty * unitPrice);
+    }, 0).toFixed(2)
+  );
+}
+
+function fixedInventoryItemsFromItems(items) {
+  const grouped = new Map();
+
+  for (const item of items || []) {
+    if (!item?.productId) continue;
+    if (String(item.type || "").toLowerCase() === "auction") continue;
+
+    const qty = Math.max(1, Number(item.qty || 0));
+    const productId = String(item.productId);
+    grouped.set(productId, (grouped.get(productId) || 0) + qty);
+  }
+
+  return [...grouped.entries()].map(([productId, qty]) => ({ productId, qty }));
+}
+
+async function normalizeOrderItems(items) {
+  if (!Array.isArray(items) || !items.length) {
+    throw Object.assign(new Error("Order must include at least one product."), { status: 400 });
+  }
+
+  const normalizedItems = [];
+
+  for (const [index, rawItem] of items.entries()) {
+    const item = rawItem && typeof rawItem === "object" ? rawItem : {};
+    const itemNumber = index + 1;
+    const productId = String(item.productId || "").trim();
+    if (!productId || !OBJECT_ID_PATTERN.test(productId)) {
+      throw Object.assign(new Error(`Line ${itemNumber} is missing a valid product.`), { status: 400 });
+    }
+
+    const product = await Product.findById(productId).select("title slug price stock images saleMode deletedAt");
+    if (!product || product.deletedAt) {
+      throw Object.assign(new Error(`Line ${itemNumber} references a product that no longer exists.`), { status: 404 });
+    }
+
+    const type = normalizeOrderItemType(item.type || product.saleMode || "fixed");
+    if (type === "fixed" && String(product.saleMode || "").toLowerCase() === "auction") {
+      throw Object.assign(new Error(`${product.title} can only be purchased through auction.`), { status: 400 });
+    }
+
+    const qty = Number(item.qty);
+    if (!Number.isInteger(qty) || qty < 1 || qty > 999) {
+      throw Object.assign(new Error(`Line ${itemNumber} quantity must be a whole number between 1 and 999.`), { status: 400 });
+    }
+
+    const unitPrice = normalizeMoneyValue(item.unitPrice, `Line ${itemNumber} unit price`);
+    const titleSnapshot = sanitizeText(item.titleSnapshot || product.title, 180) || product.title;
+    const slugSnapshot = sanitizeText(item.slugSnapshot || product.slug, 180) || product.slug;
+    const imageUrl = sanitizeText(item.imageUrl || product.images?.[0] || "", 2048);
+    const auctionId = String(item.auctionId || "").trim();
+
+    normalizedItems.push({
+      productId: product._id,
+      auctionId: auctionId && OBJECT_ID_PATTERN.test(auctionId) ? auctionId : null,
+      titleSnapshot,
+      slugSnapshot,
+      qty,
+      unitPrice,
+      type,
+      imageUrl
+    });
+  }
+
+  return normalizedItems;
+}
+
+async function buildOrderUpdatePayload(body, options = {}) {
   const allowCustomerFields = options.allowCustomerFields !== false;
   const payload = {};
 
@@ -68,28 +162,88 @@ function buildOrderUpdatePayload(body, options = {}) {
     payload.shippingAddress = body.shippingAddress;
   }
 
+  if (allowCustomerFields && body?.shippingFee !== undefined) {
+    payload.shippingFee = normalizeMoneyValue(body.shippingFee, "Shipping fee");
+  }
+
+  if (allowCustomerFields && body?.discount !== undefined) {
+    payload.discount = normalizeMoneyValue(body.discount, "Discount");
+  }
+
+  if (allowCustomerFields && body?.items !== undefined) {
+    payload.items = await normalizeOrderItems(body.items);
+  }
+
   return payload;
 }
 
 function fixedInventoryItems(order) {
-  const grouped = new Map();
+  return fixedInventoryItemsFromItems(order?.items || []);
+}
 
-  for (const item of order?.items || []) {
-    if (!item?.productId) continue;
-    if (String(item.type || "").toLowerCase() === "auction") continue;
+async function adjustInventoryForEditedItems(order, nextItems) {
+  if (!order || order.inventoryReleasedAt) return;
 
-    const qty = Math.max(1, Number(item.qty || 0));
-    const productId = String(item.productId);
-    grouped.set(productId, (grouped.get(productId) || 0) + qty);
+  const previousItems = fixedInventoryItems(order);
+  const nextFixedItems = fixedInventoryItemsFromItems(nextItems);
+  const previousMap = new Map(previousItems.map((item) => [item.productId, item.qty]));
+  const nextMap = new Map(nextFixedItems.map((item) => [item.productId, item.qty]));
+  const productIds = new Set([...previousMap.keys(), ...nextMap.keys()]);
+  const increases = [];
+  const decreases = [];
+
+  for (const productId of productIds) {
+    const previousQty = Number(previousMap.get(productId) || 0);
+    const nextQty = Number(nextMap.get(productId) || 0);
+    if (nextQty > previousQty) {
+      increases.push({ productId, qty: nextQty - previousQty });
+    } else if (previousQty > nextQty) {
+      decreases.push({ productId, qty: previousQty - nextQty });
+    }
   }
 
-  return [...grouped.entries()].map(([productId, qty]) => ({ productId, qty }));
+  const reserved = [];
+
+  try {
+    for (const item of increases) {
+      const product = await Product.findOneAndUpdate(
+        { _id: item.productId, stock: { $gte: item.qty } },
+        { $inc: { stock: -item.qty } },
+        { new: true }
+      );
+
+      if (!product) {
+        throw Object.assign(new Error("Unable to save order items because one or more products are out of stock."), { status: 400 });
+      }
+
+      reserved.push(item);
+    }
+  } catch (error) {
+    for (const item of reserved.reverse()) {
+      await Product.updateOne({ _id: item.productId }, { $inc: { stock: item.qty } });
+    }
+    throw error;
+  }
+
+  for (const item of decreases) {
+    await Product.updateOne({ _id: item.productId }, { $inc: { stock: item.qty } });
+  }
 }
 
 async function releaseInventoryForOrder(order) {
   if (!order || order.inventoryReleasedAt) return;
 
   for (const item of fixedInventoryItems(order)) {
+    await Product.updateOne({ _id: item.productId }, { $inc: { stock: item.qty } });
+  }
+
+  order.inventoryReleasedAt = new Date();
+}
+
+async function releaseInventoryForItems(order, items) {
+  if (!order || order.inventoryReleasedAt) return;
+
+  for (const item of fixedInventoryItemsFromItems(items)) {
     await Product.updateOne({ _id: item.productId }, { $inc: { stock: item.qty } });
   }
 
@@ -138,6 +292,12 @@ async function applyOrderUpdate(order, payload = {}) {
   }
 
   const previousFulfillmentStatus = String(order.fulfillmentStatus || "").toLowerCase();
+  const nextRequestedFulfillmentStatus = Object.prototype.hasOwnProperty.call(payload, "fulfillmentStatus")
+    ? String(payload.fulfillmentStatus || "").toLowerCase()
+    : previousFulfillmentStatus;
+  const shouldCancelOrder = previousFulfillmentStatus !== "cancelled" && nextRequestedFulfillmentStatus === "cancelled";
+  const shouldReactivateOrder = previousFulfillmentStatus === "cancelled" && nextRequestedFulfillmentStatus !== "cancelled";
+  const previousItemsSnapshot = Array.isArray(order.items) ? order.items.map((item) => ({ ...item })) : [];
 
   if (Object.prototype.hasOwnProperty.call(payload, "paymentStatus")) {
     order.paymentStatus = payload.paymentStatus;
@@ -153,11 +313,32 @@ async function applyOrderUpdate(order, payload = {}) {
 
   if (Object.prototype.hasOwnProperty.call(payload, "shippingAddress")) {
     order.shippingAddress = normalizeShippingAddress(payload.shippingAddress, order.shippingAddress || {});
+    if (order.shippingAddress.fullName) {
+      order.customerName = order.shippingAddress.fullName;
+    }
   }
+
+  if (Object.prototype.hasOwnProperty.call(payload, "items")) {
+    if (!shouldCancelOrder && !shouldReactivateOrder) {
+      await adjustInventoryForEditedItems(order, payload.items);
+    }
+    order.items = payload.items;
+    order.subtotal = computeOrderSubtotal(payload.items);
+  }
+
+  if (Object.prototype.hasOwnProperty.call(payload, "shippingFee")) {
+    order.shippingFee = payload.shippingFee;
+  }
+
+  if (Object.prototype.hasOwnProperty.call(payload, "discount")) {
+    order.discount = payload.discount;
+  }
+
+  order.total = Math.max(0, Number((Number(order.subtotal || 0) + Number(order.shippingFee || 0) - Number(order.discount || 0)).toFixed(2)));
 
   const nextFulfillmentStatus = String(order.fulfillmentStatus || "").toLowerCase();
   if (previousFulfillmentStatus !== "cancelled" && nextFulfillmentStatus === "cancelled") {
-    await releaseInventoryForOrder(order);
+    await releaseInventoryForItems(order, previousItemsSnapshot);
   }
   if (previousFulfillmentStatus === "cancelled" && nextFulfillmentStatus !== "cancelled") {
     await reclaimInventoryForOrder(order);
@@ -208,7 +389,7 @@ router.patch("/bulk/status", async (req, res) => {
 
   let payload;
   try {
-    payload = buildOrderUpdatePayload(req.body, { allowCustomerFields: false });
+    payload = await buildOrderUpdatePayload(req.body, { allowCustomerFields: false });
   } catch (error) {
     return res.status(Number(error?.status) || 400).json({ message: error.message || "Invalid order update." });
   }
@@ -270,7 +451,24 @@ router.patch("/:id/status", async (req, res) => {
 
   let payload;
   try {
-    payload = buildOrderUpdatePayload(req.body, { allowCustomerFields: true });
+    payload = await buildOrderUpdatePayload(req.body, { allowCustomerFields: true });
+  } catch (error) {
+    return res.status(Number(error?.status) || 400).json({ message: error.message || "Invalid order update." });
+  }
+
+  await applyOrderUpdate(order, payload);
+  return res.json(order);
+});
+
+router.patch("/:id", async (req, res) => {
+  const order = await Order.findById(req.params.id);
+  if (!order) {
+    return res.status(404).json({ message: "Order not found." });
+  }
+
+  let payload;
+  try {
+    payload = await buildOrderUpdatePayload(req.body, { allowCustomerFields: true });
   } catch (error) {
     return res.status(Number(error?.status) || 400).json({ message: error.message || "Invalid order update." });
   }

@@ -557,6 +557,280 @@ export const adminMethods = {
       : [];
   },
 
+  formatOrderEditorMoney(value) {
+    const amount = Number(value || 0);
+    if (!Number.isFinite(amount) || amount < 0) return "0";
+    return Number.isInteger(amount) ? String(amount) : amount.toFixed(2).replace(/\.?0+$/, "");
+  },
+
+  parseOrderEditorMoney(value, fallback = 0) {
+    const amount = Number(String(value ?? "").trim());
+    if (!Number.isFinite(amount) || amount < 0) {
+      return Number.isFinite(Number(fallback)) ? Number(fallback) : NaN;
+    }
+    return Number(amount.toFixed(2));
+  },
+
+  makeOrderDraftLineId(prefix = "line") {
+    return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  },
+
+  normalizeOrderDraftItem(item, index = 0) {
+    const type = String(item?.type || "").trim().toLowerCase() === "auction" ? "auction" : "fixed";
+    const qty = Math.max(1, Number(item?.qty || 1));
+    const unitPrice = Number(item?.unitPrice || 0);
+    const productId = String(item?.productId || "").trim();
+
+    return {
+      lineId: String(item?.lineId || this.makeOrderDraftLineId(`${productId || "item"}-${index}`)),
+      productId,
+      auctionId: String(item?.auctionId || "").trim(),
+      titleSnapshot: String(item?.titleSnapshot || "").trim(),
+      slugSnapshot: String(item?.slugSnapshot || "").trim(),
+      qty: String(Number.isFinite(qty) ? qty : 1),
+      unitPrice: this.formatOrderEditorMoney(unitPrice),
+      type,
+      imageUrl: this.mediaUrl(item?.imageUrl || ""),
+      locked: type === "auction"
+    };
+  },
+
+  buildOrderDetailsDraft(detail) {
+    return {
+      paymentStatus: detail?.paymentStatus || "unpaid",
+      fulfillmentStatus: detail?.fulfillmentStatus || "pending",
+      customerNote: String(detail?.customerNote || ""),
+      shippingFee: this.formatOrderEditorMoney(detail?.shippingFee),
+      discount: this.formatOrderEditorMoney(detail?.discount),
+      items: Array.isArray(detail?.items)
+        ? detail.items.map((item, index) => this.normalizeOrderDraftItem(item, index))
+        : [],
+      shippingAddress: this.normalizeOrderDraftShipping(detail?.shippingAddress || {})
+    };
+  },
+
+  async ensureOrderDetailsCatalog(force = false) {
+    if (!this.orderDetailsModal?.open && !force) {
+      return;
+    }
+    const search = String(this.orderDetailsModal?.productSearch || "").trim();
+    const currentQuery = String(this.orderDetailsModal?.catalogQuery || "").trim();
+    if (!force && currentQuery === search && Array.isArray(this.orderDetailsModal.catalog) && this.orderDetailsModal.catalog.length) {
+      return;
+    }
+
+    const requestId = Number(this._orderDetailsCatalogRequestId || 0) + 1;
+    this._orderDetailsCatalogRequestId = requestId;
+    this.orderDetailsModal.catalogLoading = true;
+    try {
+      const params = new URLSearchParams({
+        page: "1",
+        limit: "40"
+      });
+      if (search) {
+        params.set("search", search);
+      }
+      const response = await this.apiRequest(`/admin/products?${params.toString()}`);
+      const items = Array.isArray(response?.items) ? response.items : [];
+      const nextCatalog = items
+        .filter((item) => !item?.deletedAt && String(item?.saleMode || "").toLowerCase() !== "auction")
+        .map((item) => {
+          const firstImage = Array.isArray(item.images) ? item.images[0] || "" : "";
+          return {
+            id: this.productIdentifier(item),
+            title: String(item.title || "").trim(),
+            slug: String(item.slug || "").trim(),
+            sku: String(item.sku || "").trim(),
+            price: Number(item.price || 0),
+            stock: Number(item.stock || 0),
+            category: String(item.category || "").trim(),
+            image: this.mediaUrl(firstImage)
+          };
+        });
+      if (requestId !== Number(this._orderDetailsCatalogRequestId || 0)) {
+        return;
+      }
+      this.orderDetailsModal.catalog = nextCatalog;
+      this.orderDetailsModal.catalogQuery = search;
+      const selectedId = String(this.orderDetailsModal.productToAddId || "");
+      if (selectedId && !nextCatalog.some((item) => String(item.id || "") === selectedId)) {
+        this.orderDetailsModal.productToAddId = "";
+      }
+    } catch (error) {
+      this.notify(this.errorMessage(error), "error");
+    } finally {
+      if (requestId === Number(this._orderDetailsCatalogRequestId || 0)) {
+        this.orderDetailsModal.catalogLoading = false;
+      }
+    }
+  },
+
+  filteredOrderDetailsCatalog() {
+    const items = Array.isArray(this.orderDetailsModal?.catalog) ? this.orderDetailsModal.catalog : [];
+    return items;
+  },
+
+  setOrderDetailsProductSearch(value, options = {}) {
+    const nextValue = String(value || "");
+    this.orderDetailsModal.productSearch = nextValue;
+    const { immediate = false } = options;
+
+    if (this._orderDetailsCatalogSearchTimer) {
+      clearTimeout(this._orderDetailsCatalogSearchTimer);
+      this._orderDetailsCatalogSearchTimer = null;
+    }
+
+    const triggerSearch = () => {
+      if (!this.orderDetailsModal?.open) {
+        return;
+      }
+      this.ensureOrderDetailsCatalog(true).catch((error) => {
+        console.error("[admin] order details catalog search failed", error);
+      });
+    };
+
+    if (immediate) {
+      triggerSearch();
+      return;
+    }
+
+    this._orderDetailsCatalogSearchTimer = setTimeout(() => {
+      this._orderDetailsCatalogSearchTimer = null;
+      triggerSearch();
+    }, 300);
+  },
+
+  orderDetailsLineSubtotal(item) {
+    const qty = Math.max(1, Number(item?.qty || 0));
+    const unitPrice = this.parseOrderEditorMoney(item?.unitPrice, 0);
+    return Number((qty * unitPrice).toFixed(2));
+  },
+
+  orderDetailsDraftSubtotal(draft = this.orderDetailsModal?.draft) {
+    const items = Array.isArray(draft?.items) ? draft.items : [];
+    return Number(items.reduce((sum, item) => sum + this.orderDetailsLineSubtotal(item), 0).toFixed(2));
+  },
+
+  orderDetailsDraftTotal(draft = this.orderDetailsModal?.draft) {
+    const subtotal = this.orderDetailsDraftSubtotal(draft);
+    const shippingFee = this.parseOrderEditorMoney(draft?.shippingFee, 0);
+    const discount = this.parseOrderEditorMoney(draft?.discount, 0);
+    return Math.max(0, Number((subtotal + shippingFee - discount).toFixed(2)));
+  },
+
+  updateOrderDetailsItem(lineId, field, value) {
+    const items = this.orderDetailsModal?.draft?.items;
+    if (!Array.isArray(items)) return;
+    const target = items.find((item) => String(item?.lineId || "") === String(lineId || ""));
+    if (!target) return;
+
+    if (target.locked && (field === "qty" || field === "unitPrice")) {
+      return;
+    }
+
+    if (field === "qty") {
+      const digitsOnly = String(value || "").replace(/[^\d]/g, "");
+      target.qty = digitsOnly === "" ? "" : digitsOnly.slice(0, 3);
+      return;
+    }
+
+    if (field === "unitPrice") {
+      const normalized = String(value || "").replace(/[^0-9.]/g, "");
+      const parts = normalized.split(".");
+      const nextValue = parts.length > 2 ? `${parts[0]}.${parts.slice(1).join("")}` : normalized;
+      target.unitPrice = nextValue;
+      return;
+    }
+
+    target[field] = value;
+  },
+
+  removeOrderDetailsItem(lineId) {
+    const items = Array.isArray(this.orderDetailsModal?.draft?.items) ? this.orderDetailsModal.draft.items : [];
+    const target = items.find((item) => String(item?.lineId || "") === String(lineId || ""));
+    if (!target) return;
+    if (target.locked) {
+      this.notify("Auction-backed order items are locked.", "error");
+      return;
+    }
+    if (items.length <= 1) {
+      this.notify("An order must contain at least one product.", "error");
+      return;
+    }
+    this.orderDetailsModal.draft.items = items.filter((item) => String(item?.lineId || "") !== String(lineId || ""));
+  },
+
+  addProductToOrderDetails(productId = this.orderDetailsModal?.productToAddId) {
+    const catalog = Array.isArray(this.orderDetailsModal?.catalog) ? this.orderDetailsModal.catalog : [];
+    const product = catalog.find((item) => String(item.id || "") === String(productId || ""));
+    if (!product) {
+      this.notify("Choose a product to add.", "error");
+      return;
+    }
+
+    this.orderDetailsModal.draft.items.push({
+      lineId: this.makeOrderDraftLineId(product.id),
+      productId: product.id,
+      auctionId: "",
+      titleSnapshot: product.title,
+      slugSnapshot: product.slug,
+      qty: "1",
+      unitPrice: this.formatOrderEditorMoney(product.price),
+      type: "fixed",
+      imageUrl: product.image,
+      locked: false
+    });
+    this.setOrderDetailsProductSearch("", { immediate: true });
+    this.orderDetailsModal.productToAddId = "";
+  },
+
+  normalizeOrderDraftItemsForSave(items) {
+    if (!Array.isArray(items) || !items.length) {
+      throw new Error("Add at least one product to the order.");
+    }
+
+    return items.map((item, index) => {
+      const qty = Number(String(item?.qty ?? "").trim());
+      if (!Number.isInteger(qty) || qty < 1 || qty > 999) {
+        throw new Error(`Line ${index + 1} quantity must be a whole number between 1 and 999.`);
+      }
+
+      const unitPrice = this.parseOrderEditorMoney(item?.unitPrice, NaN);
+      if (!Number.isFinite(unitPrice) || unitPrice < 0) {
+        throw new Error(`Line ${index + 1} unit price is invalid.`);
+      }
+
+      const productId = String(item?.productId || "").trim();
+      if (!productId) {
+        throw new Error(`Line ${index + 1} is missing a product.`);
+      }
+
+      return {
+        productId,
+        auctionId: String(item?.auctionId || "").trim() || null,
+        titleSnapshot: String(item?.titleSnapshot || "").trim(),
+        slugSnapshot: String(item?.slugSnapshot || "").trim(),
+        qty,
+        unitPrice,
+        type: String(item?.type || "").trim().toLowerCase() === "auction" ? "auction" : "fixed",
+        imageUrl: this.mediaUrl(item?.imageUrl || "")
+      };
+    });
+  },
+
+  comparableOrderItems(items) {
+    return (Array.isArray(items) ? items : []).map((item) => ({
+      productId: String(item?.productId || "").trim(),
+      auctionId: String(item?.auctionId || "").trim(),
+      titleSnapshot: String(item?.titleSnapshot || "").trim(),
+      slugSnapshot: String(item?.slugSnapshot || "").trim(),
+      qty: Number(item?.qty || 0),
+      unitPrice: Number(Number(item?.unitPrice || 0).toFixed(2)),
+      type: String(item?.type || "").trim().toLowerCase() === "auction" ? "auction" : "fixed",
+      imageUrl: String(item?.imageUrl || "").trim()
+    }));
+  },
+
   syncOrderDrafts(orders = this.orders) {
     const nextDrafts = {};
     (orders || []).forEach((order) => {
@@ -2203,12 +2477,7 @@ export const adminMethods = {
     };
     if (this.orderDetailsModal.open && String(this.orderDetailsModal.order?.id || "").trim() === orderId) {
       this.orderDetailsModal.order = normalized;
-      this.orderDetailsModal.draft = {
-        paymentStatus: normalized.paymentStatus,
-        fulfillmentStatus: normalized.fulfillmentStatus,
-        customerNote: normalized.customerNote,
-        shippingAddress: this.normalizeOrderDraftShipping(normalized.shippingAddress || {})
-      };
+      this.orderDetailsModal.draft = this.buildOrderDetailsDraft(normalized);
     }
   },
 
@@ -2228,17 +2497,18 @@ export const adminMethods = {
     this.orderDetailsModal.loading = true;
     this.orderDetailsModal.saving = false;
     this.orderDetailsModal.order = null;
+    this.orderDetailsModal.catalogQuery = "";
+    this.orderDetailsModal.productSearch = "";
+    this.orderDetailsModal.productToAddId = "";
 
     try {
-      const detail = this.normalizeOrder(await this.apiRequest(`/admin/orders/${orderId}`));
-      const shipping = this.normalizeOrderDraftShipping(detail?.shippingAddress || {});
+      const [detailPayload] = await Promise.all([
+        this.apiRequest(`/admin/orders/${orderId}`),
+        this.ensureOrderDetailsCatalog(true).catch(() => null)
+      ]);
+      const detail = this.normalizeOrder(detailPayload);
       this.orderDetailsModal.order = detail;
-      this.orderDetailsModal.draft = {
-        paymentStatus: detail?.paymentStatus || "unpaid",
-        fulfillmentStatus: detail?.fulfillmentStatus || "pending",
-        customerNote: String(detail?.customerNote || ""),
-        shippingAddress: shipping
-      };
+      this.orderDetailsModal.draft = this.buildOrderDetailsDraft(detail);
       void this.loadCourierSuccessRate(detail, { silent: true });
     } catch (error) {
       this.notify(this.errorMessage(error), "error");
@@ -2254,6 +2524,14 @@ export const adminMethods = {
     this.orderDetailsModal.loading = false;
     this.orderDetailsModal.saving = false;
     this.orderDetailsModal.order = null;
+    this.orderDetailsModal.catalogQuery = "";
+    this.orderDetailsModal.productSearch = "";
+    this.orderDetailsModal.productToAddId = "";
+    this.orderDetailsModal.catalog = [];
+    if (this._orderDetailsCatalogSearchTimer) {
+      clearTimeout(this._orderDetailsCatalogSearchTimer);
+      this._orderDetailsCatalogSearchTimer = null;
+    }
   },
 
   async saveOrderDetails() {
@@ -2276,10 +2554,34 @@ export const adminMethods = {
       payload.customerNote = draftNote;
     }
 
+    const nextShippingFee = this.parseOrderEditorMoney(draft.shippingFee, 0);
+    const currentShippingFee = Number(detail.shippingFee || 0);
+    if (nextShippingFee !== currentShippingFee) {
+      payload.shippingFee = nextShippingFee;
+    }
+
+    const nextDiscount = this.parseOrderEditorMoney(draft.discount, 0);
+    const currentDiscount = Number(detail.discount || 0);
+    if (nextDiscount !== currentDiscount) {
+      payload.discount = nextDiscount;
+    }
+
     const nextShipping = this.normalizeOrderDraftShipping(draft.shippingAddress || {});
     const currentShipping = this.normalizeOrderDraftShipping(detail.shippingAddress || {});
     if (JSON.stringify(nextShipping) !== JSON.stringify(currentShipping)) {
       payload.shippingAddress = nextShipping;
+    }
+
+    let nextItems = [];
+    try {
+      nextItems = this.normalizeOrderDraftItemsForSave(draft.items || []);
+    } catch (error) {
+      this.notify(this.errorMessage(error), "error");
+      return;
+    }
+    const currentItems = this.comparableOrderItems(detail.items || []);
+    if (JSON.stringify(this.comparableOrderItems(nextItems)) !== JSON.stringify(currentItems)) {
+      payload.items = nextItems;
     }
 
     if (!Object.keys(payload).length) {
@@ -2290,19 +2592,14 @@ export const adminMethods = {
     this.orderDetailsModal.saving = true;
     try {
       const updated = this.normalizeOrder(
-        await this.apiRequest(`/admin/orders/${detail.id}/status`, {
+        await this.apiRequest(`/admin/orders/${detail.id}`, {
           method: "PATCH",
           body: payload
         })
       );
 
       this.orderDetailsModal.order = updated;
-      this.orderDetailsModal.draft = {
-        paymentStatus: updated?.paymentStatus || "unpaid",
-        fulfillmentStatus: updated?.fulfillmentStatus || "pending",
-        customerNote: String(updated?.customerNote || ""),
-        shippingAddress: this.normalizeOrderDraftShipping(updated?.shippingAddress || {})
-      };
+      this.orderDetailsModal.draft = this.buildOrderDetailsDraft(updated);
       this.applyOrderToList(updated);
       this.loadedTabs.dashboard = false;
       this.notify(`Order ${updated.orderNumber} updated.`, "success");
