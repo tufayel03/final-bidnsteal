@@ -13,6 +13,7 @@ const { syncAuctions } = require("../services/auctionService");
 const { getPublicSiteProfile } = require("../services/siteProfileService");
 const {
   createSteadfastOrder,
+  fetchSteadfastCustomerHistory,
   getCourierSettings,
   getSteadfastBalance,
   getSteadfastStatusByConsignmentId,
@@ -758,45 +759,13 @@ async function loadCustomerSuccessRate(req, res) {
       totalOrders: 0,
       totalDelivered: 0,
       totalCancelled: 0,
-      successRatio: 0
+      successRatio: 0,
+      hasFraudHistory: false,
+      fraudCount: 0
     });
   }
-
-  const relatedOrders = await Order.find({
-    "shippingAddress.phone": {
-      $regex: phoneNumber.split("").join("\\D*")
-    }
-  }).sort({ createdAt: -1 });
-
-  const totalOrders = relatedOrders.length;
-  let totalDelivered = 0;
-  let totalCancelled = 0;
-
-  for (const item of relatedOrders) {
-    const deliveryStatus = normalizeDeliveryStatus(item.courier?.deliveryStatus);
-    const fulfillmentStatus = String(item.fulfillmentStatus || "").toLowerCase();
-
-    if (deliveryStatus === "delivered" || fulfillmentStatus === "delivered") {
-      totalDelivered += 1;
-      continue;
-    }
-
-    if (
-      ["cancelled", "returned", "hold", "partial_delivered"].includes(deliveryStatus) ||
-      fulfillmentStatus === "cancelled"
-    ) {
-      totalCancelled += 1;
-    }
-  }
-
-  const successRatio = totalOrders > 0 ? Number(((totalDelivered / totalOrders) * 100).toFixed(2)) : 0;
-  return res.json({
-    phoneNumber,
-    totalOrders,
-    totalDelivered,
-    totalCancelled,
-    successRatio
-  });
+  const snapshot = await fetchSteadfastCustomerHistory(phoneNumber);
+  return res.json(snapshot);
 }
 
 router.get(

@@ -1944,6 +1944,7 @@ export const adminMethods = {
     const orderId = String(order?.id || "").trim();
     if (!orderId) return;
 
+    this.closeCourierSuccessModal();
     this.orderDetailsModal.open = true;
     this.orderDetailsModal.loading = true;
     this.orderDetailsModal.saving = false;
@@ -1959,6 +1960,7 @@ export const adminMethods = {
         customerNote: String(detail?.customerNote || ""),
         shippingAddress: shipping
       };
+      void this.loadCourierSuccessRate(detail, { silent: true });
     } catch (error) {
       this.notify(this.errorMessage(error), "error");
       this.closeOrderDetails();
@@ -1968,6 +1970,7 @@ export const adminMethods = {
   },
 
   closeOrderDetails() {
+    this.closeCourierSuccessModal();
     this.orderDetailsModal.open = false;
     this.orderDetailsModal.loading = false;
     this.orderDetailsModal.saving = false;
@@ -2166,16 +2169,73 @@ export const adminMethods = {
     }
   },
 
-  async openCourierSuccessModal(order) {
-    if (!order?.id) return;
-    this.courierSuccessModal.open = true;
+  async loadCourierSuccessRate(order, options = {}) {
+    if (!order?.id) return null;
+    const open = Boolean(options.open);
+    const silent = Boolean(options.silent);
+    let settings = this.ensureCourierSettings ? this.ensureCourierSettings() : this.courierSettings;
+    const phoneCandidate = String(
+      order?.shippingAddress?.phone ||
+      order?.phone ||
+      order?.customerPhone ||
+      ""
+    ).trim();
+
+    if (open) {
+      this.courierSuccessModal.open = true;
+    }
     this.courierSuccessModal.loading = true;
+    this.courierSuccessModal.orderId = String(order.id || "");
     this.courierSuccessModal.orderNumber = String(order.orderNumber || "");
-    this.courierSuccessModal.phoneNumber = "";
+    this.courierSuccessModal.phoneNumber = phoneCandidate;
     this.courierSuccessModal.totalOrders = 0;
     this.courierSuccessModal.totalDelivered = 0;
     this.courierSuccessModal.totalCancelled = 0;
     this.courierSuccessModal.successRatio = 0;
+    this.courierSuccessModal.hasFraudHistory = false;
+    this.courierSuccessModal.fraudCount = 0;
+    this.courierSuccessModal.error = "";
+
+    if (!this.loadedTabs?.settings || !settings?.fraudCheckerEnabled) {
+      try {
+        const courierResponse = await this.apiRequest("/admin/courier/steadfast/settings");
+        this.courierSettings = {
+          ...this.ensureCourierSettings(),
+          provider: courierResponse.provider || "steadfast",
+          enabled: Boolean(courierResponse.enabled),
+          baseUrl: String(courierResponse.baseUrl || "https://portal.packzy.com/api/v1"),
+          apiKey: String(courierResponse.apiKey || ""),
+          secretKey: "",
+          hasSecret: Boolean(courierResponse.hasSecret),
+          secretKeyMasked: String(courierResponse.secretKeyMasked || ""),
+          fraudCheckerEnabled: Boolean(courierResponse.fraudCheckerEnabled),
+          fraudCheckerEmail: String(courierResponse.fraudCheckerEmail || ""),
+          fraudCheckerPassword: "",
+          fraudCheckerHasPassword: Boolean(courierResponse.fraudCheckerHasPassword),
+          fraudCheckerPasswordMasked: String(courierResponse.fraudCheckerPasswordMasked || ""),
+          defaultDeliveryType: Number(courierResponse.defaultDeliveryType || 0) === 1 ? 1 : 0,
+          defaultItemDescription: String(courierResponse.defaultItemDescription || "BidnSteal order"),
+          balance: this.courierSettings?.balance ?? null,
+          balanceLoading: false,
+          saving: false
+        };
+        settings = this.courierSettings;
+      } catch {
+        // Keep existing state and let the actual courier request surface the actionable error.
+      }
+    }
+
+    if (!settings?.fraudCheckerEnabled) {
+      this.courierSuccessModal.loading = false;
+      this.courierSuccessModal.error = "Enable Customer Success Check in Settings > Courier Integration.";
+      return null;
+    }
+
+    if (!phoneCandidate) {
+      this.courierSuccessModal.loading = false;
+      this.courierSuccessModal.error = "Customer phone is missing from the shipping address.";
+      return null;
+    }
 
     try {
       const endpointCandidates = [
@@ -2215,23 +2275,42 @@ export const adminMethods = {
       this.courierSuccessModal.totalDelivered = Number(response.totalDelivered || 0);
       this.courierSuccessModal.totalCancelled = Number(response.totalCancelled || 0);
       this.courierSuccessModal.successRatio = Number(response.successRatio || 0);
+      this.courierSuccessModal.hasFraudHistory = Boolean(response.hasFraudHistory);
+      this.courierSuccessModal.fraudCount = Number(response.fraudCount || 0);
+      this.courierSuccessModal.error = "";
+      return response;
     } catch (error) {
-      this.notify(this.errorMessage(error), "error");
-      this.closeCourierSuccessModal();
+      const message = this.errorMessage(error);
+      this.courierSuccessModal.error = message;
+      if (!silent) {
+        this.notify(message, "error");
+      }
+      if (open) {
+        this.closeCourierSuccessModal();
+      }
     } finally {
       this.courierSuccessModal.loading = false;
     }
+    return null;
+  },
+
+  async openCourierSuccessModal(order) {
+    return this.loadCourierSuccessRate(order, { open: true });
   },
 
   closeCourierSuccessModal() {
     this.courierSuccessModal.open = false;
     this.courierSuccessModal.loading = false;
+    this.courierSuccessModal.orderId = "";
     this.courierSuccessModal.orderNumber = "";
     this.courierSuccessModal.phoneNumber = "";
     this.courierSuccessModal.totalOrders = 0;
     this.courierSuccessModal.totalDelivered = 0;
     this.courierSuccessModal.totalCancelled = 0;
     this.courierSuccessModal.successRatio = 0;
+    this.courierSuccessModal.hasFraudHistory = false;
+    this.courierSuccessModal.fraudCount = 0;
+    this.courierSuccessModal.error = "";
   },
 
   async loadUsers(resetPage = false) {

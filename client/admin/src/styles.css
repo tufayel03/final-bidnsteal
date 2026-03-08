@@ -1903,7 +1903,7 @@ textarea:focus,
 }
 
 .order-details-head {
-  padding: 14px 18px;
+  padding: 12px 16px;
   background:
     linear-gradient(90deg, rgba(0, 243, 255, 0.08), rgba(255, 0, 255, 0.03) 72%, transparent),
     rgba(0, 243, 255, 0.04);
@@ -1925,32 +1925,32 @@ textarea:focus,
 }
 
 .order-details-body {
-  padding: 14px 18px 18px;
+  padding: 12px 14px 16px;
 }
 
 .order-details-shell {
   display: grid;
-  grid-template-columns: minmax(0, 1.02fr) minmax(360px, 0.98fr);
-  gap: 14px;
+  grid-template-columns: minmax(0, 1.08fr) minmax(410px, 0.92fr);
+  gap: 12px;
   align-items: start;
 }
 
 .order-details-column {
   display: grid;
-  gap: 14px;
+  gap: 12px;
   min-width: 0;
 }
 
 .order-metric-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
+  gap: 8px;
 }
 
 .order-metric-card {
-  min-height: 112px;
+  min-height: 102px;
   align-content: space-between;
-  padding: 12px;
+  padding: 10px;
   border-color: rgba(63, 77, 112, 0.45) !important;
   background:
     linear-gradient(180deg, rgba(12, 16, 26, 0.94), rgba(8, 10, 18, 0.96)) !important;
@@ -1978,7 +1978,7 @@ textarea:focus,
 
 .order-section-card {
   margin-bottom: 0;
-  padding: 14px;
+  padding: 12px;
   background:
     linear-gradient(180deg, rgba(10, 13, 24, 0.9), rgba(6, 8, 16, 0.94)),
     rgba(15, 15, 25, 0.6);
@@ -1991,7 +1991,7 @@ textarea:focus,
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  margin-bottom: 10px;
+  margin-bottom: 8px;
 }
 
 .order-summary-grid,
@@ -1999,20 +1999,20 @@ textarea:focus,
 .order-address-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
+  gap: 8px;
 }
 
 .order-item-card {
   display: grid;
-  gap: 10px;
-  padding: 12px;
+  gap: 8px;
+  padding: 10px;
   border: 1px solid rgba(46, 54, 84, 0.9);
   background: linear-gradient(180deg, rgba(12, 14, 24, 0.9), rgba(7, 9, 16, 0.96));
 }
 
 .order-item-media {
-  width: 60px;
-  height: 60px;
+  width: 56px;
+  height: 56px;
   border: 1px solid rgba(63, 77, 112, 0.58);
   background: rgba(255, 255, 255, 0.03);
   display: flex;
@@ -2026,8 +2026,148 @@ textarea:focus,
   display: block;
 }
 
+.order-fraud-panel {
+  display: grid;
+  gap: 10px;
+}
+
+.order-fraud-head {
+  align-items: flex-start;
+}
+
+.order-fraud-caption {
+  margin: 5px 0 0;
+  color: #8fa0be;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.order-fraud-refresh {
+  min-width: 154px;
+  white-space: nowrap;
+}
+
+.order-fraud-stack {
+  display: grid;
+  gap: 10px;
+}
+
+.order-fraud-phone-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid rgba(43, 52, 80, 0.92);
+  background: rgba(6, 8, 14, 0.68);
+}
+
+.order-fraud-phone-row > div {
+  display: grid;
+  gap: 4px;
+}
+
+.order-fraud-phone-label,
+.order-fraud-label {
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: #7e90af;
+  font-family: 'Share Tech Mono', monospace;
+}
+
+.order-fraud-phone-value,
+.order-fraud-value {
+  color: #f8fbff;
+  font-family: 'Share Tech Mono', monospace;
+}
+
+.order-fraud-status {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 32px;
+  padding: 0 12px;
+  border: 1px solid rgba(43, 52, 80, 0.92);
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  font-family: 'Share Tech Mono', monospace;
+  white-space: nowrap;
+}
+
+.order-fraud-status.is-clear {
+  border-color: rgba(16, 185, 129, 0.4);
+  color: #6ee7b7;
+  background: rgba(6, 24, 17, 0.6);
+}
+
+.order-fraud-status.is-risk {
+  border-color: rgba(239, 68, 68, 0.4);
+  color: #fca5a5;
+  background: rgba(38, 10, 14, 0.6);
+}
+
+.order-fraud-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.order-fraud-card {
+  display: grid;
+  gap: 8px;
+  min-height: 94px;
+  padding: 10px;
+  border: 1px solid rgba(43, 52, 80, 0.92);
+  background: linear-gradient(180deg, rgba(7, 10, 18, 0.88), rgba(5, 7, 14, 0.94));
+}
+
+.order-fraud-card.is-good {
+  border-color: rgba(16, 185, 129, 0.38);
+}
+
+.order-fraud-card.is-bad {
+  border-color: rgba(239, 68, 68, 0.34);
+}
+
+.order-fraud-card.is-highlight {
+  border-color: rgba(0, 243, 255, 0.4);
+}
+
+.order-fraud-value {
+  font-size: 24px;
+  line-height: 1.08;
+}
+
+.order-fraud-meter {
+  height: 10px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(43, 52, 80, 0.92);
+  overflow: hidden;
+}
+
+.order-fraud-meter-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--primary), var(--secondary));
+}
+
+.order-fraud-state {
+  padding: 12px;
+  border: 1px solid rgba(43, 52, 80, 0.92);
+  background: rgba(6, 8, 14, 0.68);
+  color: #9db0cf;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.order-fraud-state-error {
+  border-color: rgba(239, 68, 68, 0.35);
+  color: #fecaca;
+}
+
 .order-details-modal .admin-modal-foot {
-  padding: 14px 18px;
+  padding: 12px 16px;
 }
 
 @media (max-width: 1180px) {
@@ -2038,10 +2178,11 @@ textarea:focus,
 
 @media (max-width: 760px) {
   .order-details-body {
-    padding: 12px;
+    padding: 10px;
   }
 
   .order-metric-grid,
+  .order-fraud-grid,
   .order-summary-grid,
   .order-form-grid,
   .order-address-grid {
@@ -2054,6 +2195,12 @@ textarea:focus,
 
   .order-item-card > div:first-child {
     flex-direction: column;
+  }
+
+  .order-fraud-phone-row,
+  .order-fraud-head {
+    flex-direction: column;
+    align-items: flex-start;
   }
 }
 

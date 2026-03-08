@@ -1,6 +1,11 @@
 const { getSetting, setSetting } = require("./settingsService");
 const { decryptSecret, encryptSecret } = require("../utils/secrets");
 
+const merchantSessionCache = {
+  cookies: null,
+  expiresAt: 0
+};
+
 function defaultCourierSettings() {
   return {
     provider: "steadfast",
@@ -64,6 +69,8 @@ async function saveCourierSettings(input = {}) {
     defaultItemDescription: String(input.defaultItemDescription || current.defaultItemDescription || "BidnSteal order").trim() || "BidnSteal order"
   };
   await setSetting("courier", next);
+  merchantSessionCache.cookies = null;
+  merchantSessionCache.expiresAt = 0;
   return next;
 }
 
@@ -184,9 +191,216 @@ async function getSteadfastStatusByConsignmentId(consignmentId) {
   };
 }
 
+function mergeCookieJar(jar, headers) {
+  const setCookies = headers.getSetCookie ? headers.getSetCookie() : [];
+  for (const line of setCookies) {
+    const segment = String(line || "").split(";")[0];
+    const separatorIndex = segment.indexOf("=");
+    if (separatorIndex <= 0) continue;
+    jar.set(segment.slice(0, separatorIndex), segment.slice(separatorIndex + 1));
+  }
+}
+
+function buildCookieHeader(jar) {
+  return Array.from(jar.entries())
+    .map(([key, value]) => `${key}=${value}`)
+    .join("; ");
+}
+
+function buildBrowserHeaders(jar, overrides = {}) {
+  const headers = new Headers({
+    "user-agent":
+      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36",
+    "accept-language": "en-US,en;q=0.9",
+    Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+    ...overrides
+  });
+  if (jar && jar.size) {
+    headers.set("Cookie", buildCookieHeader(jar));
+  }
+  return headers;
+}
+
+async function requestMerchantPage(url, jar, options = {}) {
+  const response = await fetch(url, {
+    method: options.method || "GET",
+    redirect: "manual",
+    headers: buildBrowserHeaders(jar, options.headers),
+    body: options.body
+  });
+
+  mergeCookieJar(jar, response.headers);
+
+  const contentType = response.headers.get("content-type") || "";
+  const text = await response.text();
+  let json = null;
+  if (contentType.includes("application/json")) {
+    try {
+      json = JSON.parse(text);
+    } catch {
+      json = null;
+    }
+  }
+
+  return {
+    url,
+    status: response.status,
+    location: response.headers.get("location"),
+    contentType,
+    text,
+    json
+  };
+}
+
+async function followMerchantRedirects(url, jar, referer = "https://steadfast.com.bd/login") {
+  let currentUrl = url;
+  let currentReferer = referer;
+
+  for (let attempt = 0; attempt < 10; attempt += 1) {
+    const result = await requestMerchantPage(currentUrl, jar, {
+      headers: currentReferer ? { Referer: currentReferer } : undefined
+    });
+
+    if (result.status >= 300 && result.status < 400 && result.location) {
+      currentReferer = currentUrl;
+      currentUrl = result.location;
+      continue;
+    }
+
+    return {
+      ...result,
+      url: currentUrl
+    };
+  }
+
+  throw new Error("Steadfast merchant flow redirected too many times.");
+}
+
+function extractLoginToken(html) {
+  const match = String(html || "").match(/name=["']_token["'][^>]*value=["']([^"']+)["']/i);
+  return match ? match[1] : "";
+}
+
+async function loginSteadfastMerchant(forceRefresh = false) {
+  const settings = await getCourierSettings();
+  const email = String(settings.fraudCheckerEmail || "").trim();
+  const password = decryptSecret(settings.fraudCheckerPasswordEncrypted);
+
+  if (!settings.fraudCheckerEnabled) {
+    throw new Error("Enable Customer Success Check in Settings > Courier Integration.");
+  }
+  if (!email || !password) {
+    throw new Error("SteadFast merchant login credentials are incomplete.");
+  }
+
+  if (!forceRefresh && merchantSessionCache.cookies && merchantSessionCache.expiresAt > Date.now()) {
+    return new Map(merchantSessionCache.cookies);
+  }
+
+  const jar = new Map();
+  const loginPage = await requestMerchantPage("https://steadfast.com.bd/login", jar);
+  const token = extractLoginToken(loginPage.text);
+
+  if (!token) {
+    throw new Error("Unable to prepare SteadFast merchant login session.");
+  }
+
+  const response = await requestMerchantPage("https://steadfast.com.bd/login", jar, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/x-www-form-urlencoded",
+      Origin: "https://steadfast.com.bd",
+      Referer: "https://steadfast.com.bd/login"
+    },
+    body: new URLSearchParams({
+      _token: token,
+      email,
+      password
+    })
+  });
+
+  const nextUrl = response.location || "https://steadfast.com.bd/home";
+  const settled = await followMerchantRedirects(nextUrl, jar, "https://steadfast.com.bd/login");
+  const loggedIn =
+    settled.status === 200 &&
+    (settled.url.includes("/dashboard") || settled.text.includes("Fraud Check") || settled.text.includes("Logout"));
+
+  if (!loggedIn) {
+    throw new Error("SteadFast merchant login failed. Check the fraud-checker email and password.");
+  }
+
+  merchantSessionCache.cookies = Array.from(jar.entries());
+  merchantSessionCache.expiresAt = Date.now() + 10 * 60 * 1000;
+  return new Map(merchantSessionCache.cookies);
+}
+
+async function fetchSteadfastCustomerHistory(phoneNumber) {
+  const normalizedPhone = String(phoneNumber || "").replace(/\D+/g, "");
+  if (!normalizedPhone) {
+    return {
+      phoneNumber: "",
+      totalOrders: 0,
+      totalDelivered: 0,
+      totalCancelled: 0,
+      successRatio: 0,
+      hasFraudHistory: false,
+      fraudCount: 0,
+      raw: null
+    };
+  }
+
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    const jar = await loginSteadfastMerchant(attempt > 0);
+    const response = await requestMerchantPage(`https://steadfast.com.bd/user/frauds/check/${encodeURIComponent(normalizedPhone)}`, jar, {
+      headers: {
+        Accept: "application/json,text/plain,*/*",
+        Referer: "https://steadfast.com.bd/user/frauds/check"
+      }
+    });
+
+    if (response.status === 401 || response.status === 419 || response.status === 302 || response.url?.includes("/login")) {
+      merchantSessionCache.cookies = null;
+      merchantSessionCache.expiresAt = 0;
+      if (attempt === 0) {
+        continue;
+      }
+      throw new Error("SteadFast merchant session expired. Please save the courier login again.");
+    }
+
+    const payload = response.json;
+    if (!payload || typeof payload !== "object") {
+      throw new Error("SteadFast returned an invalid customer history response.");
+    }
+
+    const totalDelivered = Number(payload.total_delivered || payload.totalDelivered || 0);
+    const totalCancelled = Number(payload.total_cancelled || payload.totalCancelled || 0);
+    const totalOrders = Number(payload.total_orders || payload.totalOrders || totalDelivered + totalCancelled);
+    const successRatio =
+      totalOrders > 0 ? Number(((totalDelivered / totalOrders) * 100).toFixed(2)) : 0;
+    const frauds = Array.isArray(payload.frauds) ? payload.frauds : [];
+
+    merchantSessionCache.cookies = Array.from(jar.entries());
+    merchantSessionCache.expiresAt = Date.now() + 10 * 60 * 1000;
+
+    return {
+      phoneNumber: normalizedPhone,
+      totalOrders,
+      totalDelivered,
+      totalCancelled,
+      successRatio,
+      hasFraudHistory: frauds.length > 0,
+      fraudCount: frauds.length,
+      raw: payload
+    };
+  }
+
+  throw new Error("Unable to load SteadFast customer history.");
+}
+
 module.exports = {
   createSteadfastOrder,
   defaultCourierSettings,
+  fetchSteadfastCustomerHistory,
   getCourierSettings,
   getSteadfastBalance,
   getSteadfastStatusByConsignmentId,

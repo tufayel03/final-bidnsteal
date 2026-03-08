@@ -13,6 +13,17 @@ export function OrderModal() {
     const { courierSuccessModal = {}, orderDetailsModal = {} } = admin;
     const order = orderDetailsModal.order;
     const items = Array.isArray(order?.items) ? order.items : [];
+    const courierLoading = Boolean(courierSuccessModal.loading);
+    const courierError = String(courierSuccessModal.error || "").trim();
+    const courierHasSnapshot =
+        Boolean(String(courierSuccessModal.phoneNumber || "").trim()) ||
+        Number(courierSuccessModal.totalOrders || 0) > 0 ||
+        Number(courierSuccessModal.totalDelivered || 0) > 0 ||
+        Number(courierSuccessModal.totalCancelled || 0) > 0 ||
+        Number(courierSuccessModal.successRatio || 0) > 0;
+    const courierSuccessRatio = Number(courierSuccessModal.successRatio || 0);
+    const courierFraudCount = Number(courierSuccessModal.fraudCount || 0);
+    const courierHasFraudHistory = Boolean(courierSuccessModal.hasFraudHistory);
 
     return (
         <>
@@ -67,7 +78,7 @@ export function OrderModal() {
             {orderDetailsModal.open && (
                 <AdminModalPortal>
                     <div className="admin-modal-overlay" style={{ zIndex: 1080 }} onClick={(event) => event.target === event.currentTarget && admin.closeOrderDetails && admin.closeOrderDetails()}>
-                        <div className="admin-modal order-details-modal" style={{ maxWidth: '1120px' }}>
+                        <div className="admin-modal order-details-modal" style={{ maxWidth: '1280px' }}>
                             <div className="admin-modal-head order-details-head">
                                 <div>
                                     <h3 style={{ margin: 0, fontSize: '24px', fontWeight: 800, color: '#f8fafc' }}>Order Details</h3>
@@ -133,6 +144,67 @@ export function OrderModal() {
                                                     <div style={card}><span style={label}>Payment Method</span><strong style={{ color: '#f8fafc', textTransform: 'uppercase' }}>{order.paymentMethod || '-'}</strong></div>
                                                     <div style={card}><span style={label}>Discount</span><strong style={{ ...mono, color: '#f8fafc' }}>{admin.currency ? admin.currency(order.discount) : order.discount}</strong></div>
                                                 </div>
+                                            </div>
+
+                                            <div className="admin-inset-card order-section-card order-fraud-panel" style={{ marginBottom: 0 }}>
+                                                <div className="order-section-head order-fraud-head">
+                                                    <div>
+                                                        <h4 style={{ margin: 0, fontSize: '15px', fontWeight: 700 }}>Courier Fraud Check</h4>
+                                                        <p className="order-fraud-caption">SteadFast customer history by shipping phone, not your site order history.</p>
+                                                    </div>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => admin.loadCourierSuccessRate && admin.loadCourierSuccessRate(order)}
+                                                        disabled={courierLoading}
+                                                        className="secondary-btn order-fraud-refresh"
+                                                    >
+                                                        {courierLoading ? 'Checking...' : 'Refresh Check'}
+                                                    </button>
+                                                </div>
+
+                                                {courierLoading ? (
+                                                    <div className="order-fraud-state">Checking customer history from SteadFast...</div>
+                                                ) : courierError ? (
+                                                    <div className="order-fraud-state order-fraud-state-error">{courierError}</div>
+                                                ) : courierHasSnapshot ? (
+                                                    <div className="order-fraud-stack">
+                                                        <div className="order-fraud-phone-row">
+                                                            <div>
+                                                                <span className="order-fraud-phone-label">Phone</span>
+                                                                <strong className="order-fraud-phone-value">{courierSuccessModal.phoneNumber || '-'}</strong>
+                                                            </div>
+                                                            <span className={`order-fraud-status ${courierHasFraudHistory ? 'is-risk' : 'is-clear'}`}>
+                                                                {courierHasFraudHistory ? `Fraud Flags: ${courierFraudCount}` : 'No Fraud History'}
+                                                            </span>
+                                                        </div>
+                                                        <div className="order-fraud-grid">
+                                                            <div className="order-fraud-card">
+                                                                <span className="order-fraud-label">Total Orders</span>
+                                                                <strong className="order-fraud-value">{admin.number ? admin.number(courierSuccessModal.totalOrders) : courierSuccessModal.totalOrders}</strong>
+                                                            </div>
+                                                            <div className="order-fraud-card is-good">
+                                                                <span className="order-fraud-label">Delivered</span>
+                                                                <strong className="order-fraud-value">{admin.number ? admin.number(courierSuccessModal.totalDelivered) : courierSuccessModal.totalDelivered}</strong>
+                                                            </div>
+                                                            <div className="order-fraud-card is-bad">
+                                                                <span className="order-fraud-label">Cancelled</span>
+                                                                <strong className="order-fraud-value">{admin.number ? admin.number(courierSuccessModal.totalCancelled) : courierSuccessModal.totalCancelled}</strong>
+                                                            </div>
+                                                            <div className="order-fraud-card is-highlight">
+                                                                <span className="order-fraud-label">Success Ratio</span>
+                                                                <strong className="order-fraud-value">{courierSuccessRatio.toFixed(2)}%</strong>
+                                                            </div>
+                                                        </div>
+                                                        <div className="order-fraud-meter">
+                                                            <div
+                                                                className="order-fraud-meter-fill"
+                                                                style={{ width: `${Math.max(0, Math.min(100, courierSuccessRatio))}%` }}
+                                                            />
+                                                        </div>
+                                                    </div>
+                                                ) : (
+                                                    <div className="order-fraud-state">Courier history will load here.</div>
+                                                )}
                                             </div>
 
                                             <div className="admin-inset-card order-section-card" style={{ marginBottom: 0 }}>

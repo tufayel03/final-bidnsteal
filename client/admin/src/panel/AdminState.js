@@ -139,12 +139,16 @@
     courierSuccessModal: {
       open: false,
       loading: false,
+      orderId: "",
       orderNumber: "",
       phoneNumber: "",
       totalOrders: 0,
       totalDelivered: 0,
       totalCancelled: 0,
-      successRatio: 0
+      successRatio: 0,
+      hasFraudHistory: false,
+      fraudCount: 0,
+      error: ""
     },
 
     // users
