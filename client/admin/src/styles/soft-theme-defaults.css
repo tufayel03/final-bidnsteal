@@ -615,6 +615,32 @@ textarea::placeholder {
   border-radius: 16px;
 }
 
+.admin-layout--soft .order-inline-select-wrap,
+.admin-layout--soft .order-bulk-select-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+
+.admin-layout--soft .order-inline-icon {
+  left: 12px;
+  width: 14px;
+  height: 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.admin-layout--soft .order-inline-select {
+  min-width: 0;
+  width: 100%;
+  padding-left: 34px !important;
+  padding-right: 34px !important;
+}
+
 .admin-layout--soft .order-bulk-pill .mono {
   min-width: 28px;
   height: 28px;
