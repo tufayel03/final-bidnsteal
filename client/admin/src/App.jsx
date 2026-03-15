@@ -1,20 +1,6 @@
 import React from "react";
-import { Navigate, Route, Routes } from "react-router-dom";
-
-import { AdminLoginPage } from "./pages/AdminLoginPage";
-import { AdminPanelExactPage } from "./pages/AdminPanelExactPage";
+import { AdminRoutes } from "./app/router/AdminRoutes";
 
 export default function App() {
-  return (
-    <Routes>
-      <Route path="/" element={<Navigate to="/tufayel" replace />} />
-      <Route path="/tufayel" element={<AdminLoginPage />} />
-      <Route path="/tufayel/panel" element={<AdminPanelExactPage />} />
-      <Route path="/tufayel/panel/inventory/:productId/buyers" element={<AdminPanelExactPage />} />
-      <Route path="/tufayel/panel/orders/:orderId" element={<AdminPanelExactPage />} />
-      <Route path="/tufayel/panel/auctions/:auctionId" element={<AdminPanelExactPage />} />
-      <Route path="/tufayel/panel/users/:userId" element={<AdminPanelExactPage />} />
-      <Route path="*" element={<Navigate to="/tufayel" replace />} />
-    </Routes>
-  );
+  return <AdminRoutes />;
 }

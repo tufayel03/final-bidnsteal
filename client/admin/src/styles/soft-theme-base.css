@@ -1,0 +1,404 @@
+.admin-layout--soft {
+  --bg: #ffffff;
+  --bg-soft: #f7f9f6;
+  --card: #ffffff;
+  --card-soft: #fafbf9;
+  --border: #ecefeb;
+  --border-strong: #d6e74f;
+  --text: #1f261d;
+  --muted: #7d8579;
+  --primary: #d6e74f;
+  --primary-soft: rgba(214, 231, 79, 0.18);
+  --secondary: #8ea850;
+  --success: #8fb96a;
+  --warning: #dac26a;
+  --danger: #d9866e;
+  --info: #9cbb64;
+  --racing-red: #d9866e;
+  --sidebar-width: 236px;
+  --sidebar-collapsed-width: 86px;
+  width: 100%;
+  min-height: 100vh;
+  margin: 0;
+  border-radius: 0;
+  overflow: visible;
+  background: #ffffff;
+  box-shadow: none;
+  border: none;
+}
+
+.admin-layout--soft .admin-main {
+  background: #ffffff;
+}
+
+.admin-layout--soft .admin-content {
+  background: #ffffff;
+  padding: 18px 24px 24px;
+}
+
+.admin-layout--soft .primary-btn,
+.admin-layout--soft .order-filter-btn.primary,
+.admin-layout--soft .settings-btn-primary {
+  border-radius: 14px !important;
+  clip-path: none !important;
+  background: #ffffff !important;
+  color: #1f2519 !important;
+  border: 1px solid var(--border) !important;
+  box-shadow: none !important;
+  text-transform: none;
+  font-family: Inter, "Segoe UI", system-ui, -apple-system, sans-serif !important;
+  letter-spacing: 0 !important;
+}
+
+.admin-layout--soft .primary-btn:hover,
+.admin-layout--soft .order-filter-btn.primary:hover,
+.admin-layout--soft .settings-btn-primary:hover {
+  background: #f7faf4 !important;
+  color: #1f2519 !important;
+  box-shadow: 0 8px 20px rgba(43, 49, 37, 0.08) !important;
+}
+
+.admin-layout--soft .secondary-btn,
+.admin-layout--soft .settings-btn,
+.admin-layout--soft .order-filter-btn,
+.admin-layout--soft .template-tag-btn,
+.admin-layout--soft .order-icon-btn {
+  border-radius: 14px !important;
+  clip-path: none !important;
+  background: #ffffff !important;
+  color: #44493d !important;
+  border: 1px solid var(--border) !important;
+  box-shadow: none !important;
+  text-transform: none;
+  font-family: Inter, "Segoe UI", system-ui, -apple-system, sans-serif !important;
+  letter-spacing: 0 !important;
+  text-shadow: none !important;
+}
+
+.admin-layout--soft .secondary-btn:hover,
+.admin-layout--soft .settings-btn:hover,
+.admin-layout--soft .order-filter-btn:hover,
+.admin-layout--soft .template-tag-btn:hover,
+.admin-layout--soft .order-icon-btn:hover {
+  background: #f7faf4 !important;
+  box-shadow: 0 8px 20px rgba(43, 49, 37, 0.08) !important;
+}
+
+.admin-layout--soft input,
+.admin-layout--soft select,
+.admin-layout--soft textarea,
+.admin-layout--soft .settings-input,
+.admin-layout--soft .settings-textarea,
+.admin-layout--soft .admin-search-input,
+.admin-layout--soft .order-filter-select,
+.admin-layout--soft .auth-form input {
+  border-radius: 14px !important;
+  background: #ffffff !important;
+  border: 1px solid var(--border) !important;
+  color: var(--text) !important;
+  font-family: Inter, "Segoe UI", system-ui, -apple-system, sans-serif !important;
+}
+
+.admin-layout--soft input:focus,
+.admin-layout--soft select:focus,
+.admin-layout--soft textarea:focus,
+.admin-layout--soft .settings-input:focus,
+.admin-layout--soft .settings-textarea:focus,
+.admin-layout--soft .admin-search-input:focus,
+.admin-layout--soft .order-filter-select:focus,
+.admin-layout--soft .auth-form input:focus {
+  border-color: rgba(214, 231, 79, 0.7) !important;
+  box-shadow: 0 0 0 4px rgba(214, 231, 79, 0.16) !important;
+}
+
+.admin-layout--soft .admin-sidebar--soft {
+  border-right: 1px solid rgba(255, 255, 255, 0.08) !important;
+  background: linear-gradient(180deg, #232428 0%, #1a1b20 100%) !important;
+  padding: 18px 14px 16px !important;
+}
+
+.admin-layout--soft .admin-sidebar--soft::before,
+.admin-layout--soft .admin-sidebar--soft::after {
+  display: none !important;
+}
+
+.admin-layout--soft .admin-simple-brand {
+  padding: 6px 8px 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.admin-layout--soft .admin-simple-sidebar-footer {
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  background: transparent;
+}
+
+.admin-layout--soft .admin-simple-brand-mark {
+  border-radius: 12px;
+  background: rgba(214, 231, 79, 0.12);
+  border: 1px solid rgba(214, 231, 79, 0.26);
+  color: var(--primary);
+}
+
+.admin-layout--soft .admin-simple-brand-copy h1 {
+  color: #f8f7f4;
+  font-size: 22px;
+  text-shadow: none;
+  letter-spacing: -0.03em;
+}
+
+.admin-layout--soft .admin-simple-brand-copy p {
+  color: #9ea2ac;
+  letter-spacing: 0.08em;
+}
+
+.admin-layout--soft .admin-simple-nav-group-label {
+  color: #8c9098;
+  text-shadow: none;
+}
+
+.admin-layout--soft .admin-simple-nav-item,
+.admin-layout--soft .admin-simple-link-btn {
+  min-height: 46px;
+  border-radius: 16px;
+  background: transparent !important;
+  border: 1px solid transparent !important;
+  color: #c6c8cf !important;
+}
+
+.admin-layout--soft .admin-simple-nav-item:hover,
+.admin-layout--soft .admin-simple-link-btn:hover {
+  background: rgba(255, 255, 255, 0.06) !important;
+  border-color: rgba(255, 255, 255, 0.05) !important;
+  color: #ffffff !important;
+}
+
+.admin-layout--soft .admin-nav-item-icon {
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.06);
+  color: #d9e37c;
+  box-shadow: none;
+}
+
+.admin-layout--soft .admin-simple-nav-item.active {
+  background: rgba(255, 255, 255, 0.08) !important;
+  border-color: rgba(255, 255, 255, 0.05) !important;
+  color: #ffffff !important;
+  box-shadow: inset 3px 0 0 var(--primary);
+}
+
+.admin-layout--soft .admin-simple-nav-item.active .admin-nav-item-icon {
+  background: var(--primary);
+  color: #21231d;
+}
+
+.admin-layout--soft .admin-soft-sidebar-card {
+  display: grid;
+  gap: 8px;
+  padding: 14px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.admin-layout--soft .admin-soft-sidebar-card__eyebrow {
+  color: #9599a3;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.admin-layout--soft .admin-soft-sidebar-card strong {
+  color: #f6f5f2;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.admin-layout--soft .admin-soft-sidebar-card p {
+  margin: 0;
+  color: #a5a8b1;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.admin-layout--soft .admin-topbar--soft {
+  height: 74px;
+  padding: 0 24px;
+  background: #ffffff;
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--border);
+}
+
+.admin-layout--soft .admin-topbar--soft::after {
+  display: none !important;
+}
+
+.admin-layout--soft .admin-topbar__left {
+  display: flex;
+  align-items: center;
+}
+
+.admin-layout--soft .admin-search-shell--soft {
+  width: min(34vw, 360px);
+  height: 44px;
+  border-radius: 14px;
+  background: #f8faf7 !important;
+  border: 1px solid #ecefeb !important;
+  box-shadow: none !important;
+}
+
+.admin-layout--soft .admin-search-shell--soft:focus-within {
+  border-color: rgba(214, 231, 79, 0.7) !important;
+  box-shadow: 0 0 0 4px rgba(214, 231, 79, 0.16) !important;
+}
+
+.admin-layout--soft .admin-search-shell--soft svg,
+.admin-layout--soft .admin-search-shell--soft input {
+  color: #8a8e82;
+}
+
+.admin-layout--soft .admin-topbar-right--soft {
+  gap: 10px;
+}
+
+.admin-layout--soft .admin-soft-icon-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.88);
+  color: #53584d;
+}
+
+.admin-layout--soft .admin-soft-icon-btn:hover {
+  background: #ffffff;
+  border-color: var(--border-strong);
+}
+
+.admin-layout--soft .icon-btn .dot {
+  border-color: #ffffff;
+  background: var(--danger);
+  box-shadow: none;
+}
+
+.admin-layout--soft .admin-user--soft {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 8px 6px 6px;
+  border-radius: 16px;
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.9);
+}
+
+.admin-layout--soft .admin-user__copy {
+  display: grid;
+  gap: 2px;
+}
+
+.admin-layout--soft .admin-user strong {
+  font-size: 14px;
+  color: var(--text);
+}
+
+.admin-layout--soft .admin-user span {
+  color: var(--muted);
+  font-size: 11px;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.admin-layout--soft .avatar--soft {
+  width: 36px;
+  height: 36px;
+  border: none;
+  background: linear-gradient(180deg, #7d8e64, #4b5440);
+}
+
+.admin-layout--soft .dashboard-shell {
+  background: #ffffff;
+  border: none;
+  box-shadow: none;
+  padding: 0;
+}
+
+.admin-layout--soft .dashboard-shell::before {
+  display: none;
+}
+
+.admin-layout--soft .dashboard-shell__head {
+  padding: 0;
+}
+
+.admin-layout--soft .dashboard-shell__eyebrow {
+  background: #ffffff;
+}
+
+.admin-layout--soft .dashboard-shell__title {
+  font-size: 32px;
+}
+
+.admin-layout--soft .dashboard-stat-card,
+.admin-layout--soft .dashboard-section {
+  box-shadow: 0 10px 24px rgba(47, 53, 39, 0.05);
+}
+
+@media (max-width: 980px) {
+  .admin-layout--soft {
+    width: 100%;
+    min-height: 100vh;
+    margin: 0;
+    border-radius: 0;
+  }
+
+  .admin-layout--soft .admin-topbar--soft {
+    height: auto;
+    padding: 14px 16px;
+  }
+
+  .admin-layout--soft .admin-search-shell--soft {
+    width: 100%;
+  }
+}
+
+.admin-layout--soft .primary-btn,
+.admin-layout--soft .order-filter-btn.primary,
+.admin-layout--soft .settings-btn-primary,
+.admin-layout--soft .order-icon-btn.primary {
+  background: #2a3320 !important;
+  color: #ffffff !important;
+  border-color: #2a3320 !important;
+  box-shadow: 0 12px 24px rgba(42, 51, 32, 0.14) !important;
+}
+
+.admin-layout--soft .primary-btn:hover,
+.admin-layout--soft .order-filter-btn.primary:hover,
+.admin-layout--soft .settings-btn-primary:hover,
+.admin-layout--soft .order-icon-btn.primary:hover {
+  background: #1f2618 !important;
+  color: #ffffff !important;
+  box-shadow: 0 16px 28px rgba(31, 38, 24, 0.18) !important;
+}
+
+.admin-layout--soft .order-filter-btn.danger,
+.admin-layout--soft .order-icon-btn.danger {
+  background: #fff5f1 !important;
+  color: #c26f5f !important;
+  border-color: #efd6cf !important;
+  box-shadow: none !important;
+}
+
+.admin-layout--soft .order-filter-btn.danger:hover,
+.admin-layout--soft .order-icon-btn.danger:hover {
+  background: #fff0eb !important;
+  color: #b96150 !important;
+}
+
+.admin-layout--soft .admin-tab-header h2 {
+  color: var(--text) !important;
+}
+
+.admin-layout--soft .admin-tab-header p {
+  color: var(--muted) !important;
+}
+
