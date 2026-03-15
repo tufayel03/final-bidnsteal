@@ -597,6 +597,10 @@ export const adminMethods = {
 
   buildOrderDetailsDraft(detail) {
     return {
+      customerType: detail?.userId ? "user" : "guest",
+      userId: String(detail?.userId || "").trim(),
+      customerName: String(detail?.customerName || detail?.shippingAddress?.fullName || "").trim(),
+      customerEmail: String(detail?.customerEmail || "").trim(),
       paymentStatus: detail?.paymentStatus || "unpaid",
       fulfillmentStatus: detail?.fulfillmentStatus || "pending",
       customerNote: String(detail?.customerNote || ""),
@@ -607,6 +611,134 @@ export const adminMethods = {
         : [],
       shippingAddress: this.normalizeOrderDraftShipping(detail?.shippingAddress || {})
     };
+  },
+
+  normalizeOrderDetailsUserOption(user) {
+    if (!user || typeof user !== "object") return null;
+    const id = String(user.id || user._id || "").trim();
+    if (!id) return null;
+    return {
+      id,
+      name: String(user.name || "").trim(),
+      email: String(user.email || "").trim(),
+      phone: String(user.phone || "").trim(),
+      shippingAddress: this.normalizeOrderDraftShipping(user.shippingAddress || {})
+    };
+  },
+
+  async ensureOrderDetailsUsers(force = false) {
+    if (!this.orderDetailsModal?.open && !force) {
+      return;
+    }
+    const search = String(this.orderDetailsModal?.userSearch || "").trim();
+    const currentQuery = String(this.orderDetailsModal?.userQuery || "").trim();
+    if (!force && currentQuery === search && Array.isArray(this.orderDetailsModal.userOptions) && this.orderDetailsModal.userOptions.length) {
+      return;
+    }
+
+    const requestId = Number(this._orderDetailsUserRequestId || 0) + 1;
+    this._orderDetailsUserRequestId = requestId;
+    this.orderDetailsModal.userLoading = true;
+    try {
+      const query = this.toQueryString({
+        page: 1,
+        limit: 20,
+        search
+      });
+      const response = await this.apiRequest(`/admin/users?${query}`);
+      const nextUsers = (Array.isArray(response?.items) ? response.items : [])
+        .map((item) => this.normalizeOrderDetailsUserOption(item))
+        .filter(Boolean);
+      if (requestId !== Number(this._orderDetailsUserRequestId || 0)) {
+        return;
+      }
+      this.orderDetailsModal.userOptions = nextUsers;
+      this.orderDetailsModal.userQuery = search;
+    } catch (error) {
+      this.notify(this.errorMessage(error), "error");
+    } finally {
+      if (requestId === Number(this._orderDetailsUserRequestId || 0)) {
+        this.orderDetailsModal.userLoading = false;
+      }
+    }
+  },
+
+  setOrderDetailsUserSearch(value, options = {}) {
+    const nextValue = String(value || "");
+    this.orderDetailsModal.userSearch = nextValue;
+    const { immediate = false } = options;
+
+    if (this._orderDetailsUserSearchTimer) {
+      clearTimeout(this._orderDetailsUserSearchTimer);
+      this._orderDetailsUserSearchTimer = null;
+    }
+
+    const triggerSearch = () => {
+      if (!this.orderDetailsModal?.open) {
+        return;
+      }
+      this.ensureOrderDetailsUsers(true).catch((error) => {
+        console.error("[admin] order details user search failed", error);
+      });
+    };
+
+    if (immediate) {
+      triggerSearch();
+      return;
+    }
+
+    this._orderDetailsUserSearchTimer = setTimeout(() => {
+      this._orderDetailsUserSearchTimer = null;
+      triggerSearch();
+    }, 300);
+  },
+
+  setOrderDetailsCustomerType(value) {
+    const nextType = String(value || "").trim().toLowerCase() === "user" ? "user" : "guest";
+    this.orderDetailsModal.draft.customerType = nextType;
+    if (nextType === "user") {
+      this.ensureOrderDetailsUsers(true).catch((error) => {
+        console.error("[admin] failed to load order details users", error);
+      });
+      return;
+    }
+
+    this.orderDetailsModal.draft.userId = "";
+  },
+
+  async selectOrderDetailsUser(userId) {
+    const nextUserId = String(userId || "").trim();
+    this.orderDetailsModal.draft.userId = nextUserId;
+    if (!nextUserId) {
+      return;
+    }
+
+    this.orderDetailsModal.userLoading = true;
+    try {
+      const details = this.hydrateAdminUserDetails(await this.apiRequest(`/admin/users/${nextUserId}`));
+      const normalized = this.normalizeOrderDetailsUserOption(details);
+      if (normalized && !this.orderDetailsModal.userOptions.some((item) => item.id === normalized.id)) {
+        this.orderDetailsModal.userOptions = [normalized, ...this.orderDetailsModal.userOptions];
+      }
+
+      const shippingAddress = this.normalizeOrderDraftShipping(details?.shippingAddress || {});
+      if (!shippingAddress.fullName) {
+        shippingAddress.fullName = String(details?.name || "").trim();
+      }
+      if (!shippingAddress.phone) {
+        shippingAddress.phone = String(details?.phone || "").trim();
+      }
+
+      this.orderDetailsModal.draft.customerType = "user";
+      this.orderDetailsModal.draft.userId = String(details?.id || nextUserId);
+      this.orderDetailsModal.draft.customerName = String(details?.name || "").trim();
+      this.orderDetailsModal.draft.customerEmail = String(details?.email || "").trim();
+      this.orderDetailsModal.draft.shippingAddress = shippingAddress;
+    } catch (error) {
+      this.notify(this.errorMessage(error), "error");
+    } finally {
+      this.orderDetailsModal.userLoading = false;
+    }
   },
 
   async ensureOrderDetailsCatalog(force = false) {
@@ -2493,12 +2625,17 @@ export const adminMethods = {
 
     this.closeCourierSuccessModal();
     this.orderDetailsModal.open = true;
+    this.orderDetailsModal.mode = "edit";
     this.orderDetailsModal.loading = true;
     this.orderDetailsModal.saving = false;
     this.orderDetailsModal.order = null;
     this.orderDetailsModal.catalogQuery = "";
     this.orderDetailsModal.productSearch = "";
     this.orderDetailsModal.productToAddId = "";
+    this.orderDetailsModal.userQuery = "";
+    this.orderDetailsModal.userSearch = "";
+    this.orderDetailsModal.userOptions = [];
+    this.orderDetailsModal.userLoading = false;
 
     try {
       const [detailPayload] = await Promise.all([
@@ -2517,9 +2654,36 @@ export const adminMethods = {
     }
   },
 
+  async openOrderCreate() {
+    this.closeCourierSuccessModal();
+    this.orderDetailsModal.open = true;
+    this.orderDetailsModal.mode = "create";
+    this.orderDetailsModal.loading = true;
+    this.orderDetailsModal.saving = false;
+    this.orderDetailsModal.order = null;
+    this.orderDetailsModal.catalogQuery = "";
+    this.orderDetailsModal.productSearch = "";
+    this.orderDetailsModal.productToAddId = "";
+    this.orderDetailsModal.userQuery = "";
+    this.orderDetailsModal.userSearch = "";
+    this.orderDetailsModal.userOptions = [];
+    this.orderDetailsModal.userLoading = false;
+    this.orderDetailsModal.draft = this.buildOrderDetailsDraft(null);
+
+    try {
+      await Promise.all([
+        this.ensureOrderDetailsCatalog(true).catch(() => null),
+        this.ensureOrderDetailsUsers(true).catch(() => null)
+      ]);
+    } finally {
+      this.orderDetailsModal.loading = false;
+    }
+  },
+
   closeOrderDetails() {
     this.closeCourierSuccessModal();
     this.orderDetailsModal.open = false;
+    this.orderDetailsModal.mode = "edit";
     this.orderDetailsModal.loading = false;
     this.orderDetailsModal.saving = false;
     this.orderDetailsModal.order = null;
@@ -2527,47 +2691,73 @@ export const adminMethods = {
     this.orderDetailsModal.productSearch = "";
     this.orderDetailsModal.productToAddId = "";
     this.orderDetailsModal.catalog = [];
+    this.orderDetailsModal.userQuery = "";
+    this.orderDetailsModal.userSearch = "";
+    this.orderDetailsModal.userOptions = [];
+    this.orderDetailsModal.userLoading = false;
+    this.orderDetailsModal.draft = this.buildOrderDetailsDraft(null);
     if (this._orderDetailsCatalogSearchTimer) {
       clearTimeout(this._orderDetailsCatalogSearchTimer);
       this._orderDetailsCatalogSearchTimer = null;
+    }
+    if (this._orderDetailsUserSearchTimer) {
+      clearTimeout(this._orderDetailsUserSearchTimer);
+      this._orderDetailsUserSearchTimer = null;
     }
   },
 
   async saveOrderDetails() {
     const detail = this.orderDetailsModal.order;
-    if (!detail?.id) return;
+    const isCreate = this.orderDetailsModal.mode === "create";
+    if (!isCreate && !detail?.id) return;
 
     const draft = this.orderDetailsModal.draft || {};
+    const draftCustomerType = String(draft.customerType || "").trim().toLowerCase() === "user" ? "user" : "guest";
+    const customerName = String(draft.customerName || draft.shippingAddress?.fullName || "").trim().slice(0, 120);
+    const customerEmail = String(draft.customerEmail || "").trim().slice(0, 180);
+    if (isCreate && draftCustomerType === "user" && !String(draft.userId || "").trim()) {
+      this.notify("Select an existing user for this order.", "error");
+      return;
+    }
+    if (isCreate && !customerName) {
+      this.notify("Customer name is required.", "error");
+      return;
+    }
+    if (isCreate && !customerEmail) {
+      this.notify("Customer email is required.", "error");
+      return;
+    }
+
     const payload = {};
 
-    if (draft.paymentStatus && draft.paymentStatus !== detail.paymentStatus) {
+    if (draft.paymentStatus && (isCreate || draft.paymentStatus !== detail.paymentStatus)) {
       payload.paymentStatus = draft.paymentStatus;
     }
-    if (draft.fulfillmentStatus && draft.fulfillmentStatus !== detail.fulfillmentStatus) {
+    if (draft.fulfillmentStatus && (isCreate || draft.fulfillmentStatus !== detail.fulfillmentStatus)) {
       payload.fulfillmentStatus = draft.fulfillmentStatus;
     }
 
     const draftNote = String(draft.customerNote || "").trim().slice(0, 1000);
-    const currentNote = String(detail.customerNote || "").trim();
-    if (draftNote !== currentNote) {
+    const currentNote = String(detail?.customerNote || "").trim();
+    if (isCreate || draftNote !== currentNote) {
       payload.customerNote = draftNote;
     }
 
     const nextShippingFee = this.parseOrderEditorMoney(draft.shippingFee, 0);
-    const currentShippingFee = Number(detail.shippingFee || 0);
-    if (nextShippingFee !== currentShippingFee) {
+    const currentShippingFee = Number(detail?.shippingFee || 0);
+    if (isCreate || nextShippingFee !== currentShippingFee) {
       payload.shippingFee = nextShippingFee;
     }
 
     const nextDiscount = this.parseOrderEditorMoney(draft.discount, 0);
-    const currentDiscount = Number(detail.discount || 0);
-    if (nextDiscount !== currentDiscount) {
+    const currentDiscount = Number(detail?.discount || 0);
+    if (isCreate || nextDiscount !== currentDiscount) {
       payload.discount = nextDiscount;
     }
 
     const nextShipping = this.normalizeOrderDraftShipping(draft.shippingAddress || {});
-    const currentShipping = this.normalizeOrderDraftShipping(detail.shippingAddress || {});
-    if (JSON.stringify(nextShipping) !== JSON.stringify(currentShipping)) {
+    const currentShipping = this.normalizeOrderDraftShipping(detail?.shippingAddress || {});
+    if (isCreate || JSON.stringify(nextShipping) !== JSON.stringify(currentShipping)) {
       payload.shippingAddress = nextShipping;
     }
 
@@ -2578,12 +2768,16 @@ export const adminMethods = {
       this.notify(this.errorMessage(error), "error");
       return;
     }
-    const currentItems = this.comparableOrderItems(detail.items || []);
-    if (JSON.stringify(this.comparableOrderItems(nextItems)) !== JSON.stringify(currentItems)) {
+    const currentItems = this.comparableOrderItems(detail?.items || []);
+    if (isCreate || JSON.stringify(this.comparableOrderItems(nextItems)) !== JSON.stringify(currentItems)) {
       payload.items = nextItems;
     }
 
-    if (!Object.keys(payload).length) {
+    if (isCreate) {
+      payload.customerName = customerName;
+      payload.customerEmail = customerEmail;
+      payload.userId = draftCustomerType === "user" ? String(draft.userId || "").trim() : "";
+    } else if (!Object.keys(payload).length) {
       this.notify("No detail changes to save.");
       return;
     }
@@ -2591,17 +2785,22 @@ export const adminMethods = {
     this.orderDetailsModal.saving = true;
     try {
       const updated = this.normalizeOrder(
-        await this.apiRequest(`/admin/orders/${detail.id}`, {
-          method: "PATCH",
+        await this.apiRequest(isCreate ? "/admin/orders" : `/admin/orders/${detail.id}`, {
+          method: isCreate ? "POST" : "PATCH",
           body: payload
         })
       );
 
+      this.orderDetailsModal.mode = "edit";
       this.orderDetailsModal.order = updated;
       this.orderDetailsModal.draft = this.buildOrderDetailsDraft(updated);
-      this.applyOrderToList(updated);
+      if (isCreate) {
+        await this.loadOrders(true);
+      } else {
+        this.applyOrderToList(updated);
+      }
       this.loadedTabs.dashboard = false;
-      this.notify(`Order ${updated.orderNumber} updated.`, "success");
+      this.notify(`Order ${updated.orderNumber} ${isCreate ? "created" : "updated"}.`, "success");
     } catch (error) {
       this.notify(this.errorMessage(error), "error");
     } finally {

@@ -1,9 +1,17 @@
 const express = require("express");
 const Order = require("../models/Order");
 const Product = require("../models/Product");
+const User = require("../models/User");
 const { requireAdmin } = require("../middleware/auth");
 const { parsePagination } = require("../utils/http");
-const { normalizeShippingAddress, sanitizeText } = require("../utils/validation");
+const { makeOrderNumber } = require("../utils/orderNumbers");
+const {
+  hasRequiredShippingAddress,
+  isValidEmail,
+  normalizeEmail,
+  normalizeShippingAddress,
+  sanitizeText
+} = require("../utils/validation");
 
 const router = express.Router();
 const OBJECT_ID_PATTERN = /^[a-f0-9]{24}$/i;
@@ -363,6 +371,87 @@ async function applyOrderUpdate(order, payload = {}) {
   return order;
 }
 
+async function createAdminOrder(body = {}) {
+  const payload = await buildOrderUpdatePayload(body, { allowCustomerFields: true });
+  if (!Array.isArray(payload.items) || !payload.items.length) {
+    throw Object.assign(new Error("Order must include at least one product."), { status: 400 });
+  }
+
+  const rawUserId = String(body?.userId || "").trim();
+  if (rawUserId && !OBJECT_ID_PATTERN.test(rawUserId)) {
+    throw Object.assign(new Error("Selected user is invalid."), { status: 400 });
+  }
+
+  const user = rawUserId
+    ? await User.findById(rawUserId).select("name email phone shippingAddress")
+    : null;
+  if (rawUserId && !user) {
+    throw Object.assign(new Error("Selected user no longer exists."), { status: 404 });
+  }
+
+  const shippingAddress = normalizeShippingAddress(payload.shippingAddress || {}, user?.shippingAddress || {});
+  const customerName = sanitizeText(
+    body?.customerName || shippingAddress.fullName || user?.name,
+    120
+  );
+  const customerEmail = normalizeEmail(body?.customerEmail || user?.email || "");
+
+  if (!customerName) {
+    throw Object.assign(new Error("Customer name is required."), { status: 400 });
+  }
+  if (!customerEmail || !isValidEmail(customerEmail)) {
+    throw Object.assign(new Error("A valid customer email is required."), { status: 400 });
+  }
+
+  shippingAddress.fullName = sanitizeText(shippingAddress.fullName || customerName, 120);
+  shippingAddress.phone = sanitizeText(shippingAddress.phone || user?.phone, 40);
+
+  if (!hasRequiredShippingAddress(shippingAddress)) {
+    throw Object.assign(new Error("Complete shipping details are required."), { status: 400 });
+  }
+
+  const subtotal = computeOrderSubtotal(payload.items);
+  const shippingFee = Object.prototype.hasOwnProperty.call(payload, "shippingFee") ? payload.shippingFee : 0;
+  const discount = Object.prototype.hasOwnProperty.call(payload, "discount") ? payload.discount : 0;
+  const fulfillmentStatus = payload.fulfillmentStatus || "pending";
+  const inventoryReleasedAt = fulfillmentStatus === "cancelled" ? new Date() : null;
+  const itemsToReserve = inventoryReleasedAt ? [] : fixedInventoryItemsFromItems(payload.items);
+  const reservedItems = [];
+
+  try {
+    for (const item of itemsToReserve) {
+      await reserveProductInventory(item.productId, item.qty, {
+        allowNegativeStock: true,
+        missingMessage: "Unable to create this order because one or more products no longer exist."
+      });
+      reservedItems.push(item);
+    }
+
+    return await Order.create({
+      orderNumber: await makeOrderNumber(),
+      userId: user?._id || null,
+      customerName,
+      customerEmail,
+      paymentMethod: sanitizeText(body?.paymentMethod || "cod", 40) || "cod",
+      paymentStatus: payload.paymentStatus || "unpaid",
+      fulfillmentStatus,
+      customerNote: Object.prototype.hasOwnProperty.call(payload, "customerNote") ? payload.customerNote : "",
+      subtotal,
+      shippingFee,
+      discount,
+      total: Math.max(0, Number((subtotal + shippingFee - discount).toFixed(2))),
+      items: payload.items,
+      shippingAddress,
+      inventoryReleasedAt
+    });
+  } catch (error) {
+    for (const item of reservedItems.reverse()) {
+      await Product.updateOne({ _id: item.productId }, { $inc: { stock: item.qty } });
+    }
+    throw error;
+  }
+}
+
 router.use(requireAdmin);
 
 router.get("/", async (req, res) => {
@@ -394,6 +483,15 @@ router.get("/", async (req, res) => {
     total,
     totalPages: Math.max(1, Math.ceil(total / limit))
   });
+});
+
+router.post("/", async (req, res) => {
+  try {
+    const order = await createAdminOrder(req.body || {});
+    return res.status(201).json(order);
+  } catch (error) {
+    return res.status(Number(error?.status) || 400).json({ message: error.message || "Unable to create order." });
+  }
 });
 
 router.patch("/bulk/status", async (req, res) => {

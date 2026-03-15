@@ -1,7 +1,7 @@
 @import "./styles/foundation.css";
 @import "./styles/admin-panels.css";
-@import "./styles/legacy-overrides.css";
 @import "./styles/dashboard.css";
 @import "./styles/soft-theme-base.css";
 @import "./styles/soft-theme-surfaces.css";
 @import "./styles/soft-theme-features.css";
+@import "./styles/soft-theme-defaults.css";

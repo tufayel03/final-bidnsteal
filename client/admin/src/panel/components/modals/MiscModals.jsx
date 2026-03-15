@@ -3,7 +3,7 @@ import { useAdmin } from '../../AdminContext';
 import { Icon } from '../Icon';
 import { AdminModalPortal } from './AdminModalPortal';
 
-const mono = { fontFamily: '"Share Tech Mono", monospace' };
+const mono = { fontFamily: 'Inter, "Segoe UI", system-ui, -apple-system, sans-serif', fontVariantNumeric: 'tabular-nums' };
 const label = { display: 'block', marginBottom: '6px', fontSize: '11px', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--muted)' };
 
 export function MiscModals() {
@@ -135,7 +135,7 @@ export function MiscModals() {
             )}
 
             {toast.show && (
-                <div className={`admin-toast ${toast.type === 'error' ? 'error' : ''}`} style={toast.type === 'success' ? { borderColor: 'rgba(0, 243, 255, 0.55)', color: '#cffafe' } : undefined}>
+                <div className={`admin-toast ${toast.type === 'error' ? 'error' : ''}`} style={toast.type === 'success' ? { borderColor: 'rgba(143, 185, 106, 0.38)', color: '#5e7542' } : undefined}>
                     <p style={{ margin: 0 }}>
                         {toast.type === 'error' ? 'ERROR: ' : toast.type === 'success' ? 'OK: ' : ''}{toast.message}
                     </p>

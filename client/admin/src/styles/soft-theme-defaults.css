@@ -1,0 +1,386 @@
+/* Shared soft theme defaults for admin reusable surfaces and controls. */
+
+.admin-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(239, 243, 236, 0.74);
+  backdrop-filter: blur(10px);
+}
+
+.admin-modal {
+  width: min(1100px, calc(100vw - 48px));
+  max-width: 1100px;
+  max-height: calc(100vh - 48px);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: #f7f8f3;
+  border: 1px solid #dde2d5;
+  border-radius: 32px;
+  box-shadow: 0 24px 52px rgba(46, 53, 38, 0.12);
+  color: var(--text);
+}
+
+.admin-modal-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 18px 24px;
+  border-bottom: 1px solid #e4e8de;
+  background: #ffffff;
+}
+
+.admin-modal-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 22px 24px;
+  background: #f7f8f3;
+  color: var(--text);
+}
+
+.admin-modal-foot {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  padding: 16px 24px;
+  border-top: 1px solid #e4e8de;
+  background: #ffffff;
+}
+
+.admin-tab-header h2 {
+  color: var(--text);
+}
+
+.admin-tab-header p,
+.order-selection-meta,
+.order-primary-caption,
+.order-total-label,
+.order-courier-empty,
+.order-date-compact span,
+.orders-empty-state,
+.orders-pagination-bar {
+  color: var(--muted);
+}
+
+.primary-btn,
+.order-filter-btn.primary,
+.settings-btn-primary {
+  border-radius: 14px !important;
+  background: #2f3923 !important;
+  border: 1px solid #2f3923 !important;
+  color: #ffffff !important;
+  box-shadow: 0 12px 24px rgba(42, 51, 32, 0.14) !important;
+  text-transform: none;
+  letter-spacing: 0 !important;
+}
+
+.primary-btn:hover,
+.order-filter-btn.primary:hover,
+.settings-btn-primary:hover {
+  background: #26301d !important;
+  border-color: #26301d !important;
+  color: #ffffff !important;
+  transform: none;
+  filter: none;
+  box-shadow: 0 16px 28px rgba(31, 38, 24, 0.18) !important;
+}
+
+.secondary-btn,
+.settings-btn,
+.order-filter-btn,
+.template-tag-btn,
+.order-icon-btn {
+  border-radius: 14px !important;
+  background: #ffffff !important;
+  border: 1px solid var(--border) !important;
+  color: #495243 !important;
+  box-shadow: none !important;
+  text-transform: none;
+  letter-spacing: 0 !important;
+  text-shadow: none !important;
+}
+
+.secondary-btn:hover,
+.settings-btn:hover,
+.order-filter-btn:hover,
+.template-tag-btn:hover,
+.order-icon-btn:hover {
+  background: #f7f9f4 !important;
+  border-color: #cdd6bf !important;
+  color: var(--text) !important;
+  transform: none;
+  filter: none;
+  box-shadow: 0 8px 20px rgba(43, 49, 37, 0.08) !important;
+}
+
+.order-icon-btn.primary {
+  background: #2f3923 !important;
+  border-color: #2f3923 !important;
+  color: #ffffff !important;
+}
+
+.order-icon-btn.primary:hover {
+  background: #26301d !important;
+  border-color: #26301d !important;
+  color: #ffffff !important;
+}
+
+.order-icon-btn.danger,
+.order-filter-btn.danger {
+  background: #fff3ef !important;
+  border-color: #eed8d1 !important;
+  color: #bd6b5a !important;
+}
+
+.order-icon-btn.danger:hover,
+.order-filter-btn.danger:hover {
+  background: #fbe9e3 !important;
+  border-color: #e8c5bb !important;
+  color: #a85f51 !important;
+}
+
+input,
+select,
+textarea,
+.settings-input,
+.settings-textarea,
+.admin-search-input,
+.order-filter-select,
+.auth-form input {
+  border-radius: 14px !important;
+  background: #ffffff !important;
+  border: 1px solid var(--border) !important;
+  color: var(--text) !important;
+  box-shadow: none !important;
+  -webkit-text-fill-color: var(--text);
+}
+
+input:focus,
+select:focus,
+textarea:focus,
+.settings-input:focus,
+.settings-textarea:focus,
+.admin-search-input:focus,
+.order-filter-select:focus,
+.auth-form input:focus {
+  border-color: rgba(214, 231, 79, 0.7) !important;
+  box-shadow: 0 0 0 4px rgba(214, 231, 79, 0.16) !important;
+  outline: none !important;
+}
+
+.admin-search-input::placeholder,
+textarea::placeholder {
+  color: #98a08f !important;
+}
+
+.order-panel,
+.admin-card,
+.admin-table-wrap,
+.settings-card,
+.settings-surface-card,
+.settings-hero-card,
+.settings-subnav-button,
+.settings-test-card,
+.settings-switch-card,
+.settings-stat-card,
+.admin-inset-card,
+.campaign-preview-frame-wrap,
+.user-order-card,
+.order-details-modal,
+.order-details-page,
+.order-section-card,
+.order-detail-info-card,
+.order-metric-card,
+.order-item-card,
+.order-editor-row,
+.order-fraud-card,
+.order-fraud-state,
+.order-fraud-phone-row,
+.order-fraud-meter,
+.auction-stat-chip,
+.settings-toggle {
+  background: #ffffff !important;
+  border: 1px solid var(--border) !important;
+  box-shadow: 0 14px 32px rgba(31, 38, 29, 0.05) !important;
+}
+
+.order-panel,
+.admin-card,
+.admin-table-wrap,
+.settings-card,
+.settings-surface-card,
+.settings-hero-card,
+.admin-inset-card,
+.campaign-preview-frame-wrap {
+  border-radius: 28px !important;
+}
+
+.order-section-card,
+.order-detail-info-card,
+.order-metric-card,
+.order-item-card,
+.order-editor-row,
+.order-fraud-card,
+.order-fraud-state,
+.order-fraud-phone-row,
+.user-order-card {
+  border-radius: 24px !important;
+}
+
+.admin-table-wrap {
+  overflow: hidden;
+}
+
+.admin-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.admin-table thead th {
+  background: #f8faf7;
+  color: #8b9288;
+  border-bottom: 1px solid var(--border);
+  border-top: none;
+}
+
+.admin-table tbody td {
+  border-bottom: 1px solid #eef1ec;
+  color: #667064;
+}
+
+.admin-table tbody tr:hover {
+  background: #fbfcf9;
+}
+
+.admin-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.order-selection-meta .mono,
+.order-row-index,
+.order-total-compact strong,
+.order-courier-meta strong,
+.order-date-compact p,
+.admin-table .mono,
+.order-primary-number,
+.order-fraud-phone-value,
+.order-fraud-value {
+  color: #384235 !important;
+  font-variant-numeric: tabular-nums;
+}
+
+.order-note-compact,
+.order-note-compact span,
+.order-courier-meta,
+.order-courier-meta span,
+.order-bulk-pill-label {
+  color: #7e8678 !important;
+}
+
+.order-note-compact svg,
+.order-courier-head svg,
+.order-date-compact svg,
+.order-inline-icon {
+  color: #8d956f !important;
+}
+
+.order-bulk-bar {
+  gap: 12px;
+  padding-top: 14px;
+  border-top: 1px solid #edf1e8;
+}
+
+.order-bulk-pill {
+  min-height: 46px;
+  gap: 12px;
+  padding: 6px 10px 6px 14px;
+  border-radius: 18px;
+  background: #fbfcf8 !important;
+  color: #5f685a !important;
+  box-shadow: 0 10px 24px rgba(38, 45, 32, 0.05) !important;
+}
+
+.order-bulk-pill .mono {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 30px;
+  height: 30px;
+  padding: 0 10px;
+  border-radius: 999px;
+  border: 1px solid #dde6cd;
+  background: #f1f5e8;
+  color: #66744a !important;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.user-order-toggle-icon {
+  border: 1px solid var(--border);
+  background: #f7f9f6;
+  color: #7d8579;
+  border-radius: 14px;
+}
+
+.user-order-toggle-icon.expanded,
+.user-order-card.expanded {
+  border-color: #dbe6b7;
+}
+
+.user-order-collapse-body {
+  border-top: 1px solid #edf1e8;
+}
+
+.status-badge {
+  border-radius: 999px !important;
+  border-width: 1px !important;
+  font-family: Inter, "Segoe UI", system-ui, -apple-system, sans-serif !important;
+  letter-spacing: 0.06em !important;
+  text-transform: uppercase;
+  box-shadow: none !important;
+}
+
+.status-badge.status-live,
+.status-badge.status-delivered,
+.status-badge.status-active,
+.status-badge.status-paid {
+  background: rgba(143, 185, 106, 0.14) !important;
+  color: #6f8b4a !important;
+  border-color: rgba(143, 185, 106, 0.24) !important;
+}
+
+.status-badge.status-scheduled,
+.status-badge.status-processing {
+  background: rgba(156, 187, 100, 0.14) !important;
+  color: #7f9652 !important;
+  border-color: rgba(156, 187, 100, 0.24) !important;
+}
+
+.status-badge.status-ended,
+.status-badge.status-cancelled,
+.status-badge.status-low,
+.status-badge.status-failed {
+  background: rgba(217, 134, 110, 0.14) !important;
+  color: #bb6d5a !important;
+  border-color: rgba(217, 134, 110, 0.24) !important;
+}
+
+.status-badge.status-pending {
+  background: rgba(218, 194, 106, 0.18) !important;
+  color: #a68633 !important;
+  border-color: rgba(218, 194, 106, 0.28) !important;
+}
+
+.status-badge.status-unpaid {
+  background: #f7f8f4 !important;
+  color: #7d8478 !important;
+  border-color: #e1e6db !important;
+}

@@ -153,6 +153,7 @@ export function getInitialAdminState() {
     },
     orderDetailsModal: {
       open: false,
+      mode: "edit",
       loading: false,
       saving: false,
       order: null,
@@ -161,7 +162,15 @@ export function getInitialAdminState() {
       catalogLoading: false,
       productSearch: "",
       productToAddId: "",
+      userOptions: [],
+      userQuery: "",
+      userLoading: false,
+      userSearch: "",
       draft: {
+        customerType: "guest",
+        userId: "",
+        customerName: "",
+        customerEmail: "",
         paymentStatus: "unpaid",
         fulfillmentStatus: "pending",
         customerNote: "",

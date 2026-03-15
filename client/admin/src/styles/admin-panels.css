@@ -171,7 +171,7 @@
 }
 
 .user-order-card.expanded {
-  border-color: rgba(0, 243, 255, 0.24);
+  border-color: rgba(214, 231, 79, 0.24);
 }
 
 .user-order-toggle {
@@ -238,7 +238,7 @@
 .user-order-toggle-icon.expanded {
   transform: rotate(180deg);
   color: var(--primary);
-  border-color: rgba(0, 243, 255, 0.3);
+  border-color: rgba(214, 231, 79, 0.28);
 }
 
 .user-order-collapse-body {
@@ -279,7 +279,8 @@
 }
 
 .order-primary-number {
-  font-family: 'Share Tech Mono', monospace;
+  font-family: Inter, "Segoe UI", system-ui, -apple-system, sans-serif;
+  font-variant-numeric: tabular-nums;
   font-weight: 800;
   color: #f8fafc;
   letter-spacing: 0.02em;
@@ -306,7 +307,8 @@
 
 .order-total-compact strong {
   color: #6f8b4a;
-  font-family: 'Share Tech Mono', monospace;
+  font-family: Inter, "Segoe UI", system-ui, -apple-system, sans-serif;
+  font-variant-numeric: tabular-nums;
   font-size: 18px;
   line-height: 1.1;
 }

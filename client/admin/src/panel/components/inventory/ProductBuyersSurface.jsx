@@ -2,7 +2,7 @@ import React from 'react';
 import { useAdmin } from '../../AdminContext';
 import { Icon } from '../Icon';
 
-const mono = { fontFamily: '"Share Tech Mono", monospace' };
+const mono = { fontFamily: 'Inter, "Segoe UI", system-ui, -apple-system, sans-serif', fontVariantNumeric: 'tabular-nums' };
 
 function MetricCard({ label, value, note }) {
   return (

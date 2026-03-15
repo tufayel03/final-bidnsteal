@@ -2,7 +2,7 @@ import React from 'react';
 import { useAdmin } from '../../AdminContext';
 import { Icon } from '../Icon';
 
-const mono = { fontFamily: '"Share Tech Mono", monospace' };
+const mono = { fontFamily: 'Inter, "Segoe UI", system-ui, -apple-system, sans-serif', fontVariantNumeric: 'tabular-nums' };
 const label = { display: 'block', marginBottom: '6px', fontSize: '11px', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--muted)' };
 const card = { display: 'grid', gap: '6px', padding: '12px', border: '1px solid var(--border)', background: '#ffffff', borderRadius: '18px' };
 const grid = (min) => ({ display: 'grid', gridTemplateColumns: `repeat(auto-fit, minmax(${min}px, 1fr))`, gap: '12px' });

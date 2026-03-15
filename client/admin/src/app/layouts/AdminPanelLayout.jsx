@@ -7,6 +7,7 @@ import { AdminTopbar } from "../../panel/components/AdminTopbar";
 import { AuctionDetailsPage } from "../../panel/components/auctions/AuctionDetailsPage";
 import { ProductBuyersPage } from "../../panel/components/inventory/ProductBuyersPage";
 import { AdminModals } from "../../panel/components/modals/AdminModals";
+import { OrderCreatePage } from "../../panel/components/orders/OrderCreatePage";
 import { OrderDetailsPage } from "../../panel/components/orders/OrderDetailsPage";
 import { UserDetailsPage } from "../../panel/components/users/UserDetailsPage";
 import { AnalyticsTab } from "../../panel/tabs/AnalyticsTab";
@@ -24,6 +25,7 @@ import { SubscribersTab } from "../../panel/tabs/SubscribersTab";
 import { UsersTab } from "../../panel/tabs/UsersTab";
 import {
   ADMIN_AUCTION_DETAILS_PATH,
+  ADMIN_ORDER_CREATE_PATH,
   ADMIN_ORDER_DETAILS_PATH,
   ADMIN_PANEL_PATH,
   ADMIN_PRODUCT_BUYERS_PATH,
@@ -46,12 +48,14 @@ function AdminLoadingState() {
 
 function renderActiveAdminView(admin, matches) {
   const {
+    orderCreateMatch,
     orderDetailsMatch,
     auctionDetailsMatch,
     productBuyersMatch,
     userDetailsMatch
   } = matches;
 
+  if (orderCreateMatch) return <OrderCreatePage />;
   if (orderDetailsMatch) return <OrderDetailsPage />;
   if (auctionDetailsMatch) return <AuctionDetailsPage />;
   if (productBuyersMatch) return <ProductBuyersPage />;
@@ -106,6 +110,7 @@ export function AdminPanelLayout() {
   const admin = useAdmin();
   const [isLoaded, setIsLoaded] = useState(false);
   const location = useLocation();
+  const orderCreateMatch = useMatch(ADMIN_ORDER_CREATE_PATH);
   const orderDetailsMatch = useMatch(ADMIN_ORDER_DETAILS_PATH);
   const auctionDetailsMatch = useMatch(ADMIN_AUCTION_DETAILS_PATH);
   const productBuyersMatch = useMatch(ADMIN_PRODUCT_BUYERS_PATH);
@@ -128,6 +133,13 @@ export function AdminPanelLayout() {
 
   useEffect(() => {
     if (!isLoaded) return;
+
+    if (orderCreateMatch) {
+      if (admin.activeTab !== "orders" && admin.setActiveTab) {
+        admin.setActiveTab("orders");
+      }
+      return;
+    }
 
     if (orderDetailsMatch) {
       if (admin.activeTab !== "orders" && admin.setActiveTab) {
@@ -170,6 +182,7 @@ export function AdminPanelLayout() {
     auctionDetailsMatch,
     isBasePanelRoute,
     isLoaded,
+    orderCreateMatch,
     orderDetailsMatch,
     productBuyersMatch,
     requestedTab,
@@ -182,6 +195,7 @@ export function AdminPanelLayout() {
 
   const isDashboardSurface =
     admin.activeTab === "dashboard" &&
+    !orderCreateMatch &&
     !orderDetailsMatch &&
     !auctionDetailsMatch &&
     !productBuyersMatch &&
@@ -195,6 +209,7 @@ export function AdminPanelLayout() {
 
         <main className={`admin-content custom-scrollbar ${isDashboardSurface ? "admin-content--dashboard" : ""}`}>
           {renderActiveAdminView(admin, {
+            orderCreateMatch,
             orderDetailsMatch,
             auctionDetailsMatch,
             productBuyersMatch,

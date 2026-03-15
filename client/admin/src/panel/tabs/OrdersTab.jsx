@@ -7,6 +7,7 @@ import {
     Eye,
     MessageSquareText,
     Package,
+    Plus,
     RefreshCw,
     Save,
     Send,
@@ -15,6 +16,7 @@ import {
 } from 'lucide-react';
 import { useAdmin } from '../AdminContext';
 import { DashboardStatCard } from '../components/dashboard/DashboardStatCard';
+import { ADMIN_ORDER_CREATE_PATH } from '../../app/router/adminPaths';
 
 export function OrdersTab() {
     const admin = useAdmin();
@@ -34,6 +36,10 @@ export function OrdersTab() {
                     <p>Track, update, dispatch, and clean orders from one control surface.</p>
                 </div>
                 <div style={{ display: 'flex', gap: '12px' }}>
+                    <button onClick={() => navigate(ADMIN_ORDER_CREATE_PATH)} className="order-filter-btn primary">
+                        <Plus size={14} />
+                        <span>Create Order</span>
+                    </button>
                     <button onClick={() => admin.exportOrdersCsv && admin.exportOrdersCsv()} className="order-filter-btn">
                         <Download size={14} />
                         <span>Export Orders</span>

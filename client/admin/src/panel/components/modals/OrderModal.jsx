@@ -4,15 +4,17 @@ import { useAdmin } from '../../AdminContext';
 import { Icon } from '../Icon';
 import { OrderDetailsSurface } from '../orders/OrderDetailsSurface';
 import { AdminModalPortal } from './AdminModalPortal';
+import { ADMIN_ORDER_CREATE_PATH, ADMIN_ORDER_DETAILS_PATH } from '../../../app/router/adminPaths';
 
-const mono = { fontFamily: '"Share Tech Mono", monospace' };
+const mono = { fontFamily: 'Inter, "Segoe UI", system-ui, -apple-system, sans-serif', fontVariantNumeric: 'tabular-nums' };
 const label = { display: 'block', marginBottom: '6px', fontSize: '11px', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--muted)' };
 const card = { display: 'grid', gap: '6px', padding: '12px', border: '1px solid var(--border)', background: 'rgba(15, 15, 25, 0.72)' };
 const grid = (min) => ({ display: 'grid', gridTemplateColumns: `repeat(auto-fit, minmax(${min}px, 1fr))`, gap: '12px' });
 
 export function OrderModal() {
     const admin = useAdmin();
-    const isOrderDetailsRoute = Boolean(useMatch('/tufayel/panel/orders/:orderId'));
+    const isOrderDetailsRoute = Boolean(useMatch(ADMIN_ORDER_DETAILS_PATH));
+    const isOrderCreateRoute = Boolean(useMatch(ADMIN_ORDER_CREATE_PATH));
     const { courierSuccessModal = {}, orderDetailsModal = {} } = admin;
     const courierLoading = Boolean(courierSuccessModal.loading);
 
@@ -20,8 +22,8 @@ export function OrderModal() {
         <>
             {courierSuccessModal.open && (
                 <AdminModalPortal>
-                    <div className="admin-modal-overlay" style={{ zIndex: 1090 }} onClick={(event) => event.target === event.currentTarget && admin.closeCourierSuccessModal && admin.closeCourierSuccessModal()}>
-                        <div className="admin-modal" style={{ maxWidth: '640px' }}>
+                    <div className="admin-modal-overlay misc-soft-overlay admin-layout--soft" style={{ zIndex: 1090 }} onClick={(event) => event.target === event.currentTarget && admin.closeCourierSuccessModal && admin.closeCourierSuccessModal()}>
+                        <div className="admin-modal misc-soft-modal" style={{ maxWidth: '640px' }}>
                             <div className="admin-modal-head">
                                 <div>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--primary)', marginBottom: '8px' }}>
@@ -66,9 +68,9 @@ export function OrderModal() {
                 </AdminModalPortal>
             )}
 
-            {orderDetailsModal.open && !isOrderDetailsRoute && (
+            {orderDetailsModal.open && !isOrderDetailsRoute && !isOrderCreateRoute && (
                 <AdminModalPortal>
-                    <div className="admin-modal-overlay" style={{ zIndex: 1080 }} onClick={(event) => event.target === event.currentTarget && admin.closeOrderDetails && admin.closeOrderDetails()}>
+                    <div className="admin-modal-overlay misc-soft-overlay admin-layout--soft" style={{ zIndex: 1080 }} onClick={(event) => event.target === event.currentTarget && admin.closeOrderDetails && admin.closeOrderDetails()}>
                         <OrderDetailsSurface variant="modal" onClose={() => admin.closeOrderDetails && admin.closeOrderDetails()} />
                     </div>
                 </AdminModalPortal>

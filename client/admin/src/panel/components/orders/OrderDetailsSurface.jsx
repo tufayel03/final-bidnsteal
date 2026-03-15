@@ -2,7 +2,7 @@ import React from 'react';
 import { useAdmin } from '../../AdminContext';
 import { Icon } from '../Icon';
 
-const mono = { fontFamily: '"Share Tech Mono", monospace' };
+const mono = { fontFamily: 'Inter, "Segoe UI", system-ui, -apple-system, sans-serif', fontVariantNumeric: 'tabular-nums' };
 const label = {
   display: 'block',
   marginBottom: '5px',
@@ -18,10 +18,12 @@ export function OrderDetailsSurface({ variant = 'modal', onClose }) {
   const { courierSuccessModal = {}, orderDetailsModal = {} } = admin;
   const order = orderDetailsModal.order;
   const draft = orderDetailsModal.draft || {};
+  const isCreate = orderDetailsModal.mode === 'create';
   const draftItems = Array.isArray(draft.items) ? draft.items : [];
   const catalog = Array.isArray(orderDetailsModal.catalog) ? orderDetailsModal.catalog : [];
   const filteredCatalog = admin.filteredOrderDetailsCatalog ? admin.filteredOrderDetailsCatalog() : catalog;
   const catalogById = new Map(catalog.map((item) => [String(item.id || ''), item]));
+  const userOptions = Array.isArray(orderDetailsModal.userOptions) ? orderDetailsModal.userOptions : [];
   const isPage = variant === 'page';
   const courierLoading = Boolean(courierSuccessModal.loading);
   const courierError = String(courierSuccessModal.error || '').trim();
@@ -38,6 +40,11 @@ export function OrderDetailsSurface({ variant = 'modal', onClose }) {
   const courierUsingCachedSnapshot = Boolean(courierSuccessModal.cached);
   const draftSubtotal = admin.orderDetailsDraftSubtotal ? admin.orderDetailsDraftSubtotal(draft) : Number(order?.subtotal || 0);
   const draftTotal = admin.orderDetailsDraftTotal ? admin.orderDetailsDraftTotal(draft) : Number(order?.total || 0);
+  const displayCustomerName = isCreate ? (draft.customerName || draft.shippingAddress?.fullName || '-') : (order?.customerName || order?.displayCustomer || '-');
+  const displayCustomerEmail = isCreate ? (draft.customerEmail || '-') : (order?.customerEmail || '-');
+  const displayPaymentMethod = isCreate ? 'cod' : (order?.paymentMethod || '-');
+  const displayStatus = `${draft.paymentStatus || order?.paymentStatus || '-'} / ${draft.fulfillmentStatus || order?.fulfillmentStatus || '-'}`;
+  const saveLabel = orderDetailsModal.saving ? (isCreate ? 'Creating...' : 'Saving...') : (isCreate ? 'Create Order' : 'Save Changes');
   const metricCards = [
     {
       label: 'Total',
@@ -53,50 +60,50 @@ export function OrderDetailsSurface({ variant = 'modal', onClose }) {
     },
     {
       label: 'Created',
-      value: admin.dateTime ? admin.dateTime(order?.createdAt) : order?.createdAt,
+      value: isCreate ? 'Manual Draft' : (admin.dateTime ? admin.dateTime(order?.createdAt) : order?.createdAt),
       small: true
     }
   ];
   const summaryCards = [
     {
       label: 'Customer',
-      value: order?.customerName || order?.displayCustomer || '-'
+      value: displayCustomerName
     },
     {
       label: 'Email',
-      value: order?.customerEmail || '-',
+      value: displayCustomerEmail,
       mono: true
     },
     {
       label: 'Payment Method',
-      value: order?.paymentMethod || '-',
+      value: displayPaymentMethod,
       upper: true
     },
     {
       label: 'Status',
-      value: `${order?.paymentStatus || '-'} / ${order?.fulfillmentStatus || '-'}`,
+      value: displayStatus,
       upper: true
     }
   ];
 
   return (
     <div
-      className={isPage ? 'order-details-page order-details-modal' : 'admin-modal order-details-modal'}
+      className={isPage ? 'order-details-page order-details-modal' : 'admin-modal order-details-modal misc-soft-modal'}
       style={isPage ? undefined : { maxWidth: '1320px' }}
     >
       <div className="admin-modal-head order-details-head">
         <div>
-          <h3 className="order-details-title">Order Details</h3>
+          <h3 className="order-details-title">{isCreate ? 'Create Order' : 'Order Details'}</h3>
           <div className="order-details-meta">
-            <span className="order-details-number">{order?.orderNumber || '-'}</span>
-            {order ? (
-              <span className={`status-badge status-${admin.normalizeStatus ? admin.normalizeStatus(order.paymentStatus) : order.paymentStatus}`}>
-                {order.paymentStatus}
+            <span className="order-details-number">{isCreate ? 'Manual order draft' : (order?.orderNumber || '-')}</span>
+            {(order || isCreate) ? (
+              <span className={`status-badge status-${admin.normalizeStatus ? admin.normalizeStatus(draft.paymentStatus || order?.paymentStatus) : (draft.paymentStatus || order?.paymentStatus)}`}>
+                {draft.paymentStatus || order?.paymentStatus}
               </span>
             ) : null}
-            {order ? (
-              <span className={`status-badge status-${admin.normalizeStatus ? admin.normalizeStatus(order.fulfillmentStatus) : order.fulfillmentStatus}`}>
-                {order.fulfillmentStatus}
+            {(order || isCreate) ? (
+              <span className={`status-badge status-${admin.normalizeStatus ? admin.normalizeStatus(draft.fulfillmentStatus || order?.fulfillmentStatus) : (draft.fulfillmentStatus || order?.fulfillmentStatus)}`}>
+                {draft.fulfillmentStatus || order?.fulfillmentStatus}
               </span>
             ) : null}
           </div>
@@ -113,7 +120,7 @@ export function OrderDetailsSurface({ variant = 'modal', onClose }) {
               disabled={orderDetailsModal.saving || orderDetailsModal.loading}
               className="primary-btn order-details-page-save-btn"
             >
-              {orderDetailsModal.saving ? 'Saving...' : 'Save Changes'}
+              {saveLabel}
             </button>
           </div>
         ) : (
@@ -125,8 +132,8 @@ export function OrderDetailsSurface({ variant = 'modal', onClose }) {
 
       <div className={`admin-modal-body ${isPage ? 'order-details-page-body' : 'custom-scrollbar'} order-details-body`}>
         {orderDetailsModal.loading ? (
-          <p style={{ margin: 0, color: 'var(--muted)' }}>Loading order details...</p>
-        ) : order ? (
+          <p style={{ margin: 0, color: 'var(--muted)' }}>{isCreate ? 'Preparing order editor...' : 'Loading order details...'}</p>
+        ) : (order || isCreate) ? (
           <div className="order-details-content-stack">
             <div className="order-details-workspace-grid">
               <section className="order-details-column order-details-workspace-main">
@@ -143,6 +150,115 @@ export function OrderDetailsSurface({ variant = 'modal', onClose }) {
                     </div>
                   ))}
                 </div>
+
+                {isCreate ? (
+                  <div className="admin-inset-card order-section-card">
+                    <div className="order-section-head order-section-head-tight">
+                      <div>
+                        <h4 className="order-section-title">Customer Assignment</h4>
+                        <p className="order-section-caption">Create this manual order for a guest customer or link it to an existing user.</p>
+                      </div>
+                    </div>
+
+                    <div className="order-status-note-stack">
+                      <div className="order-form-grid">
+                        <div>
+                          <label style={label}>Order For</label>
+                          <select
+                            value={draft.customerType || 'guest'}
+                            onChange={(event) => admin.setOrderDetailsCustomerType && admin.setOrderDetailsCustomerType(event.target.value)}
+                            className="order-filter-select"
+                            style={{ width: '100%' }}
+                          >
+                            <option value="guest">Guest / Non User</option>
+                            <option value="user">Existing User</option>
+                          </select>
+                        </div>
+
+                        <div>
+                          <label style={label}>Customer Email</label>
+                          <input
+                            value={draft.customerEmail || ''}
+                            onChange={(event) => { admin.orderDetailsModal.draft.customerEmail = event.target.value; }}
+                            placeholder="customer@example.com"
+                            className="admin-search-input"
+                            style={{ width: '100%' }}
+                          />
+                        </div>
+                      </div>
+
+                      {String(draft.customerType || 'guest') === 'user' ? (
+                        <>
+                          <div className="order-form-grid">
+                            <div>
+                              <label style={label}>Find User</label>
+                              <input
+                                value={orderDetailsModal.userSearch || ''}
+                                onChange={(event) => {
+                                  if (admin.setOrderDetailsUserSearch) {
+                                    admin.setOrderDetailsUserSearch(event.target.value);
+                                  } else {
+                                    admin.orderDetailsModal.userSearch = event.target.value;
+                                  }
+                                }}
+                                placeholder="Search by name or email..."
+                                className="admin-search-input"
+                                style={{ width: '100%' }}
+                              />
+                            </div>
+
+                            <div>
+                              <label style={label}>Select User</label>
+                              <select
+                                value={draft.userId || ''}
+                                onChange={(event) => admin.selectOrderDetailsUser && admin.selectOrderDetailsUser(event.target.value)}
+                                className="order-filter-select"
+                                style={{ width: '100%' }}
+                              >
+                                <option value="">
+                                  {orderDetailsModal.userLoading
+                                    ? 'Loading users...'
+                                    : userOptions.length
+                                      ? 'Select existing user'
+                                      : 'No users found'}
+                                </option>
+                                {userOptions.map((user) => (
+                                  <option key={user.id} value={user.id}>
+                                    {user.name || 'Unnamed user'}{user.email ? ` - ${user.email}` : ''}
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+                          </div>
+                          <div className="order-detail-info-card order-detail-info-card--compact">
+                            <span className="order-detail-info-label">Linked Account</span>
+                            <strong className="order-detail-info-value">
+                              {draft.userId
+                                ? `${draft.customerName || 'User'}${draft.customerEmail ? ` (${draft.customerEmail})` : ''}`
+                                : 'Select a user to attach this order'}
+                            </strong>
+                          </div>
+                        </>
+                      ) : null}
+
+                      <div>
+                        <label style={label}>Customer Name</label>
+                        <input
+                          value={draft.customerName || ''}
+                          onChange={(event) => {
+                            admin.orderDetailsModal.draft.customerName = event.target.value;
+                            if (isCreate && admin.orderDetailsModal?.draft?.shippingAddress) {
+                              admin.orderDetailsModal.draft.shippingAddress.fullName = event.target.value;
+                            }
+                          }}
+                          placeholder="Customer name"
+                          className="admin-search-input"
+                          style={{ width: '100%' }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                ) : null}
 
                 <div className="admin-inset-card order-section-card">
                   <div className="order-section-head order-section-head-tight">
@@ -211,7 +327,14 @@ export function OrderDetailsSurface({ variant = 'modal', onClose }) {
                       <label style={label}>Full Name</label>
                       <input
                         value={draft.shippingAddress?.fullName || ''}
-                        onChange={(event) => { if (admin.orderDetailsModal?.draft?.shippingAddress) admin.orderDetailsModal.draft.shippingAddress.fullName = event.target.value; }}
+                        onChange={(event) => {
+                          if (admin.orderDetailsModal?.draft?.shippingAddress) {
+                            admin.orderDetailsModal.draft.shippingAddress.fullName = event.target.value;
+                          }
+                          if (isCreate) {
+                            admin.orderDetailsModal.draft.customerName = event.target.value;
+                          }
+                        }}
                         placeholder="Full name"
                         className="admin-search-input"
                         style={{ width: '100%' }}
@@ -348,14 +471,16 @@ export function OrderDetailsSurface({ variant = 'modal', onClose }) {
                     <button
                       type="button"
                       onClick={() => admin.loadCourierSuccessRate && admin.loadCourierSuccessRate(order, { forceRefresh: true })}
-                      disabled={courierLoading}
+                      disabled={courierLoading || isCreate}
                       className="secondary-btn order-fraud-refresh"
                     >
-                      {courierLoading ? 'Checking...' : 'Refresh Check'}
+                      {isCreate ? 'Save First' : courierLoading ? 'Checking...' : 'Refresh Check'}
                     </button>
                   </div>
 
-                  {courierLoading ? (
+                  {isCreate ? (
+                    <div className="order-fraud-state">Save this order first to run courier history checks.</div>
+                  ) : courierLoading ? (
                     <div className="order-fraud-state">Checking customer history from SteadFast...</div>
                   ) : courierError ? (
                     <div className="order-fraud-state order-fraud-state-error">{courierError}</div>
@@ -586,7 +711,7 @@ export function OrderDetailsSurface({ variant = 'modal', onClose }) {
             disabled={orderDetailsModal.saving || orderDetailsModal.loading}
             className="primary-btn"
           >
-            {orderDetailsModal.saving ? 'Saving...' : 'Save Changes'}
+            {saveLabel}
           </button>
         </div>
       )}
