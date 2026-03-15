@@ -91,15 +91,6 @@ export function ProductModal() {
                                                 className="w-full bg-zinc-800 border-zinc-700 rounded-lg px-3 py-2 text-sm focus:outline-none"
                                             />
                                         </div>
-                                        <div>
-                                            <p className="text-[10px] uppercase tracking-wider text-zinc-500 mb-1">Series</p>
-                                            <input
-                                                value={productModal.form?.series || ''}
-                                                onChange={(e) => { if (admin.productModal?.form) admin.productModal.form.series = e.target.value; }}
-                                                placeholder="Series / Collection"
-                                                className="w-full bg-zinc-800 border-zinc-700 rounded-lg px-3 py-2 text-sm focus:outline-none"
-                                            />
-                                        </div>
                                     </div>
                                 </div>
 

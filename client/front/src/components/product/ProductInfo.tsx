@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'motion/react';
-import { Star, Package, AlertTriangle } from 'lucide-react';
+import { Package, AlertTriangle } from 'lucide-react';
 import type { Product } from '../../data/products';
 
 interface ProductInfoProps {
@@ -17,15 +17,10 @@ export function ProductInfo({ product }: ProductInfoProps) {
       animate={{ opacity: 1, x: 0 }}
       className="flex flex-col bg-transparent"
     >
-      <div className="flex items-center justify-between mb-4">
+      <div className="mb-4">
         <p className="text-[#FF6A00] text-xs sm:text-sm font-mono font-bold uppercase tracking-widest">
           {product.category}
         </p>
-        <div className="flex items-center gap-1 bg-white/5 px-2 py-1 rounded border border-white/10">
-          <Star size={14} className="text-[#FFD500] fill-[#FFD500]" />
-          <span className="font-mono font-bold text-xs sm:text-sm text-white">{product.rating}</span>
-          <span className="text-gray-500 font-mono text-[10px] sm:text-xs ml-1">(124)</span>
-        </div>
       </div>
 
       <h1 className="font-display text-3xl sm:text-4xl md:text-5xl uppercase tracking-tighter mb-6 text-white leading-tight">

@@ -181,6 +181,35 @@ function fixedInventoryItems(order) {
   return fixedInventoryItemsFromItems(order?.items || []);
 }
 
+async function reserveProductInventory(productId, qty, options = {}) {
+  const amount = Math.max(0, Number(qty || 0));
+  if (!amount) return null;
+
+  const allowNegativeStock = options.allowNegativeStock !== false;
+  const missingMessage = options.missingMessage || "Unable to save order items because one or more products no longer exist.";
+  const outOfStockMessage = options.outOfStockMessage || "Unable to save order items because one or more products are out of stock.";
+  const product = allowNegativeStock
+    ? await Product.findByIdAndUpdate(
+      productId,
+      { $inc: { stock: -amount } },
+      { new: true }
+    )
+    : await Product.findOneAndUpdate(
+      { _id: productId, stock: { $gte: amount } },
+      { $inc: { stock: -amount } },
+      { new: true }
+    );
+
+  if (product) return product;
+
+  const exists = await Product.exists({ _id: productId });
+  if (!exists) {
+    throw Object.assign(new Error(missingMessage), { status: 404 });
+  }
+
+  throw Object.assign(new Error(outOfStockMessage), { status: 400 });
+}
+
 async function adjustInventoryForEditedItems(order, nextItems) {
   if (!order || order.inventoryReleasedAt) return;
 
@@ -206,16 +235,7 @@ async function adjustInventoryForEditedItems(order, nextItems) {
 
   try {
     for (const item of increases) {
-      const product = await Product.findOneAndUpdate(
-        { _id: item.productId, stock: { $gte: item.qty } },
-        { $inc: { stock: -item.qty } },
-        { new: true }
-      );
-
-      if (!product) {
-        throw Object.assign(new Error("Unable to save order items because one or more products are out of stock."), { status: 400 });
-      }
-
+      await reserveProductInventory(item.productId, item.qty, { allowNegativeStock: true });
       reserved.push(item);
     }
   } catch (error) {
@@ -257,16 +277,11 @@ async function reclaimInventoryForOrder(order) {
 
   try {
     for (const item of fixedInventoryItems(order)) {
-      const product = await Product.findOneAndUpdate(
-        { _id: item.productId, stock: { $gte: item.qty } },
-        { $inc: { stock: -item.qty } },
-        { new: true }
-      );
-
-      if (!product) {
-        throw Object.assign(new Error("Unable to reactivate this order because one or more items are out of stock."), { status: 400 });
-      }
-
+      await reserveProductInventory(item.productId, item.qty, {
+        allowNegativeStock: true,
+        missingMessage: "Unable to reactivate this order because one or more products no longer exist.",
+        outOfStockMessage: "Unable to reactivate this order because one or more items are out of stock."
+      });
       reserved.push(item);
     }
   } catch (error) {

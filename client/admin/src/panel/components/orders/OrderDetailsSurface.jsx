@@ -267,26 +267,6 @@ export function OrderDetailsSurface({ variant = 'modal', onClose }) {
                         style={{ width: '100%' }}
                       />
                     </div>
-                    <div>
-                      <label style={label}>Postal Code</label>
-                      <input
-                        value={draft.shippingAddress?.postalCode || ''}
-                        onChange={(event) => { if (admin.orderDetailsModal?.draft?.shippingAddress) admin.orderDetailsModal.draft.shippingAddress.postalCode = event.target.value; }}
-                        placeholder="Postal code"
-                        className="admin-search-input"
-                        style={{ width: '100%' }}
-                      />
-                    </div>
-                    <div>
-                      <label style={label}>Country</label>
-                      <input
-                        value={draft.shippingAddress?.country || 'BD'}
-                        onChange={(event) => { if (admin.orderDetailsModal?.draft?.shippingAddress) admin.orderDetailsModal.draft.shippingAddress.country = event.target.value; }}
-                        placeholder="Country"
-                        className="admin-search-input"
-                        style={{ width: '100%' }}
-                      />
-                    </div>
                   </div>
                 </div>
               </section>

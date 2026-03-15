@@ -90,12 +90,6 @@ async function resolveCategory(body, existing) {
     return { category: category.name, categoryId: category._id };
   }
 
-  const seriesFallback = sanitizeText(body?.series || existing?.series, 120);
-  if (seriesFallback) {
-    const category = await ensureCategoryByName(seriesFallback);
-    return { category: category.name, categoryId: category._id };
-  }
-
   const defaultCategory = await ensureDefaultCategory();
   return { category: defaultCategory.name, categoryId: defaultCategory._id };
 }
@@ -352,7 +346,6 @@ router.post("/", async (req, res) => {
     stock: Math.max(0, Number(req.body?.stock || 0)),
     condition: sanitizeText(req.body?.condition || "carded", 80) || "carded",
     saleMode: normalizeSaleMode(req.body?.saleMode, "fixed"),
-    series: sanitizeText(req.body?.series, 120),
     images: normalizeImages(req.body?.images),
     tags: normalizeTags(req.body?.tags),
     description: sanitizeText(req.body?.description, 5000),
@@ -381,7 +374,6 @@ router.patch("/:identifier", async (req, res) => {
   if (req.body?.stock !== undefined) product.stock = Math.max(0, Number(req.body.stock || 0));
   if (req.body?.condition !== undefined) product.condition = sanitizeText(req.body.condition || "carded", 80) || "carded";
   if (req.body?.saleMode !== undefined) product.saleMode = normalizeSaleMode(req.body.saleMode, product.saleMode || "fixed");
-  if (req.body?.series !== undefined) product.series = sanitizeText(req.body.series, 120);
   if (req.body?.images !== undefined) product.images = normalizeImages(req.body.images);
   if (req.body?.tags !== undefined) product.tags = normalizeTags(req.body.tags);
   if (req.body?.description !== undefined) product.description = sanitizeText(req.body.description, 5000);

@@ -79,7 +79,7 @@ function toPublicProduct(product) {
     slug: product.slug,
     name: product.title,
     categoryId: product.categoryId ? String(product.categoryId) : "",
-    category: product.category || product.series || "Cars",
+    category: product.category || "Cars",
     price: Number(product.price || 0),
     image: Array.isArray(product.images) ? product.images[0] || "" : "",
     images: Array.isArray(product.images) ? product.images : [],

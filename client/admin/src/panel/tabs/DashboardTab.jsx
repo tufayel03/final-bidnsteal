@@ -43,7 +43,6 @@ export function DashboardTab() {
 
     return (
         <DashboardShell
-            eyebrow="Admin Workspace"
             title="Operations Dashboard"
             description={(
                 <span className="dashboard-shell__status-line">
@@ -82,145 +81,94 @@ export function DashboardTab() {
                 ))}
             </div>
 
-            <div className="dashboard-content-grid">
-                <div className="dashboard-main-column">
-                    <DashboardSection
-                        eyebrow="Balance Overview"
-                        title="Revenue Overview"
-                        subtitle={metricCaption(admin, revenueTelemetryMeta)}
-                        className="dashboard-section--chart"
-                        actions={(
-                            <div className="dashboard-range-controls">
-                                <div className="dashboard-range-actions">
-                                    <button
-                                        onClick={() => admin.setRevenueWindow && admin.setRevenueWindow('7d')}
-                                        className={`dashboard-chip-btn ${revenueWindow === '7d' ? 'is-active' : ''}`}
-                                        disabled={revenueTelemetryLoading}
-                                    >
-                                        7D
-                                    </button>
-                                    <button
-                                        onClick={() => admin.setRevenueWindow && admin.setRevenueWindow('1m')}
-                                        className={`dashboard-chip-btn ${revenueWindow === '1m' ? 'is-active' : ''}`}
-                                        disabled={revenueTelemetryLoading}
-                                    >
-                                        1M
-                                    </button>
-                                    <button
-                                        onClick={() => admin.setRevenueWindow && admin.setRevenueWindow('6m')}
-                                        className={`dashboard-chip-btn ${revenueWindow === '6m' ? 'is-active' : ''}`}
-                                        disabled={revenueTelemetryLoading}
-                                    >
-                                        6M
-                                    </button>
-                                    <button
-                                        onClick={() => admin.setRevenueWindow && admin.setRevenueWindow('12m')}
-                                        className={`dashboard-chip-btn ${revenueWindow === '12m' ? 'is-active' : ''}`}
-                                        disabled={revenueTelemetryLoading}
-                                    >
-                                        12M
-                                    </button>
-                                    <button
-                                        onClick={() => admin.setRevenueWindow && admin.setRevenueWindow('custom')}
-                                        className={`dashboard-chip-btn ${revenueWindow === 'custom' ? 'is-active' : ''}`}
-                                        disabled={revenueTelemetryLoading}
-                                    >
-                                        Custom
-                                    </button>
-                                </div>
-
-                                <div className="dashboard-date-range">
-                                    <input
-                                        type="date"
-                                        value={revenueCustomRange.from || ''}
-                                        onChange={(event) => admin.setRevenueCustomRange && admin.setRevenueCustomRange('from', event.target.value)}
-                                        className="dashboard-date-input"
-                                        aria-label="Revenue start date"
-                                    />
-                                    <span className="dashboard-date-range__separator">to</span>
-                                    <input
-                                        type="date"
-                                        value={revenueCustomRange.to || ''}
-                                        onChange={(event) => admin.setRevenueCustomRange && admin.setRevenueCustomRange('to', event.target.value)}
-                                        className="dashboard-date-input"
-                                        aria-label="Revenue end date"
-                                    />
-                                    <button
-                                        onClick={() => admin.applyRevenueCustomRange && admin.applyRevenueCustomRange()}
-                                        className="dashboard-action-btn dashboard-action-btn--primary"
-                                        disabled={revenueTelemetryLoading}
-                                    >
-                                        Apply
-                                    </button>
-                                </div>
+            <div className="dashboard-overview-grid">
+                <DashboardSection
+                    eyebrow="Balance Overview"
+                    title="Revenue Overview"
+                    subtitle={metricCaption(admin, revenueTelemetryMeta)}
+                    className="dashboard-section--chart"
+                    actions={(
+                        <div className="dashboard-range-controls">
+                            <div className="dashboard-range-actions">
+                                <button
+                                    onClick={() => admin.setRevenueWindow && admin.setRevenueWindow('7d')}
+                                    className={`dashboard-chip-btn ${revenueWindow === '7d' ? 'is-active' : ''}`}
+                                    disabled={revenueTelemetryLoading}
+                                >
+                                    7D
+                                </button>
+                                <button
+                                    onClick={() => admin.setRevenueWindow && admin.setRevenueWindow('1m')}
+                                    className={`dashboard-chip-btn ${revenueWindow === '1m' ? 'is-active' : ''}`}
+                                    disabled={revenueTelemetryLoading}
+                                >
+                                    1M
+                                </button>
+                                <button
+                                    onClick={() => admin.setRevenueWindow && admin.setRevenueWindow('6m')}
+                                    className={`dashboard-chip-btn ${revenueWindow === '6m' ? 'is-active' : ''}`}
+                                    disabled={revenueTelemetryLoading}
+                                >
+                                    6M
+                                </button>
+                                <button
+                                    onClick={() => admin.setRevenueWindow && admin.setRevenueWindow('12m')}
+                                    className={`dashboard-chip-btn ${revenueWindow === '12m' ? 'is-active' : ''}`}
+                                    disabled={revenueTelemetryLoading}
+                                >
+                                    12M
+                                </button>
+                                <button
+                                    onClick={() => admin.setRevenueWindow && admin.setRevenueWindow('custom')}
+                                    className={`dashboard-chip-btn ${revenueWindow === 'custom' ? 'is-active' : ''}`}
+                                    disabled={revenueTelemetryLoading}
+                                >
+                                    Custom
+                                </button>
                             </div>
-                        )}
-                    >
-                        <div id="revenueChartWrap" className={`dashboard-chart-wrap ${revenueTelemetryLoading ? 'is-loading' : ''}`}>
-                            {revenueTelemetryLoading ? (
-                                <div className="dashboard-chart-loading">Loading revenue telemetry...</div>
-                            ) : null}
-                            <canvas id="revenueChart" className="dashboard-chart-canvas" />
-                        </div>
-                    </DashboardSection>
 
-                    <DashboardSection
-                        eyebrow="Transactions"
-                        title="Recent Orders"
-                        subtitle="Latest order flow across the store and auctions."
-                        actions={(
-                            <button
-                                onClick={() => admin.setActiveTab && admin.setActiveTab('orders')}
-                                className="dashboard-action-btn"
-                            >
-                                View Orders
-                            </button>
-                        )}
-                    >
-                        <div className="dashboard-table-wrap">
-                            <table className="dashboard-table">
-                                <thead>
-                                    <tr>
-                                        <th>Order</th>
-                                        <th>Amount</th>
-                                        <th>Payment</th>
-                                        <th>Fulfillment</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {recentOrders.length ? recentOrders.map((order, idx) => (
-                                        <tr key={`${order.id || order.orderNumber || idx}`}>
-                                            <td>
-                                                <div className="dashboard-table__stack">
-                                                    <strong>{order.orderNumber}</strong>
-                                                    <span>{order.customer || 'Customer'}</span>
-                                                </div>
-                                            </td>
-                                            <td>{admin.currency ? admin.currency(order.total) : order.total}</td>
-                                            <td>
-                                                <span className={statusBadgeClass(order.paymentStatus)}>
-                                                    {dashboardStatusLabel(order.paymentStatus)}
-                                                </span>
-                                            </td>
-                                            <td>
-                                                <span className={statusBadgeClass(order.fulfillmentStatus)}>
-                                                    {dashboardStatusLabel(order.fulfillmentStatus)}
-                                                </span>
-                                            </td>
-                                        </tr>
-                                    )) : (
-                                        <tr>
-                                            <td colSpan="4" className="dashboard-table__empty">No recent orders found.</td>
-                                        </tr>
-                                    )}
-                                </tbody>
-                            </table>
+                            <div className="dashboard-date-range">
+                                <input
+                                    type="date"
+                                    value={revenueCustomRange.from || ''}
+                                    onChange={(event) => admin.setRevenueCustomRange && admin.setRevenueCustomRange('from', event.target.value)}
+                                    className="dashboard-date-input"
+                                    aria-label="Revenue start date"
+                                />
+                                <span className="dashboard-date-range__separator">to</span>
+                                <input
+                                    type="date"
+                                    value={revenueCustomRange.to || ''}
+                                    onChange={(event) => admin.setRevenueCustomRange && admin.setRevenueCustomRange('to', event.target.value)}
+                                    className="dashboard-date-input"
+                                    aria-label="Revenue end date"
+                                />
+                                <button
+                                    onClick={() => admin.applyRevenueCustomRange && admin.applyRevenueCustomRange()}
+                                    className="dashboard-action-btn dashboard-action-btn--primary"
+                                    disabled={revenueTelemetryLoading}
+                                >
+                                    Apply
+                                </button>
+                            </div>
                         </div>
-                    </DashboardSection>
-                </div>
+                    )}
+                >
+                    <div id="revenueChartWrap" className={`dashboard-chart-wrap ${revenueTelemetryLoading ? 'is-loading' : ''}`}>
+                        {revenueTelemetryLoading ? (
+                            <div className="dashboard-chart-loading">Loading revenue telemetry...</div>
+                        ) : null}
+                        <canvas id="revenueChart" className="dashboard-chart-canvas" />
+                    </div>
+                </DashboardSection>
 
-                <div className="dashboard-side-column">
-                    <div className="dashboard-side-kpi-grid">
+                <DashboardSection
+                    eyebrow="Control Tower"
+                    title="Operations Snapshot"
+                    subtitle="Revenue, orders, subscribers, and inventory in one compact view."
+                    className="dashboard-section--snapshot"
+                >
+                    <div className="dashboard-side-kpi-grid dashboard-side-kpi-grid--snapshot">
                         {kpisRow2.map((kpi, idx) => (
                             <DashboardStatCard
                                 key={`${kpi.label}-${idx}`}
@@ -232,19 +180,17 @@ export function DashboardTab() {
                         ))}
                     </div>
 
-                    <DashboardSection
-                        eyebrow="Stock Control"
-                        title="Warehouse Snapshot"
-                        subtitle="Current lot value, shortages, and held inventory."
-                    >
+                    <div className="dashboard-snapshot-panel">
+                        <div className="dashboard-snapshot-copy">
+                            <span className="dashboard-snapshot-eyebrow">Stock Control</span>
+                            <h4 className="dashboard-snapshot-title">Warehouse Snapshot</h4>
+                            <p className="dashboard-snapshot-subtitle">Current lot value, held inventory, and active units.</p>
+                        </div>
+
                         <div className="dashboard-inventory-list">
                             <div className={`dashboard-inventory-row is-${dashboardInventoryTone('netAssetValue')}`}>
                                 <span>Net Asset</span>
                                 <strong>{admin.currency ? admin.currency(inventoryStats.netAssetValue) : inventoryStats.netAssetValue}</strong>
-                            </div>
-                            <div className={`dashboard-inventory-row is-${dashboardInventoryTone('outOfStock')}`}>
-                                <span>Critical Shortage</span>
-                                <strong>{admin.number ? admin.number(inventoryStats.outOfStock) : 0}</strong>
                             </div>
                             <div className={`dashboard-inventory-row is-${dashboardInventoryTone('reservedUnits')}`}>
                                 <span>Held Stock</span>
@@ -255,54 +201,101 @@ export function DashboardTab() {
                                 <strong>{admin.number ? admin.number(inventoryStats.totalUnits) : 0}</strong>
                             </div>
                         </div>
+                    </div>
+                </DashboardSection>
+            </div>
 
-                        <div className="dashboard-health-meter">
-                            <div className="dashboard-health-meter__head">
-                                <span>Stock Health</span>
-                                <strong>{inventoryStats.stockHealth || 0}%</strong>
-                            </div>
-                            <div className="dashboard-health-meter__bar">
-                                <span style={{ width: `${inventoryStats.stockHealth || 0}%` }} />
-                            </div>
-                            <p>Operational inventory remains ready for order flow.</p>
-                        </div>
-                    </DashboardSection>
+            <div className="dashboard-lower-grid">
+                <DashboardSection
+                    eyebrow="Transactions"
+                    title="Recent Orders"
+                    subtitle="Latest order flow across the store and auctions."
+                    className="dashboard-section--orders"
+                    actions={(
+                        <button
+                            onClick={() => admin.setActiveTab && admin.setActiveTab('orders')}
+                            className="dashboard-action-btn"
+                        >
+                            View Orders
+                        </button>
+                    )}
+                >
+                    <div className="dashboard-table-wrap">
+                        <table className="dashboard-table">
+                            <thead>
+                                <tr>
+                                    <th>Order</th>
+                                    <th>Amount</th>
+                                    <th>Payment</th>
+                                    <th>Fulfillment</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {recentOrders.length ? recentOrders.map((order, idx) => (
+                                    <tr key={`${order.id || order.orderNumber || idx}`}>
+                                        <td>
+                                            <div className="dashboard-table__stack">
+                                                <strong>{order.orderNumber}</strong>
+                                                <span>{order.customer || 'Customer'}</span>
+                                            </div>
+                                        </td>
+                                        <td>{admin.currency ? admin.currency(order.total) : order.total}</td>
+                                        <td>
+                                            <span className={statusBadgeClass(order.paymentStatus)}>
+                                                {dashboardStatusLabel(order.paymentStatus)}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <span className={statusBadgeClass(order.fulfillmentStatus)}>
+                                                {dashboardStatusLabel(order.fulfillmentStatus)}
+                                            </span>
+                                        </td>
+                                    </tr>
+                                )) : (
+                                    <tr>
+                                        <td colSpan="4" className="dashboard-table__empty">No recent orders found.</td>
+                                    </tr>
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
+                </DashboardSection>
 
-                    <DashboardSection
-                        eyebrow="Live Lots"
-                        title="Active Bidding"
-                        subtitle="Auctions closing soon and current bid pressure."
-                    >
-                        <div className="dashboard-auction-list">
-                            {endingAuctions.length ? endingAuctions.map((auction, idx) => (
-                                <article className="dashboard-auction-card" key={`${auction.id || auction.title || idx}`}>
-                                    <div className="dashboard-auction-card__head">
-                                        <div>
-                                            <h4>{auction.title}</h4>
-                                            <p>{admin.number ? admin.number(auction.totalBids) : 0} bids placed</p>
-                                        </div>
-                                        <span className="dashboard-status-badge is-clay">Live</span>
+                <DashboardSection
+                    eyebrow="Live Lots"
+                    title="Active Bidding"
+                    subtitle="Auctions closing soon and current bid pressure."
+                    className="dashboard-section--auction"
+                >
+                    <div className="dashboard-auction-list">
+                        {endingAuctions.length ? endingAuctions.map((auction, idx) => (
+                            <article className="dashboard-auction-card" key={`${auction.id || auction.title || idx}`}>
+                                <div className="dashboard-auction-card__head">
+                                    <div>
+                                        <h4>{auction.title}</h4>
+                                        <p>{admin.number ? admin.number(auction.totalBids) : 0} bids placed</p>
                                     </div>
-                                    <div className="dashboard-auction-card__stats">
-                                        <div>
-                                            <span>Current bid</span>
-                                            <strong>{admin.currency ? admin.currency(auction.currentPrice) : auction.currentPrice}</strong>
-                                        </div>
-                                        <div>
-                                            <span>Time left</span>
-                                            <strong>{auction.timeLeftText}</strong>
-                                        </div>
-                                    </div>
-                                </article>
-                            )) : (
-                                <div className="dashboard-auction-empty">
-                                    <Icon name="flame" />
-                                    <span>No live auctions right now.</span>
+                                    <span className="dashboard-status-badge is-clay">Live</span>
                                 </div>
-                            )}
-                        </div>
-                    </DashboardSection>
-                </div>
+                                <div className="dashboard-auction-card__stats">
+                                    <div>
+                                        <span>Current bid</span>
+                                        <strong>{admin.currency ? admin.currency(auction.currentPrice) : auction.currentPrice}</strong>
+                                    </div>
+                                    <div>
+                                        <span>Time left</span>
+                                        <strong>{auction.timeLeftText}</strong>
+                                    </div>
+                                </div>
+                            </article>
+                        )) : (
+                            <div className="dashboard-auction-empty">
+                                <Icon name="flame" />
+                                <span>No live auctions right now.</span>
+                            </div>
+                        )}
+                    </div>
+                </DashboardSection>
             </div>
         </DashboardShell>
     );

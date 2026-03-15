@@ -135,16 +135,6 @@ export function ProductFormTab() {
                                     style={{ width: '100%' }}
                                 />
                             </div>
-                            <div style={{ gridColumn: '1 / -1' }}>
-                                <label className="settings-label">Series / Set</label>
-                                <input
-                                    value={productModal.form?.series || ''}
-                                    onChange={(e) => { if (admin.productModal?.form) admin.productModal.form.series = e.target.value; }}
-                                    placeholder="Ex: Track Stars"
-                                    className="admin-search-input"
-                                    style={{ width: '100%' }}
-                                />
-                            </div>
                         </div>
                         <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap', color: 'var(--muted)', fontSize: '12px' }}>
                             <span>Categories are managed from Inventory &gt; Categories.</span>
@@ -352,53 +342,58 @@ export function ProductFormTab() {
             {/* Immersive HUD Media Picker (Digital Vault) */}
             {productMediaPicker.open && (
                 <AdminModalPortal>
-                    <div className="admin-modal-overlay">
-                        <div className="admin-modal" style={{ height: '80vh', display: 'flex', flexDirection: 'column' }}>
+                    <div className="admin-modal-overlay misc-soft-overlay">
+                        <div className="admin-modal misc-soft-modal media-vault-modal" style={{ height: '80vh', display: 'flex', flexDirection: 'column' }}>
                             <div className="admin-modal-head">
-                                <h3 style={{ margin: 0, color: '#f8fafc', fontSize: '18px', fontWeight: 800 }}>Media Vault</h3>
-                                <button type="button" onClick={() => admin.closeProductMediaPicker()} className="order-filter-btn">Close</button>
+                                <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 800 }}>Media Vault</h3>
+                                <button type="button" onClick={() => admin.closeProductMediaPicker()} className="secondary-btn">Close</button>
                             </div>
 
-                            <div style={{ padding: '16px', borderBottom: '1px solid var(--border-strong)', display: 'flex', gap: '12px' }}>
+                            <div className="media-vault-toolbar">
                                 <input
                                     value={productMediaPicker.search || ''}
                                     onChange={(e) => { if (admin.productMediaPicker) admin.productMediaPicker.search = e.target.value; }}
                                     placeholder="Search by filename or tag..."
                                     className="admin-search-input"
                                 />
-                                <button type="button" onClick={() => admin.refreshProductMediaPicker()} className="order-filter-btn primary">
+                                <button type="button" onClick={() => admin.refreshProductMediaPicker()} className="primary-btn">
                                     {productMediaPicker.loading ? 'Syncing...' : 'Refresh'}
                                 </button>
                             </div>
 
-                            <div className="admin-modal-body" style={{ flex: 1, overflowY: 'auto', padding: '24px' }}>
-                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: '16px' }}>
+                            <div className="admin-modal-body media-vault-modal__body custom-scrollbar">
+                                <div className="media-vault-grid">
                                     {filteredProductMediaAssets().map((asset, i) => {
                                         if (!asset) return null;
                                         const assetId = asset.id || asset._id || `asset-${i}`;
                                         const assetName = asset.fileName || asset.name || 'Untitled';
+                                        const isInGallery = admin.hasProductGalleryMedia && admin.hasProductGalleryMedia(asset);
 
                                         return (
-                                            <div key={assetId} className="admin-card" style={{ padding: '12px', display: 'grid', gap: '12px' }}>
-                                                <div style={{ aspectRatio: '1', borderRadius: '8px', overflow: 'hidden', background: 'rgba(10, 13, 20, 0.6)' }}>
+                                            <div key={assetId} className="admin-inset-card media-vault-card">
+                                                <div className="media-vault-card__preview">
                                                     <img
                                                         src={admin.mediaPreviewUrl ? admin.mediaPreviewUrl(asset) : ''}
                                                         alt={assetName}
                                                         style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                                                     />
                                                 </div>
-                                                <div style={{ minWidth: 0 }}>
-                                                        <p style={{ fontSize: '11px', color: 'var(--text)', fontWeight: 700, margin: '0 0 4px 0', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={assetName}>
+                                                <div className="media-vault-card__meta">
+                                                        <p className="media-vault-card__title" title={assetName}>
                                                             {assetName}
                                                         </p>
-                                                        <p className="mono" style={{ fontSize: '9px', color: 'var(--muted)', margin: 0 }}>ID: {String(assetId).slice(-8)}</p>
+                                                        <p className="mono media-vault-card__id">ID: {String(assetId).slice(-8)}</p>
                                                 </div>
-                                                <div style={{ display: 'grid', gap: '8px' }}>
-                                                    <button type="button" onClick={() => admin.setProductPrimaryMedia && admin.setProductPrimaryMedia(asset)} className="order-filter-btn primary" style={{ padding: '6px', fontSize: '10px' }}>
+                                                <div className="media-vault-card__actions">
+                                                    <button type="button" onClick={() => admin.setProductPrimaryMedia && admin.setProductPrimaryMedia(asset)} className="primary-btn">
                                                         Set Primary
                                                     </button>
-                                                    <button type="button" onClick={() => admin.toggleProductGalleryMedia && admin.toggleProductGalleryMedia(asset)} className="order-filter-btn" style={{ padding: '6px', fontSize: '10px' }}>
-                                                        {admin.hasProductGalleryMedia && admin.hasProductGalleryMedia(asset) ? '- Gallery' : '+ Gallery'}
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => admin.toggleProductGalleryMedia && admin.toggleProductGalleryMedia(asset)}
+                                                        className={`secondary-btn media-vault-card__toggle ${isInGallery ? 'is-active' : ''}`}
+                                                    >
+                                                        {isInGallery ? 'Added To Gallery' : 'Add To Gallery'}
                                                     </button>
                                                 </div>
                                             </div>
@@ -406,7 +401,7 @@ export function ProductFormTab() {
                                     })}
                                 </div>
                                 {filteredProductMediaAssets().length === 0 && (
-                                    <div style={{ textAlign: 'center', color: 'var(--muted)', padding: '40px' }}>
+                                    <div className="media-vault-empty">
                                         No media assets found.
                                     </div>
                                 )}

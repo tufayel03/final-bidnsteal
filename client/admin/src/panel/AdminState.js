@@ -409,7 +409,6 @@ export function getInitialAdminState() {
         stock: "",
         condition: "carded",
         saleMode: "fixed",
-        series: "",
         primaryImage: "",
         galleryImages: "",
         tags: "",

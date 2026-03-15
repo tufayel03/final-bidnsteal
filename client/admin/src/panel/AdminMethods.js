@@ -1066,7 +1066,7 @@ export const adminMethods = {
       stockHealth
     };
 
-    this.recentOrders = orders.slice(0, 8).map((order) => ({
+    this.recentOrders = orders.slice(0, 4).map((order) => ({
       ...order,
       customer: order.displayCustomer,
       status: order.fulfillmentStatus || "pending"
@@ -1150,7 +1150,6 @@ export const adminMethods = {
         isNewDrop: Boolean(item.isNewDrop),
         category: item.category || "",
         categoryId: item.categoryId || "",
-        series: item.series || "",
         condition: item.condition,
         saleMode: item.saleMode
       };
@@ -4322,7 +4321,6 @@ export const adminMethods = {
       stock: "",
       condition: "carded",
       saleMode: "fixed",
-      series: "",
       primaryImage: "",
       galleryImages: "",
       tags: "",
@@ -4384,7 +4382,6 @@ export const adminMethods = {
       stock: detail?.stock ?? item.stock,
       condition: detail?.condition || item.condition,
       saleMode,
-      series: detail?.series || item.series || "",
       primaryImage: normalizedImages[0] || "",
       galleryImages: normalizedImages.slice(1).join(", "),
       tags: "",
@@ -4495,7 +4492,6 @@ export const adminMethods = {
         stock: Number(this.productModal.form.stock || 0),
         condition: this.productModal.form.condition,
         saleMode: this.productModal.form.saleMode,
-        series: this.productModal.form.series || undefined,
         images: mergedImages,
         tags: this.parseCsv(this.productModal.form.tags),
         description: this.productModal.form.description || undefined,
@@ -4769,10 +4765,16 @@ export const adminMethods = {
     if (!canvas || !wrap) return;
     const context = canvas.getContext("2d");
     if (!context) return;
-    wrap.style.height = "260px";
-    canvas.style.height = "100%";
+    const viewportWidth = typeof window !== "undefined" ? window.innerWidth : 1280;
+    const minChartHeight = viewportWidth >= 1180 ? 420 : viewportWidth >= 720 ? 340 : 280;
+    const sectionBody = wrap.parentElement;
+    const availableBodyHeight = Math.round(sectionBody?.getBoundingClientRect?.().height || 0);
+    const chartHeight = Math.max(minChartHeight, availableBodyHeight || 0);
+    const canvasHeight = Math.max(viewportWidth >= 720 ? chartHeight - 40 : chartHeight - 42, 210);
+    wrap.style.height = `${chartHeight}px`;
+    canvas.style.height = `${canvasHeight}px`;
     canvas.style.width = "100%";
-    canvas.style.maxHeight = "260px";
+    canvas.style.maxHeight = `${canvasHeight}px`;
     const themeHost = canvas.closest(".dashboard-shell") || document.documentElement;
     const themeStyles = getComputedStyle(themeHost);
     const chartLineColor = themeStyles.getPropertyValue("--dashboard-chart-line").trim() || "#93bc52";
