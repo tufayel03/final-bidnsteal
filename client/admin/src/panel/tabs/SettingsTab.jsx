@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
-import { Activity, Eye, ImagePlus, Mail, RefreshCw, Send, ShieldCheck, SlidersHorizontal, Truck } from 'lucide-react';
+import { Activity, Eye, ImagePlus, Mail, RefreshCw, Send, ShieldCheck, ShoppingCart, SlidersHorizontal, Truck } from 'lucide-react';
 import { useAdmin } from '../AdminContext';
 
 const SETTINGS_TABS = [
     { key: 'templates', label: 'Email Templates', caption: 'Transactional template editor', icon: Mail },
     { key: 'smtp', label: 'SMTP Mailer', caption: 'Mail transport + sender identity', icon: Send },
     { key: 'courier', label: 'Courier Integration', caption: 'Steadfast dispatch + fraud checks', icon: Truck },
+    { key: 'checkout', label: 'Checkout Rules', caption: 'Delivery fees + guest orders', icon: ShoppingCart },
     { key: 'preferences', label: 'Local Preferences', caption: 'Browser-only admin behavior', icon: SlidersHorizontal }
 ];
 
@@ -45,6 +46,7 @@ export function SettingsTab() {
         templatePlaceholders = [],
         smtpSettings = {},
         courierSettings = {},
+        checkoutSettings = {},
         localSettings = {}
     } = admin;
 
@@ -57,6 +59,13 @@ export function SettingsTab() {
     const courierBalanceLabel = courierSettings.balance === null || courierSettings.balance === undefined
         ? 'Not checked'
         : (admin.currency ? admin.currency(courierSettings.balance) : courierSettings.balance);
+    const guestOrderLabel = checkoutSettings.allowGuestOrder ? 'Allowed' : 'Login Required';
+    const deliveryChargeDhakaLabel = admin.currency
+        ? admin.currency(checkoutSettings.deliveryChargeDhaka || 0)
+        : `BDT ${Number(checkoutSettings.deliveryChargeDhaka || 0).toFixed(2)}`;
+    const deliveryChargeOutsideDhakaLabel = admin.currency
+        ? admin.currency(checkoutSettings.deliveryChargeOutsideDhaka || 0)
+        : `BDT ${Number(checkoutSettings.deliveryChargeOutsideDhaka || 0).toFixed(2)}`;
 
     const renderNav = () => (
         <div className="settings-subnav">
@@ -585,6 +594,90 @@ export function SettingsTab() {
         </div>
     );
 
+    const renderCheckoutTab = () => (
+        <div className="settings-workspace">
+            <div className="settings-stat-grid settings-stat-grid-top">
+                <StatCard label="Guest Order" value={guestOrderLabel} hint="Storefront order access rule" accent={checkoutSettings.allowGuestOrder ? 'accent-primary' : ''} />
+                <StatCard label="Dhaka Charge" value={deliveryChargeDhakaLabel} hint="Applied when city is Dhaka" />
+                <StatCard label="Outside Dhaka" value={deliveryChargeOutsideDhakaLabel} hint="Rest of Bangladesh delivery fee" />
+            </div>
+
+            <div className="settings-layout settings-layout-double">
+                <section className="settings-card settings-surface-card">
+                    <SectionHeader
+                        kicker="Delivery Pricing"
+                        title="Bangladesh Delivery Charge Rules"
+                        description="Set the default delivery fee for Dhaka city and for the rest of Bangladesh outside Dhaka."
+                        aside={<Truck size={16} className="settings-panel-icon" />}
+                    />
+                    <div className="settings-form-grid">
+                        <div className="settings-field">
+                            <label className="settings-label">Dhaka City Delivery Charge</label>
+                            <input
+                                type="number"
+                                min="0"
+                                step="1"
+                                value={checkoutSettings.deliveryChargeDhaka ?? 0}
+                                onChange={(event) => {
+                                    admin.checkoutSettings.deliveryChargeDhaka = Number(event.target.value || 0);
+                                }}
+                                className="settings-input text-sm mono w-full"
+                            />
+                            <p className="settings-helper-text">Used when the shipping city or area contains Dhaka.</p>
+                        </div>
+                        <div className="settings-field">
+                            <label className="settings-label">Whole Bangladesh Except Dhaka</label>
+                            <input
+                                type="number"
+                                min="0"
+                                step="1"
+                                value={checkoutSettings.deliveryChargeOutsideDhaka ?? 0}
+                                onChange={(event) => {
+                                    admin.checkoutSettings.deliveryChargeOutsideDhaka = Number(event.target.value || 0);
+                                }}
+                                className="settings-input text-sm mono w-full"
+                            />
+                            <p className="settings-helper-text">Applied for every Bangladesh destination outside Dhaka city.</p>
+                        </div>
+                    </div>
+                </section>
+
+                <section className="settings-card settings-surface-card">
+                    <SectionHeader
+                        kicker="Access Policy"
+                        title="Guest Checkout Control"
+                        description="Turn guest orders on if non-logged-in customers should be allowed to place store orders."
+                        aside={<ShieldCheck size={16} className="settings-panel-icon" />}
+                    />
+                    <div className="settings-switch-grid">
+                        <label className="settings-switch-card settings-switch-card-highlight">
+                            <div className="settings-switch-copy">
+                                <p className="settings-switch-title">Allow Guest Order</p>
+                                <p className="settings-switch-text">When disabled, customers must log in before they can submit a store order.</p>
+                            </div>
+                            <span className="settings-toggle-wrap">
+                                <input
+                                    type="checkbox"
+                                    className="sr-only"
+                                    checked={!!checkoutSettings.allowGuestOrder}
+                                    onChange={(event) => {
+                                        admin.checkoutSettings.allowGuestOrder = event.target.checked;
+                                    }}
+                                />
+                                <ToggleVisual checked={!!checkoutSettings.allowGuestOrder} />
+                            </span>
+                        </label>
+                    </div>
+                    <div className="settings-actions-grid settings-actions-grid-single">
+                        <button onClick={() => admin.saveCheckoutSettings && admin.saveCheckoutSettings()} className="settings-btn settings-btn-primary">
+                            {checkoutSettings.saving ? 'Saving...' : 'Save Checkout Settings'}
+                        </button>
+                    </div>
+                </section>
+            </div>
+        </div>
+    );
+
     return (
         <div className="settings-shell">
             <div className="settings-hero-card">
@@ -621,6 +714,7 @@ export function SettingsTab() {
                 {activeTab === 'templates' && renderTemplatesTab()}
                 {activeTab === 'smtp' && renderSmtpTab()}
                 {activeTab === 'courier' && renderCourierTab()}
+                {activeTab === 'checkout' && renderCheckoutTab()}
                 {activeTab === 'preferences' && renderPreferencesTab()}
             </div>
         </div>

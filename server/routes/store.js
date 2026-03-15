@@ -11,6 +11,7 @@ const { env } = require("../config/env");
 const { requireAuth } = require("../middleware/auth");
 const { trackAuctionViewer } = require("../services/auctionAudienceService");
 const { createAuctionWinnerOrder, syncAuctionStatus, syncAuctions, toPublicAuction, toPublicProduct } = require("../services/auctionService");
+const { getCheckoutSettings, resolveDeliveryCharge } = require("../services/checkoutSettingsService");
 const { sendTemplateEmail } = require("../services/emailService");
 const { getPublicSiteProfile } = require("../services/siteProfileService");
 const { containsRegex } = require("../utils/http");
@@ -177,7 +178,9 @@ async function createStoreOrder({
   shippingAddress,
   customerNote,
   couponCode,
-  user,
+  user = null,
+  customerEmail = "",
+  shippingFee = 0,
   session = null
 }) {
   const touchedProducts = [];
@@ -256,20 +259,34 @@ async function createStoreOrder({
       couponUsageApplied = true;
     }
 
+    const normalizedCustomerName = sanitizeText(
+      shippingAddress.fullName || user?.name || "",
+      120
+    );
+    const normalizedCustomerEmail = normalizeEmail(customerEmail || user?.email || "");
+    const normalizedShippingFee = roundMoney(shippingFee);
+
+    if (!normalizedCustomerName) {
+      throw Object.assign(new Error("Customer name is required."), { status: 400 });
+    }
+    if (!normalizedCustomerEmail || !isValidEmail(normalizedCustomerEmail)) {
+      throw Object.assign(new Error("A valid customer email is required."), { status: 400 });
+    }
+
     const orderPayload = {
       orderNumber: await makeOrderNumber(),
-      userId: user._id,
-      customerName: shippingAddress.fullName || user.name,
-      customerEmail: user.email,
+      userId: user?._id || null,
+      customerName: normalizedCustomerName,
+      customerEmail: normalizedCustomerEmail,
       paymentMethod: "cod",
       paymentStatus: "unpaid",
       fulfillmentStatus: "pending",
       customerNote,
       couponCode,
       subtotal,
-      shippingFee: 0,
+      shippingFee: normalizedShippingFee,
       discount,
-      total: Math.max(0, Number((subtotal - discount).toFixed(2))),
+      total: Math.max(0, Number((subtotal + normalizedShippingFee - discount).toFixed(2))),
       items: normalizedItems,
       shippingAddress
     };
@@ -568,11 +585,21 @@ router.post("/subscribers", async (req, res) => {
   return res.status(201).json({ id: subscriber.id, email: subscriber.email, name: subscriber.name });
 });
 
-router.post("/orders", requireAuth, async (req, res) => {
+router.post("/orders", async (req, res) => {
   const items = Array.isArray(req.body?.items) ? req.body.items : [];
-  const shippingAddress = normalizeShippingAddress(req.body?.shippingAddress || {}, req.user.shippingAddress || {});
+  const currentUser = req.user || null;
+  const checkoutSettings = await getCheckoutSettings();
+  const shippingAddress = normalizeShippingAddress(
+    req.body?.shippingAddress || {},
+    currentUser?.shippingAddress || {}
+  );
   const customerNote = sanitizeText(req.body?.customerNote, 1000);
   const couponCode = sanitizeText(req.body?.couponCode, 64).toUpperCase();
+  const customerEmail = currentUser
+    ? normalizeEmail(currentUser.email)
+    : normalizeEmail(
+        req.body?.customerEmail || req.body?.email || req.body?.shippingAddress?.email || ""
+      );
 
   if (!items.length) {
     return res.status(400).json({ message: "At least one item is required." });
@@ -580,9 +607,17 @@ router.post("/orders", requireAuth, async (req, res) => {
   if (items.length > 25) {
     return res.status(400).json({ message: "Too many items in a single order." });
   }
+  if (!currentUser && !checkoutSettings.allowGuestOrder) {
+    return res.status(403).json({ message: "Guest checkout is currently disabled." });
+  }
   if (!hasRequiredShippingAddress(shippingAddress)) {
     return res.status(400).json({ message: "Complete shipping details are required." });
   }
+  if (!currentUser && (!customerEmail || !isValidEmail(customerEmail))) {
+    return res.status(400).json({ message: "A valid customer email is required for guest checkout." });
+  }
+
+  const shippingFee = resolveDeliveryCharge(shippingAddress, checkoutSettings);
 
   const useTransactions = await supportsTransactions();
   const dbSession = useTransactions ? await mongoose.startSession() : null;
@@ -597,7 +632,9 @@ router.post("/orders", requireAuth, async (req, res) => {
           shippingAddress,
           customerNote,
           couponCode,
-          user: req.user,
+          user: currentUser,
+          customerEmail,
+          shippingFee,
           session: dbSession
         });
       });
@@ -607,7 +644,9 @@ router.post("/orders", requireAuth, async (req, res) => {
         shippingAddress,
         customerNote,
         couponCode,
-        user: req.user
+        user: currentUser,
+        customerEmail,
+        shippingFee
       });
     }
 
@@ -616,11 +655,11 @@ router.post("/orders", requireAuth, async (req, res) => {
       const storefrontBase = String(siteProfile.siteUrl || env.clientUrls[0] || "").replace(/\/$/, "");
       await sendTemplateEmail({
         templateKey: "order-confirmation",
-        to: req.user.email,
+        to: order.customerEmail,
         context: {
           customer: {
-            name: shippingAddress.fullName || req.user.name,
-            email: req.user.email
+            name: order.customerName,
+            email: order.customerEmail
           },
           order: {
             number: order.orderNumber,

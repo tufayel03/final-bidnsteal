@@ -9,6 +9,11 @@ const Subscriber = require("../models/Subscriber");
 const User = require("../models/User");
 const { env } = require("../config/env");
 const { requireAdmin } = require("../middleware/auth");
+const {
+  getCheckoutSettings,
+  sanitizeCheckoutSettingsForClient,
+  saveCheckoutSettings
+} = require("../services/checkoutSettingsService");
 const { attachMediaTemplateContext, createTransport, getSmtpSettings, renderTemplateString, sendEmail, sendTemplateEmail } = require("../services/emailService");
 const { syncAuctions } = require("../services/auctionService");
 const { normalizeCampaignForAdmin, queueCampaignDispatch } = require("../services/campaignDispatchService");
@@ -874,6 +879,32 @@ router.post("/email-templates/:key/test-send", async (req, res) => {
 router.get("/courier/steadfast/settings", async (_req, res) => {
   const value = await getCourierSettings();
   return res.json(sanitizeCourierSettingsForClient(value));
+});
+
+router.get("/checkout/settings", async (_req, res) => {
+  const value = await getCheckoutSettings();
+  return res.json(sanitizeCheckoutSettingsForClient(value));
+});
+
+router.put("/checkout/settings", async (req, res) => {
+  const deliveryChargeDhaka = Number(req.body?.deliveryChargeDhaka ?? 0);
+  const deliveryChargeOutsideDhaka = Number(req.body?.deliveryChargeOutsideDhaka ?? 0);
+
+  if (!Number.isFinite(deliveryChargeDhaka) || deliveryChargeDhaka < 0) {
+    return res.status(400).json({ message: "Dhaka delivery charge must be a valid non-negative amount." });
+  }
+
+  if (!Number.isFinite(deliveryChargeOutsideDhaka) || deliveryChargeOutsideDhaka < 0) {
+    return res.status(400).json({ message: "Outside Dhaka delivery charge must be a valid non-negative amount." });
+  }
+
+  const saved = await saveCheckoutSettings({
+    allowGuestOrder: Boolean(req.body?.allowGuestOrder),
+    deliveryChargeDhaka,
+    deliveryChargeOutsideDhaka
+  });
+
+  return res.json(sanitizeCheckoutSettingsForClient(saved));
 });
 
 router.put("/courier/steadfast/settings", async (req, res) => {

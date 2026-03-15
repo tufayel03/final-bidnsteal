@@ -384,3 +384,410 @@ textarea::placeholder {
   color: #7d8478 !important;
   border-color: #e1e6db !important;
 }
+
+/* Compact admin density layer */
+.admin-layout--soft {
+  --sidebar-width: 220px;
+  --sidebar-collapsed-width: 70px;
+}
+
+.admin-layout--soft .admin-content {
+  padding: 14px 18px 18px;
+}
+
+.admin-layout--soft .admin-sidebar--soft {
+  padding: 14px 12px 12px !important;
+}
+
+.admin-layout--soft .admin-simple-brand {
+  padding: 4px 6px 12px;
+}
+
+.admin-layout--soft .admin-simple-brand-copy h1 {
+  font-size: 20px;
+}
+
+.admin-layout--soft .admin-simple-brand-copy p,
+.admin-layout--soft .admin-simple-nav-group-label,
+.admin-layout--soft .admin-user span {
+  font-size: 10px;
+}
+
+.admin-layout--soft .admin-simple-nav-item,
+.admin-layout--soft .admin-simple-link-btn {
+  min-height: 42px;
+  border-radius: 14px;
+}
+
+.admin-layout--soft .admin-nav-item-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+}
+
+.admin-layout--soft .admin-sidebar--soft.collapsed {
+  padding: 10px 6px 8px !important;
+  gap: 8px;
+}
+
+.admin-layout--soft .admin-sidebar--soft.collapsed .admin-simple-brand {
+  padding: 0 0 6px;
+}
+
+.admin-layout--soft .admin-sidebar--soft.collapsed .admin-simple-nav {
+  gap: 2px;
+  padding: 0;
+}
+
+.admin-layout--soft .admin-sidebar--soft.collapsed .admin-simple-nav-group {
+  display: contents;
+}
+
+.admin-layout--soft .admin-sidebar--soft.collapsed .admin-simple-nav-list {
+  gap: 1px;
+}
+
+.admin-layout--soft .admin-sidebar--soft.collapsed .admin-nav-item,
+.admin-layout--soft .admin-sidebar--soft.collapsed .admin-link-btn {
+  min-height: 34px;
+  padding: 3px;
+  border-radius: 10px;
+}
+
+.admin-layout--soft .admin-sidebar--soft.collapsed .admin-nav-item-icon,
+.admin-layout--soft .admin-sidebar--soft.collapsed .admin-link-btn .admin-nav-item-icon {
+  width: 26px;
+  height: 26px;
+  border-radius: 8px;
+}
+
+.admin-layout--soft .admin-sidebar--soft.collapsed .admin-simple-nav-item.active {
+  background: transparent !important;
+  border-color: transparent !important;
+  border-left-color: transparent !important;
+  box-shadow: none !important;
+}
+
+.admin-layout--soft .admin-sidebar--soft.collapsed .admin-simple-nav-item.active .admin-nav-item-icon {
+  background: var(--primary) !important;
+  border-color: transparent !important;
+  color: #21231d !important;
+  box-shadow: none !important;
+}
+
+.admin-layout--soft .admin-sidebar--soft.collapsed .admin-simple-sidebar-footer {
+  padding-top: 6px;
+  gap: 2px;
+}
+
+.admin-layout--soft .admin-topbar--soft {
+  height: 68px;
+  padding: 0 18px;
+}
+
+.admin-layout--soft .admin-search-shell--soft {
+  width: min(30vw, 320px);
+  height: 40px;
+  border-radius: 12px;
+}
+
+.admin-layout--soft .admin-topbar-right--soft {
+  gap: 8px;
+}
+
+.admin-layout--soft .admin-soft-icon-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+}
+
+.admin-layout--soft .admin-user--soft {
+  gap: 8px;
+  padding: 4px 8px 4px 4px;
+  border-radius: 14px;
+}
+
+.admin-layout--soft .admin-user strong {
+  font-size: 13px;
+}
+
+.admin-layout--soft .avatar--soft {
+  width: 32px;
+  height: 32px;
+}
+
+.admin-layout--soft .admin-tab-header {
+  gap: 10px;
+  margin-bottom: 18px;
+}
+
+.admin-layout--soft .admin-tab-header h2,
+.admin-layout--soft .dashboard-shell__title {
+  font-size: 30px !important;
+}
+
+.admin-layout--soft .admin-tab-header p {
+  margin-top: 4px;
+  font-size: 13px !important;
+}
+
+.admin-layout--soft .primary-btn,
+.admin-layout--soft .secondary-btn,
+.admin-layout--soft .settings-btn,
+.admin-layout--soft .settings-btn-primary,
+.admin-layout--soft .order-filter-btn,
+.admin-layout--soft .template-tag-btn {
+  min-height: 40px;
+  padding: 8px 14px !important;
+  border-radius: 12px !important;
+  font-size: 13px !important;
+}
+
+.admin-layout--soft .order-icon-btn,
+.admin-layout--soft .admin-soft-icon-btn {
+  border-radius: 10px !important;
+}
+
+.admin-layout--soft input,
+.admin-layout--soft select,
+.admin-layout--soft .settings-input,
+.admin-layout--soft .admin-search-input,
+.admin-layout--soft .order-filter-select,
+.admin-layout--soft .auth-form input {
+  min-height: 40px;
+  padding: 8px 12px !important;
+  border-radius: 12px !important;
+  font-size: 13px !important;
+}
+
+.admin-layout--soft textarea,
+.admin-layout--soft .settings-textarea {
+  padding: 10px 12px !important;
+  border-radius: 12px !important;
+  font-size: 13px !important;
+}
+
+.admin-layout--soft .admin-card,
+.admin-layout--soft .order-panel,
+.admin-layout--soft .admin-table-wrap,
+.admin-layout--soft .settings-card,
+.admin-layout--soft .settings-surface-card,
+.admin-layout--soft .settings-hero-card,
+.admin-layout--soft .settings-subnav-button,
+.admin-layout--soft .settings-test-card,
+.admin-layout--soft .settings-switch-card,
+.admin-layout--soft .settings-stat-card,
+.admin-layout--soft .admin-inset-card,
+.admin-layout--soft .campaign-preview-frame-wrap,
+.admin-layout--soft .user-order-card,
+.admin-layout--soft .order-section-card,
+.admin-layout--soft .order-detail-info-card,
+.admin-layout--soft .order-metric-card,
+.admin-layout--soft .order-item-card,
+.admin-layout--soft .order-editor-row,
+.admin-layout--soft .order-fraud-card,
+.admin-layout--soft .order-fraud-state,
+.admin-layout--soft .order-fraud-phone-row {
+  border-radius: 24px !important;
+  box-shadow: 0 10px 22px rgba(31, 38, 29, 0.04) !important;
+}
+
+.admin-layout--soft .admin-table thead th,
+.admin-layout--soft .admin-table tbody td {
+  padding: 12px 14px !important;
+  font-size: 12.5px;
+}
+
+.admin-layout--soft .status-badge {
+  padding: 6px 10px !important;
+  font-size: 10px !important;
+}
+
+.admin-layout--soft .order-bulk-bar {
+  gap: 10px;
+  padding-top: 12px;
+}
+
+.admin-layout--soft .order-bulk-pill {
+  min-height: 42px;
+  gap: 10px;
+  padding: 6px 10px 6px 12px;
+  border-radius: 16px;
+}
+
+.admin-layout--soft .order-bulk-pill .mono {
+  min-width: 28px;
+  height: 28px;
+  font-size: 12px;
+}
+
+.admin-layout--soft .settings-shell {
+  gap: 18px;
+}
+
+.admin-layout--soft .settings-hero-card {
+  gap: 14px;
+  padding: 22px 24px;
+  border-radius: 26px !important;
+}
+
+.admin-layout--soft .settings-hero-card h2 {
+  font-size: 34px;
+}
+
+.admin-layout--soft .settings-hero-card p,
+.admin-layout--soft .settings-panel-description,
+.admin-layout--soft .settings-switch-text {
+  font-size: 13px;
+}
+
+.admin-layout--soft .settings-hero-chip-row {
+  margin-top: 14px;
+  gap: 10px;
+}
+
+.admin-layout--soft .settings-hero-chip,
+.admin-layout--soft .settings-panel-pill {
+  min-height: 32px;
+  padding: 0 12px;
+  font-size: 12px;
+}
+
+.admin-layout--soft .settings-subnav,
+.admin-layout--soft .settings-content,
+.admin-layout--soft .settings-workspace,
+.admin-layout--soft .settings-layout,
+.admin-layout--soft .settings-sidebar,
+.admin-layout--soft .settings-stack {
+  gap: 16px;
+}
+
+.admin-layout--soft .settings-subnav-button {
+  min-height: 92px;
+  gap: 12px;
+  padding: 14px 16px;
+  border-radius: 20px !important;
+}
+
+.admin-layout--soft .settings-subnav-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 14px;
+}
+
+.admin-layout--soft .settings-subnav-title {
+  font-size: 14px;
+}
+
+.admin-layout--soft .settings-subnav-caption,
+.admin-layout--soft .settings-stat-hint,
+.admin-layout--soft .settings-helper-text,
+.admin-layout--soft .settings-inline-note {
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.admin-layout--soft .settings-surface-card,
+.admin-layout--soft .settings-card {
+  padding: 20px !important;
+}
+
+.admin-layout--soft .settings-panel-head {
+  gap: 14px;
+  margin-bottom: 16px;
+  padding-bottom: 14px;
+}
+
+.admin-layout--soft .settings-panel-copy h3 {
+  font-size: 22px;
+}
+
+.admin-layout--soft .settings-stat-grid {
+  gap: 12px;
+}
+
+.admin-layout--soft .settings-stat-card {
+  min-height: 104px;
+  gap: 8px;
+  padding: 16px;
+  border-radius: 18px !important;
+}
+
+.admin-layout--soft .settings-stat-value {
+  font-size: 20px;
+}
+
+.admin-layout--soft .settings-form-grid {
+  gap: 14px;
+}
+
+.admin-layout--soft .settings-field {
+  gap: 6px;
+}
+
+.admin-layout--soft .settings-template-editor {
+  min-height: 340px;
+}
+
+.admin-layout--soft .settings-inline-actions {
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.admin-layout--soft .settings-token-grid {
+  gap: 8px;
+}
+
+.admin-layout--soft .settings-test-card {
+  gap: 12px;
+  padding: 16px;
+  border-radius: 18px !important;
+}
+
+.admin-layout--soft .settings-actions-grid {
+  gap: 10px;
+}
+
+.admin-layout--soft .settings-preview-box {
+  gap: 8px;
+  padding: 16px;
+  border-radius: 16px;
+}
+
+.admin-layout--soft .settings-preview-box-tall {
+  min-height: 420px;
+}
+
+.admin-layout--soft .settings-switch-grid {
+  gap: 12px;
+}
+
+.admin-layout--soft .settings-switch-card {
+  gap: 14px;
+  padding: 14px 16px;
+  border-radius: 20px !important;
+}
+
+.admin-layout--soft .settings-switch-title {
+  font-size: 15px;
+}
+
+.admin-layout--soft .settings-toggle-wrap {
+  padding: 3px;
+}
+
+.admin-layout--soft .settings-toggle {
+  width: 48px;
+  height: 26px;
+}
+
+.admin-layout--soft .settings-toggle::after {
+  top: 2px;
+  left: 2px;
+  width: 20px;
+  height: 20px;
+}
+
+.admin-layout--soft .settings-toggle.is-on::after {
+  transform: translateX(22px);
+}

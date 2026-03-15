@@ -401,6 +401,12 @@ export function getInitialAdminState() {
       balanceLoading: false,
       saving: false
     },
+    checkoutSettings: {
+      allowGuestOrder: false,
+      deliveryChargeDhaka: 0,
+      deliveryChargeOutsideDhaka: 0,
+      saving: false
+    },
 
     // product modal
     productModal: {

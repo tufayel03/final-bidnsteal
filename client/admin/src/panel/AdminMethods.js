@@ -29,6 +29,15 @@ export const adminMethods = {
     };
   },
 
+  defaultCheckoutSettings() {
+    return {
+      allowGuestOrder: false,
+      deliveryChargeDhaka: 0,
+      deliveryChargeOutsideDhaka: 0,
+      saving: false
+    };
+  },
+
   ensureCourierSettings() {
     const defaults = this.defaultCourierSettings();
     const current =
@@ -42,6 +51,21 @@ export const adminMethods = {
       defaultDeliveryType: Number(current.defaultDeliveryType || 0) === 1 ? 1 : 0
     };
     return this.courierSettings;
+  },
+
+  ensureCheckoutSettings() {
+    const defaults = this.defaultCheckoutSettings();
+    const current =
+      this.checkoutSettings && typeof this.checkoutSettings === "object" ? this.checkoutSettings : {};
+    this.checkoutSettings = {
+      ...defaults,
+      ...current,
+      allowGuestOrder: Boolean(current.allowGuestOrder),
+      deliveryChargeDhaka: roundMoney(current.deliveryChargeDhaka),
+      deliveryChargeOutsideDhaka: roundMoney(current.deliveryChargeOutsideDhaka),
+      saving: Boolean(current.saving)
+    };
+    return this.checkoutSettings;
   },
 
   courierDispatchEnabled() {
@@ -94,6 +118,7 @@ export const adminMethods = {
   async init() {
     this.restoreLocalSettings();
     this.ensureCourierSettings();
+    this.ensureCheckoutSettings();
     this.refreshIcons();
     await this.bootstrap();
     setInterval(() => this.updateAuctionTimers(), 1000);
@@ -4200,16 +4225,19 @@ export const adminMethods = {
 
   async loadSettings() {
     this.ensureCourierSettings();
+    this.ensureCheckoutSettings();
     const settled = await Promise.allSettled([
       this.apiRequest("/admin/email-templates"),
       this.apiRequest("/admin/email-templates/transport/smtp"),
-      this.apiRequest("/admin/courier/steadfast/settings")
+      this.apiRequest("/admin/courier/steadfast/settings"),
+      this.apiRequest("/admin/checkout/settings")
     ]);
 
     const ok = (idx, fallback) => settled[idx].status === 'fulfilled' ? settled[idx].value : fallback;
     const templateResponse = ok(0, { items: [] });
     const smtpResponse = ok(1, {});
     const courierResponse = ok(2, {});
+    const checkoutResponse = ok(3, {});
 
     const items = templateResponse.items || [];
     this.templateKeys = items.map((item) => item.key);
@@ -4259,6 +4287,14 @@ export const adminMethods = {
       saving: false,
       balanceLoading: false
     };
+
+    this.checkoutSettings = {
+      ...this.ensureCheckoutSettings(),
+      allowGuestOrder: Boolean(checkoutResponse.allowGuestOrder),
+      deliveryChargeDhaka: roundMoney(checkoutResponse.deliveryChargeDhaka),
+      deliveryChargeOutsideDhaka: roundMoney(checkoutResponse.deliveryChargeOutsideDhaka),
+      saving: false
+    };
   },
 
   async saveCourierSettings() {
@@ -4304,6 +4340,34 @@ export const adminMethods = {
     } finally {
       settings.saving = false;
       this.courierSettings = settings;
+    }
+  },
+
+  async saveCheckoutSettings() {
+    const settings = this.ensureCheckoutSettings();
+    settings.saving = true;
+
+    try {
+      const payload = {
+        allowGuestOrder: Boolean(settings.allowGuestOrder),
+        deliveryChargeDhaka: roundMoney(settings.deliveryChargeDhaka),
+        deliveryChargeOutsideDhaka: roundMoney(settings.deliveryChargeOutsideDhaka)
+      };
+      const saved = await this.apiRequest("/admin/checkout/settings", {
+        method: "PUT",
+        body: payload
+      });
+
+      settings.allowGuestOrder = Boolean(saved.allowGuestOrder);
+      settings.deliveryChargeDhaka = roundMoney(saved.deliveryChargeDhaka);
+      settings.deliveryChargeOutsideDhaka = roundMoney(saved.deliveryChargeOutsideDhaka);
+      this.checkoutSettings = settings;
+      this.notify("Checkout settings saved.", "success");
+    } catch (error) {
+      this.notify(this.errorMessage(error), "error");
+    } finally {
+      settings.saving = false;
+      this.checkoutSettings = settings;
     }
   },
 
