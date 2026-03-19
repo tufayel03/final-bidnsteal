@@ -39,7 +39,7 @@ interface ActivityUser { id: string; name: string; email: string; phone?: string
 interface ActivityOrderItem { titleSnapshot: string; qty: number; unitPrice: number; imageUrl?: string; type?: string; }
 interface ActivityOrder { id: string; orderNumber: string; paymentStatus: string; fulfillmentStatus: string; total: number; createdAt: string; items: ActivityOrderItem[]; shippingAddress?: ShippingAddress; }
 interface ActivityResponse { user: ActivityUser; orders: ActivityOrder[]; auctions: Auction[]; }
-interface DisplayOrder { id: string; status: string; orderDate: string; deliveredDate: string | null; total: number; items: Array<{ name: string; qty: number; price: number; image: string }>; shipping: { address: string; method: string }; payment: string; }
+interface DisplayOrder { id: string; status: string; statusKey: string; orderDate: string; deliveredDate: string | null; total: number; items: Array<{ name: string; qty: number; price: number; image: string }>; shipping: { address: string; method: string }; payment: string; }
 
 function formatCurrency(value: number, compact = false) {
   const amount = Number(value || 0);
@@ -57,11 +57,73 @@ function buildAddress(address?: ShippingAddress) {
   return parts.length ? parts.join(', ') : 'Shipping details pending.';
 }
 
-function mapOrderStatus(order: ActivityOrder) {
-  if (order.fulfillmentStatus === 'delivered') return 'Delivered';
-  if (order.fulfillmentStatus === 'shipped') return 'In Transit';
-  if (order.fulfillmentStatus === 'cancelled') return 'Cancelled';
-  return 'Processing';
+function normalizeFulfillmentStatusKey(status: string) {
+  return String(status || '').trim().toLowerCase();
+}
+
+function formatFulfillmentStatus(status: string) {
+  const normalized = normalizeFulfillmentStatusKey(status);
+  if (!normalized) return 'Pending';
+
+  const labels: Record<string, string> = {
+    pending: 'Pending',
+    processing: 'Processing',
+    shipped: 'Shipped',
+    delivered: 'Delivered',
+    cancelled: 'Cancelled'
+  };
+
+  if (labels[normalized]) {
+    return labels[normalized];
+  }
+
+  return normalized
+    .split(/[_\s]+/)
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(' ');
+}
+
+function getFulfillmentSignal(statusKey: string) {
+  const normalized = normalizeFulfillmentStatusKey(statusKey);
+
+  if (normalized === 'delivered') {
+    return {
+      badgeClass: 'bg-green-500/10 text-green-400 border-green-500/25',
+      timelineFillClass: 'w-full bg-green-500/50',
+      timelineStatusClass: 'text-green-400'
+    };
+  }
+
+  if (normalized === 'cancelled') {
+    return {
+      badgeClass: 'bg-red-500/10 text-red-400 border-red-500/25',
+      timelineFillClass: 'w-full bg-red-500/50',
+      timelineStatusClass: 'text-red-400'
+    };
+  }
+
+  if (normalized === 'shipped') {
+    return {
+      badgeClass: 'bg-yellow-400/10 text-yellow-300 border-yellow-400/25',
+      timelineFillClass: 'w-3/4 bg-yellow-400/50',
+      timelineStatusClass: 'text-yellow-300'
+    };
+  }
+
+  if (normalized === 'processing') {
+    return {
+      badgeClass: 'bg-yellow-400/10 text-yellow-300 border-yellow-400/25',
+      timelineFillClass: 'w-1/2 bg-yellow-400/50',
+      timelineStatusClass: 'text-yellow-300'
+    };
+  }
+
+  return {
+    badgeClass: 'bg-yellow-400/10 text-yellow-300 border-yellow-400/25',
+    timelineFillClass: 'w-1/4 bg-yellow-400/50',
+    timelineStatusClass: 'text-yellow-300'
+  };
 }
 
 function getUserMaxBid(auction: Auction) {
@@ -139,9 +201,10 @@ export function AccountPage() {
 
   const displayOrders = useMemo<DisplayOrder[]>(() => orders.map((order) => ({
     id: order.orderNumber || order.id,
-    status: mapOrderStatus(order),
+    statusKey: normalizeFulfillmentStatusKey(order.fulfillmentStatus),
+    status: formatFulfillmentStatus(order.fulfillmentStatus),
     orderDate: formatDateLabel(order.createdAt),
-    deliveredDate: order.fulfillmentStatus === 'delivered' ? 'Completed' : null,
+    deliveredDate: normalizeFulfillmentStatusKey(order.fulfillmentStatus) === 'delivered' ? 'Completed' : null,
     total: Number(order.total || 0),
     items: (order.items || []).map((item) => ({ name: item.titleSnapshot, qty: Number(item.qty || 0), price: Number(item.unitPrice || 0), image: item.imageUrl || '' })),
     shipping: { address: buildAddress(order.shippingAddress), method: order.items.some((item) => item.type === 'auction') ? 'Auction Fulfillment' : 'Standard Delivery' },
@@ -261,7 +324,7 @@ export function AccountPage() {
                     <div className="flex flex-col items-end"><span className="text-[#00E5FF]/50 font-mono text-[8px] tracking-widest">MODE</span><span className="text-[#00E5FF] font-mono text-sm font-bold tracking-widest drop-shadow-[0_0_8px_rgba(0,229,255,0.5)]">RACE</span></div>
                   </div>
                   <div className="flex flex-col items-center justify-center my-2">
-                    <div className="w-16 h-16 rounded-full border-2 border-[#00E5FF]/30 flex items-center justify-center bg-[#00E5FF]/10 relative"><User size={28} className="text-[#00E5FF] drop-shadow-[0_0_8px_rgba(0,229,255,0.8)]" /><div className="absolute -bottom-1 -right-1 w-3 h-3 bg-[#00FF00] rounded-full border-2 border-[#050814] shadow-[0_0_8px_#00FF00]" /></div>
+                    <div className="w-16 h-16 rounded-full border-2 border-[#00E5FF]/30 flex items-center justify-center bg-[#00E5FF]/10 relative"><User size={28} className="text-[#00E5FF] drop-shadow-[0_0_8px_rgba(0,229,255,0.8)]" /></div>
                     <h2 className="font-display text-xl text-white tracking-widest uppercase mt-2 drop-shadow-[0_2px_4px_rgba(0,0,0,1)]">{profileForm.name || user?.name || 'Racer'}</h2>
                   </div>
                   <div className="grid grid-cols-2 gap-2 mt-4">
@@ -295,7 +358,7 @@ export function AccountPage() {
                   <div className="space-y-4">
                     {currentOrders.map((order) => {
                       const isExpanded = expandedOrder === order.id;
-                      const isDelivered = order.status === 'Delivered';
+                      const fulfillmentSignal = getFulfillmentSignal(order.statusKey);
                       return (
                         <div key={order.id} className={`bg-[#111] border rounded-2xl overflow-hidden transition-all duration-300 ${isExpanded ? 'border-[#FF6A00]/50 shadow-[0_0_20px_rgba(255,106,0,0.1)]' : 'border-white/10 hover:border-white/30'}`}>
                           <button onClick={() => toggleOrder(order.id)} className="w-full p-4 sm:p-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 text-left relative overflow-hidden group">
@@ -307,7 +370,7 @@ export function AccountPage() {
                               <div className="flex-1">
                                 <div className="flex items-center gap-2 mb-1">
                                   <h3 className="font-mono text-sm uppercase tracking-widest text-white">ID: {order.id}</h3>
-                                  <span className={`px-2 py-0.5 rounded text-[10px] font-mono uppercase tracking-widest border ${isDelivered ? 'bg-green-500/10 text-green-500 border-green-500/20' : 'bg-[#FF6A00]/10 text-[#FF6A00] border-[#FF6A00]/20'}`}>{order.status}</span>
+                                  <span className={`px-2 py-0.5 rounded text-[10px] font-mono uppercase tracking-widest border ${fulfillmentSignal.badgeClass}`}>{order.status}</span>
                                 </div>
                                 <p className="text-gray-500 text-xs font-mono uppercase tracking-widest">Ordered: {order.orderDate}</p>
                               </div>
@@ -326,8 +389,8 @@ export function AccountPage() {
                                 <div className="p-4 sm:p-6 pt-0 border-t border-white/10 bg-black/20">
                                   <div className="flex items-center gap-4 mb-6 pt-4">
                                     <div className="flex flex-col"><span className="text-[10px] font-mono text-gray-500 uppercase tracking-widest">Order Placed</span><span className="text-sm font-mono text-white">{order.orderDate}</span></div>
-                                    <div className="flex-1 h-px bg-white/10 relative"><div className={`absolute top-0 left-0 h-full transition-all duration-1000 ${isDelivered ? 'w-full bg-green-500/50' : 'w-1/2 bg-[#FF6A00]/50'}`} /></div>
-                                    <div className="flex flex-col text-right"><span className="text-[10px] font-mono text-gray-500 uppercase tracking-widest">Delivered</span><span className={`text-sm font-mono ${isDelivered ? 'text-green-500' : 'text-gray-500'}`}>{order.deliveredDate || 'Pending'}</span></div>
+                                    <div className="flex-1 h-px bg-white/10 relative"><div className={`absolute top-0 left-0 h-full transition-all duration-1000 ${fulfillmentSignal.timelineFillClass}`} /></div>
+                                    <div className="flex flex-col text-right"><span className="text-[10px] font-mono text-gray-500 uppercase tracking-widest">Fulfillment</span><span className={`text-sm font-mono ${fulfillmentSignal.timelineStatusClass}`}>{order.status}</span></div>
                                   </div>
                                   <div className="py-4 space-y-4">
                                     <h4 className="font-mono text-xs text-gray-500 uppercase tracking-widest mb-3">Acquired Assets</h4>
