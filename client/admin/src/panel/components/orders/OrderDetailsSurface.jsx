@@ -293,6 +293,7 @@ export function OrderDetailsSurface({ variant = 'modal', onClose }) {
                         >
                           <option value="pending">Pending</option>
                           <option value="processing">Processing</option>
+                          <option value="on_hold">On Hold</option>
                           <option value="shipped">Shipped</option>
                           <option value="delivered">Delivered</option>
                           <option value="cancelled">Cancelled</option>

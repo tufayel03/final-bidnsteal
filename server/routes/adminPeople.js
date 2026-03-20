@@ -5,7 +5,7 @@ const Subscriber = require("../models/Subscriber");
 const User = require("../models/User");
 const { env } = require("../config/env");
 const { requireAdmin } = require("../middleware/auth");
-const { sendTemplateEmail } = require("../services/emailService");
+const { buildTransactionalEmailContext, sendTemplateEmail } = require("../services/emailService");
 const { getPublicSiteProfile } = require("../services/siteProfileService");
 const { containsRegex, parsePagination } = require("../utils/http");
 const { createPasswordResetToken } = require("../utils/passwordReset");
@@ -329,27 +329,21 @@ router.post("/users/:id/send-password-reset", async (req, res) => {
     : `/reset-password?token=${encodeURIComponent(resetToken.token)}`;
 
   try {
+    const context = await buildTransactionalEmailContext({
+      customer: {
+        name: user.name,
+        email: user.email
+      },
+      auth: {
+        reset_link: resetLink
+      }
+    });
+
     await sendTemplateEmail({
       templateKey: "password-reset",
       to: user.email,
-      context: {
-        customer: {
-          name: user.name,
-          email: user.email
-        },
-        site: {
-          name: siteProfile.siteName || "BidnSteal",
-          url: storefrontBase
-        },
-        support: {
-          email: siteProfile.supportEmail || env.adminEmail
-        },
-        auth: {
-          login_link: storefrontBase ? `${storefrontBase}/login` : "/login",
-          reset_link: resetLink
-        }
-      },
-      fallbackSubject: `Reset your ${siteProfile.siteName || "BidnSteal"} password`,
+      context,
+      fallbackSubject: `Reset your ${context.site.name} password`,
       fallbackHtml: `<p>Hello ${user.name || "there"},</p><p>Use the secure link below to reset your password:</p><p><a href="${resetLink}">${resetLink}</a></p><p>This link expires in 60 minutes.</p>`
     });
   } catch (error) {

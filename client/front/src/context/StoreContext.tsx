@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import { apiRequest } from '../lib/api';
 import type { Auction } from '../types/auction';
-import type { Product } from '../data/products';
+import { isShopCatalogProduct, type Product } from '../data/products';
 
 interface StoreContextValue {
   products: Product[];
@@ -24,7 +24,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     setLoadingProducts(true);
     try {
       const payload = await apiRequest<Product[]>('/products');
-      setProducts(payload);
+      setProducts((payload || []).filter(isShopCatalogProduct));
     } catch (error) {
       console.error('[storefront] failed to load products', error);
       setProducts([]);

@@ -3,7 +3,7 @@ const mongoose = require("mongoose");
 const Auction = require("../models/Auction");
 const Product = require("../models/Product");
 const { requireAdmin } = require("../middleware/auth");
-const { syncAuctionStatus } = require("../services/auctionService");
+const { recalculateAuctionBidState, syncAuctionStatus } = require("../services/auctionService");
 const { parsePagination } = require("../utils/http");
 const { sanitizeText } = require("../utils/validation");
 
@@ -14,21 +14,53 @@ async function findAuction(identifier) {
   if (!lookup) return null;
 
   if (mongoose.Types.ObjectId.isValid(lookup)) {
-    const byId = await Auction.findById(lookup).populate("productId");
+    const byId = await Auction.findById(lookup).populate("productId winner");
     if (byId) return byId;
 
-    const byProductId = await Auction.findOne({ productId: lookup }).populate("productId");
+    const byProductId = await Auction.findOne({ productId: lookup }).populate("productId winner");
     if (byProductId) return byProductId;
   }
 
   const product = await Product.findOne({ slug: lookup });
   if (!product) return null;
-  return Auction.findOne({ productId: product._id }).populate("productId");
+  return Auction.findOne({ productId: product._id }).populate("productId winner");
 }
 
 function parseDateInput(value) {
   const date = new Date(value);
   return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function serializeAuctionForAdmin(auction) {
+  const winner =
+    auction.winner && typeof auction.winner === "object" && auction.winner._id
+      ? {
+          id: String(auction.winner._id),
+          name: String(auction.winner.name || ""),
+          email: String(auction.winner.email || "")
+        }
+      : auction.status === "ended" && auction.highestBid
+        ? {
+            id: String(auction.highestBid.bidderId || ""),
+            name: String(auction.highestBid.bidderName || ""),
+            email: String(auction.highestBid.bidderEmail || "")
+          }
+        : null;
+
+  return {
+    ...auction.toJSON(),
+    productId: auction.productId?.id || auction.productId,
+    product: auction.productId
+      ? {
+          id: auction.productId.id,
+          slug: auction.productId.slug,
+          title: auction.productId.title,
+          image: auction.productId.images?.[0] || ""
+        }
+      : null,
+    winner,
+    timeLeftMs: Math.max(0, new Date(auction.endAt).getTime() - Date.now())
+  };
 }
 
 router.use(requireAdmin);
@@ -37,7 +69,7 @@ router.get("/", async (req, res) => {
   const { page, limit, skip } = parsePagination(req.query, 20, 100);
 
   const [items, total] = await Promise.all([
-    Auction.find().populate("productId").sort({ createdAt: -1 }).skip(skip).limit(limit),
+    Auction.find().populate("productId winner").sort({ createdAt: -1 }).skip(skip).limit(limit),
     Auction.countDocuments()
   ]);
 
@@ -46,16 +78,7 @@ router.get("/", async (req, res) => {
   for (const item of items) {
     await syncAuctionStatus(item);
     mapped.push({
-      ...item.toJSON(),
-      productId: item.productId?.id || item.productId,
-      product: item.productId
-        ? {
-            id: item.productId.id,
-            slug: item.productId.slug,
-            title: item.productId.title,
-            image: item.productId.images?.[0] || ""
-          }
-        : null,
+      ...serializeAuctionForAdmin(item),
       timeLeftMs: Math.max(0, new Date(item.endAt).getTime() - now)
     });
   }
@@ -76,20 +99,36 @@ router.get("/:identifier", async (req, res) => {
   }
 
   await syncAuctionStatus(auction);
+  return res.json(serializeAuctionForAdmin(auction));
+});
 
-  return res.json({
-    ...auction.toJSON(),
-    productId: auction.productId?.id || auction.productId,
-    product: auction.productId
-      ? {
-          id: auction.productId.id,
-          slug: auction.productId.slug,
-          title: auction.productId.title,
-          image: auction.productId.images?.[0] || ""
-        }
-      : null,
-    timeLeftMs: Math.max(0, new Date(auction.endAt).getTime() - Date.now())
-  });
+router.delete("/:identifier/bids/:bidId", async (req, res) => {
+  const auction = await findAuction(req.params.identifier);
+  if (!auction) {
+    return res.status(404).json({ message: "Auction not found." });
+  }
+
+  await syncAuctionStatus(auction);
+  if (auction.status === "ended") {
+    return res.status(400).json({ message: "Bids can only be removed before an auction ends." });
+  }
+
+  const bidId = String(req.params.bidId || "").trim();
+  if (!bidId) {
+    return res.status(400).json({ message: "Bid identifier missing." });
+  }
+
+  const nextBids = (auction.bids || []).filter((bid) => String(bid?._id || bid?.id || "") !== bidId);
+  if (nextBids.length === (auction.bids || []).length) {
+    return res.status(404).json({ message: "Bid not found." });
+  }
+
+  auction.bids = nextBids;
+  recalculateAuctionBidState(auction);
+  await auction.save();
+  await auction.populate("productId winner");
+
+  return res.json(serializeAuctionForAdmin(auction));
 });
 
 router.delete("/:identifier", async (req, res) => {
@@ -202,10 +241,7 @@ router.patch("/:identifier", async (req, res) => {
   await syncAuctionStatus(auction);
   await auction.save();
 
-  return res.json({
-    ...auction.toJSON(),
-    productId: auction.productId?.id || auction.productId
-  });
+  return res.json(serializeAuctionForAdmin(auction));
 });
 
 module.exports = router;

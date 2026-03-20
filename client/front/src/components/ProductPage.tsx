@@ -35,6 +35,15 @@ export function ProductPage() {
   const galleryImages = [
     ...(product.images && product.images.length ? product.images : [product.image]).map((image) => assetUrl(image)),
   ];
+  const imageStateClass = product.inStock
+    ? 'grayscale-0 saturate-100'
+    : 'grayscale saturate-0 contrast-75 brightness-90';
+  const desktopThumbStateClass = product.inStock
+    ? 'mix-blend-luminosity group-hover:mix-blend-normal'
+    : imageStateClass;
+  const mobileThumbStateClass = product.inStock
+    ? 'mix-blend-luminosity'
+    : imageStateClass;
 
   return (
     <div className="min-h-screen bg-[#020202] text-gray-300 font-sans selection:bg-[#FF6A00] selection:text-white relative overflow-x-hidden flex flex-col">
@@ -91,8 +100,8 @@ export function ProductPage() {
                     ? 'border-[#FF6A00] shadow-[0_0_15px_rgba(255,106,0,0.3)]' 
                     : 'border-[#222] hover:border-[#FF6A00]/50 opacity-50 hover:opacity-100'
                 }`}
-              >
-                <img src={img} alt={`Feed ${idx + 1}`} className="w-full h-full object-cover mix-blend-luminosity group-hover:mix-blend-normal transition-all duration-300" />
+                >
+                <img src={img} alt={`Feed ${idx + 1}`} className={`w-full h-full object-cover transition-all duration-300 ${desktopThumbStateClass}`} />
                 <div className={`absolute top-1 left-1 text-[8px] font-mono px-1 rounded backdrop-blur-sm ${
                   activeImage === idx ? 'bg-[#FF6A00] text-black' : 'bg-black/80 text-white/50'
                 }`}>
@@ -123,7 +132,7 @@ export function ProductPage() {
                   transition={{ duration: 0.4 }}
                   src={galleryImages[activeImage]} 
                   alt={`${product.name} view ${activeImage + 1}`}
-                  className="relative z-10 w-full h-full object-contain drop-shadow-[0_20px_50px_rgba(0,0,0,0.5)]"
+                  className={`relative z-10 w-full h-full object-contain drop-shadow-[0_20px_50px_rgba(0,0,0,0.5)] ${imageStateClass}`}
                 />
               </AnimatePresence>
 
@@ -153,7 +162,7 @@ export function ProductPage() {
                     : 'border-[#222] opacity-50'
                 }`}
               >
-                <img src={img} alt={`Feed ${idx + 1}`} className="w-full h-full object-cover mix-blend-luminosity" />
+                <img src={img} alt={`Feed ${idx + 1}`} className={`w-full h-full object-cover ${mobileThumbStateClass}`} />
               </button>
             ))}
           </div>

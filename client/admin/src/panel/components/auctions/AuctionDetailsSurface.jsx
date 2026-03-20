@@ -30,6 +30,7 @@ export function AuctionDetailsSurface({ variant = 'modal', onClose }) {
   const isPage = variant === 'page';
   const canEnd = detail?.status !== 'ended' && detail?.status !== 'cancelled';
   const canCancel = detail?.status === 'scheduled' || detail?.status === 'live';
+  const canManageBids = detail?.status !== 'ended';
   const reserveMet = detail?.reservePrice !== null && detail?.reservePrice !== undefined && detail?.reservePriceReached;
   const reserveLabel = detail?.reservePrice !== null && detail?.reservePrice !== undefined
     ? reserveMet ? 'Reserve met' : 'Reserve open'
@@ -203,6 +204,7 @@ export function AuctionDetailsSurface({ variant = 'modal', onClose }) {
                           <th>Bidder</th>
                           <th>Amount</th>
                           <th>Placed At</th>
+                          <th className="auction-details-table__actions-head">Actions</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -212,6 +214,26 @@ export function AuctionDetailsSurface({ variant = 'modal', onClose }) {
                             <td title={bidder(admin, bidItem)}>{bidder(admin, bidItem)}</td>
                             <td className="mono">{money(admin, bidItem.amount)}</td>
                             <td className="mono">{stamp(admin, bidItem.createdAt)}</td>
+                            <td className="auction-details-table__actions-cell">
+                              {canManageBids ? (
+                                <button
+                                  type="button"
+                                  onClick={() => admin.removeAuctionBid && admin.removeAuctionBid(bidItem)}
+                                  disabled={
+                                    auctionDetailsModal.loading ||
+                                    auctionDetailsModal.saving ||
+                                    Boolean(auctionDetailsModal.removingBidId) ||
+                                    !String(bidItem.id || bidItem._id || '').trim()
+                                  }
+                                  className="auction-details-bid-action"
+                                >
+                                  <Icon name="trash-2" className="auction-icon-sm" />
+                                  <span>{auctionDetailsModal.removingBidId === String(bidItem.id || bidItem._id || '') ? 'Removing...' : 'Remove'}</span>
+                                </button>
+                              ) : (
+                                <span className="auction-details-bid-action-note">Locked</span>
+                              )}
+                            </td>
                           </tr>
                         ))}
                       </tbody>

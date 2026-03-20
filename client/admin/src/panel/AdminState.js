@@ -111,12 +111,14 @@ export function getInitialAdminState() {
     auctionCards: [],
     auctionFilters: {
       search: "",
-      status: ""
+      status: "",
+      scope: "active"
     },
     auctionDetailsModal: {
       open: false,
       loading: false,
       saving: false,
+      removingBidId: "",
       detail: null,
       draft: {
         status: "scheduled",
@@ -263,9 +265,7 @@ export function getInitialAdminState() {
 
     // campaigns
     campaigns: [],
-    campaignTemplates: [],
-    selectedCampaignTemplateId: "",
-    campaignTemplateName: "",
+    selectedCampaignTemplateKey: "",
     campaignDraft: {
       subject: "",
       html: "",
@@ -303,6 +303,7 @@ export function getInitialAdminState() {
       consumed: []
     },
     coupons: [],
+    couponProducts: [],
     couponFilters: {
       isActive: ""
     },
@@ -314,6 +315,8 @@ export function getInitialAdminState() {
       expiresAt: "",
       minOrderAmount: "0",
       appliesTo: "both",
+      customerUsageMode: "multiple",
+      productIds: [],
       isActive: true
     },
     disputes: [],
@@ -328,6 +331,7 @@ export function getInitialAdminState() {
     },
 
     // settings/email templates
+    emailTemplates: [],
     templateKeys: [],
     templateEditor: {
       selectedKey: "",
@@ -339,6 +343,16 @@ export function getInitialAdminState() {
     templatePreview: {
       subject: "",
       html: ""
+    },
+    siteProfile: {
+      siteName: "BidnSteal",
+      siteUrl: "",
+      supportEmail: "",
+      supportPhone: "",
+      supportWhatsappNumber: "",
+      facebookUrl: "",
+      logoUrl: "",
+      saving: false
     },
     smtpSettings: {
       enabled: false,
@@ -363,17 +377,24 @@ export function getInitialAdminState() {
       "order.number",
       "order.total",
       "order.status",
+      "order.fulfillment_label",
       "order.payment_status",
+      "order.tracking_code",
       "order.items_table",
       "order.items_table_with_images",
       "shipping.address",
       "shipping.city",
       "site.name",
       "site.url",
+      "site.logo_url",
       "support.email",
+      "support.phone",
+      "support.whatsapp",
       "auth.login_link",
       "auth.reset_link",
       "auction.title",
+      "auction.amount",
+      "auction.url",
       "product.title"
     ],
     localSettings: {
@@ -441,20 +462,6 @@ export function getInitialAdminState() {
       open: false,
       search: "",
       loading: false
-    },
-
-    // auction modal
-    auctionModal: {
-      open: false,
-      saving: false,
-      form: {
-        productId: "",
-        startAt: "",
-        endAt: "",
-        startingPrice: "",
-        reservePrice: "",
-        minIncrement: "1"
-      }
     },
 
     charts: {

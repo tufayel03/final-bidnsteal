@@ -39,6 +39,7 @@ const auctionSchema = new mongoose.Schema(
     lastBidAt: { type: Date, default: null },
     highestBid: { type: highestBidSchema, default: () => ({}) },
     winner: { type: mongoose.Schema.Types.ObjectId, ref: "User", default: null },
+    winnerEmailSentAt: { type: Date, default: null },
     buyNowPrice: { type: Number, default: 0 },
     viewerCount: { type: Number, default: 0 },
     year: { type: Number, default: new Date().getFullYear() },

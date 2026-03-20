@@ -388,7 +388,7 @@ textarea::placeholder {
 /* Compact admin density layer */
 .admin-layout--soft {
   --sidebar-width: 220px;
-  --sidebar-collapsed-width: 70px;
+  --sidebar-collapsed-width: 62px;
 }
 
 .admin-layout--soft .admin-content {
@@ -425,17 +425,23 @@ textarea::placeholder {
   border-radius: 10px;
 }
 
+.admin-layout--soft .admin-simple-sidebar .admin-nav-item-icon svg,
+.admin-layout--soft .admin-simple-sidebar .admin-link-btn .admin-nav-item-icon svg {
+  width: 19px;
+  height: 19px;
+}
+
 .admin-layout--soft .admin-sidebar--soft.collapsed {
-  padding: 10px 6px 8px !important;
-  gap: 8px;
+  padding: 8px 4px 6px !important;
+  gap: 6px;
 }
 
 .admin-layout--soft .admin-sidebar--soft.collapsed .admin-simple-brand {
-  padding: 0 0 6px;
+  padding: 0 0 4px;
 }
 
 .admin-layout--soft .admin-sidebar--soft.collapsed .admin-simple-nav {
-  gap: 2px;
+  gap: 1px;
   padding: 0;
 }
 
@@ -444,21 +450,40 @@ textarea::placeholder {
 }
 
 .admin-layout--soft .admin-sidebar--soft.collapsed .admin-simple-nav-list {
-  gap: 1px;
+  gap: 0;
 }
 
 .admin-layout--soft .admin-sidebar--soft.collapsed .admin-nav-item,
 .admin-layout--soft .admin-sidebar--soft.collapsed .admin-link-btn {
-  min-height: 34px;
-  padding: 3px;
-  border-radius: 10px;
+  min-height: 32px;
+  padding: 1px;
+  border-radius: 8px;
 }
 
 .admin-layout--soft .admin-sidebar--soft.collapsed .admin-nav-item-icon,
 .admin-layout--soft .admin-sidebar--soft.collapsed .admin-link-btn .admin-nav-item-icon {
-  width: 26px;
-  height: 26px;
+  width: 32px;
+  height: 32px;
   border-radius: 8px;
+}
+
+.admin-layout--soft .admin-sidebar--soft.collapsed .admin-nav-item-icon svg,
+.admin-layout--soft .admin-sidebar--soft.collapsed .admin-link-btn .admin-nav-item-icon svg {
+  width: 20px;
+  height: 20px;
+}
+
+.admin-layout--soft .admin-sidebar--soft.collapsed .admin-nav-item:hover,
+.admin-layout--soft .admin-sidebar--soft.collapsed .admin-link-btn:hover {
+  background: transparent !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+}
+
+.admin-layout--soft .admin-sidebar--soft.collapsed .admin-nav-item:hover .admin-nav-item-icon,
+.admin-layout--soft .admin-sidebar--soft.collapsed .admin-link-btn:hover .admin-nav-item-icon {
+  background: rgba(255, 255, 255, 0.06) !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
 }
 
 .admin-layout--soft .admin-sidebar--soft.collapsed .admin-simple-nav-item.active {
@@ -476,8 +501,8 @@ textarea::placeholder {
 }
 
 .admin-layout--soft .admin-sidebar--soft.collapsed .admin-simple-sidebar-footer {
-  padding-top: 6px;
-  gap: 2px;
+  padding-top: 4px;
+  gap: 1px;
 }
 
 .admin-layout--soft .admin-topbar--soft {
@@ -688,21 +713,61 @@ textarea::placeholder {
   gap: 16px;
 }
 
+.admin-layout--soft .settings-subnav {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 10px;
+  padding: 10px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  border: 1px solid var(--border);
+  border-radius: 22px;
+  background: linear-gradient(180deg, #ffffff 0%, #fbfcf8 100%);
+  box-shadow: 0 10px 24px rgba(31, 38, 29, 0.04);
+}
+
+.admin-layout--soft .settings-subnav::-webkit-scrollbar {
+  display: none;
+}
+
 .admin-layout--soft .settings-subnav-button {
-  min-height: 92px;
-  gap: 12px;
-  padding: 14px 16px;
-  border-radius: 20px !important;
+  width: auto;
+  flex: 0 0 auto;
+  min-height: 48px;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 14px;
+  border-radius: 999px !important;
+  background: transparent !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+}
+
+.admin-layout--soft .settings-subnav-button:hover,
+.admin-layout--soft .settings-subnav-button.is-active {
+  transform: none;
+  background: #f5f8ea !important;
+  border-color: #d9e4b5 !important;
+  box-shadow: none !important;
 }
 
 .admin-layout--soft .settings-subnav-icon {
-  width: 40px;
-  height: 40px;
-  border-radius: 14px;
+  width: 30px;
+  height: 30px;
+  border-radius: 999px;
+}
+
+.admin-layout--soft .settings-subnav-copy {
+  display: flex;
+  align-items: center;
+  min-width: 0;
 }
 
 .admin-layout--soft .settings-subnav-title {
-  font-size: 14px;
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
 }
 
 .admin-layout--soft .settings-subnav-caption,
@@ -711,6 +776,10 @@ textarea::placeholder {
 .admin-layout--soft .settings-inline-note {
   font-size: 11px;
   line-height: 1.45;
+}
+
+.admin-layout--soft .settings-subnav-caption {
+  display: none;
 }
 
 .admin-layout--soft .settings-surface-card,

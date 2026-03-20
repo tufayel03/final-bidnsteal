@@ -10,6 +10,28 @@ export function MiscModals() {
     const admin = useAdmin();
     const { campaignPreview = {}, emailMediaPicker = {}, toast = {}, showSearch, menuItems = [] } = admin;
     const assets = admin.filteredEmailMediaAssets ? admin.filteredEmailMediaAssets() : [];
+    const mediaPickerTarget = emailMediaPicker.target === 'campaign'
+        ? 'campaign'
+        : emailMediaPicker.target === 'siteLogo'
+            ? 'siteLogo'
+            : 'template';
+    const mediaPickerTitle = mediaPickerTarget === 'siteLogo' ? 'Select Brand Logo' : 'Insert Uploaded Image Tag';
+    const mediaPickerSubtitle = mediaPickerTarget === 'campaign'
+        ? 'Target: Campaign HTML editor'
+        : mediaPickerTarget === 'siteLogo'
+            ? 'Target: Site logo field'
+            : 'Target: Email template HTML editor';
+    const showAltField = mediaPickerTarget !== 'siteLogo';
+    const primaryActionLabel = mediaPickerTarget === 'siteLogo'
+        ? 'Use Image'
+        : mediaPickerTarget === 'campaign'
+            ? 'Insert URL'
+            : 'Insert Tag';
+    const secondaryActionLabel = mediaPickerTarget === 'siteLogo'
+        ? 'Copy URL'
+        : mediaPickerTarget === 'campaign'
+            ? 'Copy URL'
+            : 'Copy Tag';
 
     return (
         <>
@@ -72,9 +94,9 @@ export function MiscModals() {
                         <div className="admin-modal misc-soft-modal" style={{ maxWidth: '1180px' }}>
                             <div className="admin-modal-head">
                                 <div>
-                                    <h3 style={{ margin: 0, fontSize: '22px', fontWeight: 800 }}>Insert Uploaded Image Tag</h3>
+                                    <h3 style={{ margin: 0, fontSize: '22px', fontWeight: 800 }}>{mediaPickerTitle}</h3>
                                     <p style={{ margin: '6px 0 0 0', color: 'var(--muted)', fontSize: '13px' }}>
-                                        {emailMediaPicker.target === 'campaign' ? 'Target: Campaign HTML editor' : 'Target: Email template HTML editor'}
+                                        {mediaPickerSubtitle}
                                     </p>
                                 </div>
                                 <button onClick={() => admin.closeEmailMediaPicker && admin.closeEmailMediaPicker()} className="icon-btn">
@@ -89,10 +111,12 @@ export function MiscModals() {
                                             <label style={label}>Search</label>
                                             <input value={emailMediaPicker.search || ''} onChange={(event) => { if (admin.emailMediaPicker) admin.emailMediaPicker.search = event.target.value; }} placeholder="Search uploaded image..." className="admin-search-input" style={{ width: '100%' }} />
                                         </div>
-                                        <div>
-                                            <label style={label}>Alt Text</label>
-                                            <input value={emailMediaPicker.alt || ''} onChange={(event) => { if (admin.emailMediaPicker) admin.emailMediaPicker.alt = event.target.value; }} placeholder="Alt text (optional)" className="admin-search-input" style={{ width: '100%' }} />
-                                        </div>
+                                        {showAltField ? (
+                                            <div>
+                                                <label style={label}>Alt Text</label>
+                                                <input value={emailMediaPicker.alt || ''} onChange={(event) => { if (admin.emailMediaPicker) admin.emailMediaPicker.alt = event.target.value; }} placeholder="Alt text (optional)" className="admin-search-input" style={{ width: '100%' }} />
+                                            </div>
+                                        ) : null}
                                         <div style={{ display: 'flex', alignItems: 'flex-end' }}>
                                             <button onClick={() => admin.refreshEmailMediaPicker && admin.refreshEmailMediaPicker()} className="secondary-btn" style={{ width: '100%' }}>
                                                 {emailMediaPicker.loading ? 'Loading...' : 'Refresh'}
@@ -100,9 +124,15 @@ export function MiscModals() {
                                         </div>
                                     </div>
 
-                                    <p className="media-picker-help" style={{ margin: 0, fontSize: '12px' }}>
-                                        For templates, insert uses short media placeholders like <span style={mono}>{'{{media.A1B2}}'}</span>. Campaign target inserts direct media URLs.
-                                    </p>
+                                    {mediaPickerTarget === 'siteLogo' ? (
+                                        <p className="media-picker-help" style={{ margin: 0, fontSize: '12px' }}>
+                                            Pick any uploaded image to assign it directly as the public site logo.
+                                        </p>
+                                    ) : (
+                                        <p className="media-picker-help" style={{ margin: 0, fontSize: '12px' }}>
+                                            For templates, insert uses short media placeholders like <span style={mono}>{'{{media.A1B2}}'}</span>. Campaign target inserts direct media URLs.
+                                        </p>
+                                    )}
 
                                     <div className="media-picker-grid">
                                         {assets.map((asset) => (
@@ -116,10 +146,10 @@ export function MiscModals() {
                                                 </p>
                                                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
                                                     <button onClick={() => admin.insertEmailImageTag && admin.insertEmailImageTag(asset)} className="primary-btn" style={{ padding: '10px 12px' }}>
-                                                        {emailMediaPicker.target === 'campaign' ? 'Insert URL' : 'Insert Tag'}
+                                                        {primaryActionLabel}
                                                     </button>
-                                                    <button onClick={() => admin.copyText && admin.copyText(emailMediaPicker.target === 'campaign' ? (admin.mediaPreviewUrl ? admin.mediaPreviewUrl(asset) : '') : (admin.mediaTemplatePlaceholder ? admin.mediaTemplatePlaceholder(asset) : ''))} className="secondary-btn" style={{ padding: '10px 12px' }}>
-                                                        {emailMediaPicker.target === 'campaign' ? 'Copy URL' : 'Copy Tag'}
+                                                    <button onClick={() => admin.copyText && admin.copyText(mediaPickerTarget === 'template' ? (admin.mediaTemplatePlaceholder ? admin.mediaTemplatePlaceholder(asset) : '') : (admin.mediaPreviewUrl ? admin.mediaPreviewUrl(asset) : ''))} className="secondary-btn" style={{ padding: '10px 12px' }}>
+                                                        {secondaryActionLabel}
                                                     </button>
                                                 </div>
                                             </div>

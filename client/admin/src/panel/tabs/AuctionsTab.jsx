@@ -18,6 +18,11 @@ function amountLabel(admin, value) {
     return admin.currency ? admin.currency(value) : value;
 }
 
+function isPastAuction(auction) {
+    const status = String(auction?.status || '').toLowerCase();
+    return status === 'ended' || status === 'cancelled';
+}
+
 function renderActionButtons(admin, auction, onOpenDetails, compact = false) {
     const canEnd = auction.status !== 'ended' && auction.status !== 'cancelled';
     const canCancel = auction.status === 'scheduled' || auction.status === 'live';
@@ -77,13 +82,31 @@ export function AuctionsTab() {
     const admin = useAdmin();
     const navigate = useNavigate();
     const { auctionFilters, localSettings, auctionCards = [] } = admin;
+    const scope = auctionFilters.scope === 'past' ? 'past' : 'active';
+    const scopeLabel = scope === 'past' ? 'Past Auctions' : 'Active Auctions';
+    const scopedAuctions = auctionCards.filter((auction) => (scope === 'past' ? isPastAuction(auction) : !isPastAuction(auction)));
     const filtered = admin.filteredAuctionCards ? admin.filteredAuctionCards() : [];
     const viewMode = localSettings.auctionView === 'grid' ? 'grid' : 'column';
+    const statusOptions = scope === 'past'
+        ? [
+            { value: '', label: 'All Past' },
+            { value: 'ended', label: 'Ended' },
+            { value: 'cancelled', label: 'Cancelled' }
+        ]
+        : [
+            { value: '', label: 'All Active' },
+            { value: 'scheduled', label: 'Scheduled' },
+            { value: 'live', label: 'Live' }
+        ];
 
     const liveCount = auctionCards.filter((auction) => auction.status === 'live').length;
     const scheduledCount = auctionCards.filter((auction) => auction.status === 'scheduled').length;
     const closingSoonCount = auctionCards.filter((auction) => auction.status === 'live' && Number(auction.timeLeftMs || 0) <= 1000 * 60 * 60 * 24).length;
     const reserveProtectedCount = auctionCards.filter((auction) => auction.reservePrice !== null).length;
+    const endedCount = auctionCards.filter((auction) => auction.status === 'ended').length;
+    const cancelledCount = auctionCards.filter((auction) => auction.status === 'cancelled').length;
+    const archivedBidCount = scopedAuctions.reduce((total, auction) => total + Number(auction.totalBids || 0), 0);
+    const scopedReserveCount = scopedAuctions.filter((auction) => auction.reservePrice !== null).length;
 
     const openDetailsPage = (auction) => {
         const auctionId = String(auction?.id || auction?._id || auction?.productSlug || auction?.productId || '').trim();
@@ -102,47 +125,108 @@ export function AuctionsTab() {
             <div className="admin-tab-header">
                 <div>
                     <h2>Auction Management</h2>
-                    <p>Review live lots, scheduling, bidder activity, and lifecycle actions from one structured workspace.</p>
+                    <p>
+                        {scope === 'past'
+                            ? 'Browse ended and cancelled lots, inspect winners, and review historical bidding from one archive view.'
+                            : 'Review live lots, scheduling, bidder activity, and lifecycle actions from one structured workspace.'}
+                    </p>
                 </div>
                 <div style={{ display: 'flex', gap: '12px' }}>
                     <button onClick={() => admin.loadAuctions && admin.loadAuctions(true)} className="order-filter-btn">Reload</button>
-                    <button onClick={() => admin.openAuctionCreate && admin.openAuctionCreate()} className="order-filter-btn primary">Create Auction</button>
+                </div>
+            </div>
+
+            <div className="admin-card auction-manage-scope-bar">
+                <div className="auction-manage-scope-bar__copy">
+                    <p className="auction-manage-scope-bar__eyebrow">Auction Views</p>
+                    <h3>{scopeLabel}</h3>
+                    <p>
+                        {scope === 'past'
+                            ? 'Past Auctions includes every ended and cancelled lot kept for admin review.'
+                            : 'Active Auctions keeps scheduled and live lots together so you can manage the full upcoming queue.'}
+                    </p>
+                </div>
+
+                <div className="admin-soft-segment">
+                    <button
+                        onClick={() => admin.setAuctionScope && admin.setAuctionScope('active')}
+                        className={`admin-soft-segment-btn${scope === 'active' ? ' is-active' : ''}`}
+                    >
+                        Active Auctions
+                    </button>
+                    <button
+                        onClick={() => admin.setAuctionScope && admin.setAuctionScope('past')}
+                        className={`admin-soft-segment-btn${scope === 'past' ? ' is-active' : ''}`}
+                    >
+                        Past Auctions
+                    </button>
                 </div>
             </div>
 
             <div className="dashboard-stat-grid dashboard-stat-grid--primary">
                 <DashboardStatCard
                     icon="gavel"
-                    label="Auction Lots"
-                    value={admin.number ? admin.number(auctionCards.length) : auctionCards.length}
+                    label={scopeLabel}
+                    value={admin.number ? admin.number(scopedAuctions.length) : scopedAuctions.length}
                     meta={`${admin.number ? admin.number(filtered.length) : filtered.length} visible now`}
                     tone="stone"
                     featured
                 />
-                <DashboardStatCard
-                    icon="flame"
-                    label="Live Now"
-                    value={admin.number ? admin.number(liveCount) : liveCount}
-                    meta="Active bidding"
-                    tone="olive"
-                    compact
-                />
-                <DashboardStatCard
-                    icon="calendar-range"
-                    label="Scheduled"
-                    value={admin.number ? admin.number(scheduledCount) : scheduledCount}
-                    meta="Waiting to start"
-                    tone="sand"
-                    compact
-                />
-                <DashboardStatCard
-                    icon="shield-check"
-                    label="Reserve Protected"
-                    value={admin.number ? admin.number(reserveProtectedCount) : reserveProtectedCount}
-                    meta={`${admin.number ? admin.number(closingSoonCount) : closingSoonCount} closing within 24h`}
-                    tone="sage"
-                    compact
-                />
+                {scope === 'past' ? (
+                    <>
+                        <DashboardStatCard
+                            icon="flag"
+                            label="Ended"
+                            value={admin.number ? admin.number(endedCount) : endedCount}
+                            meta="Completed auctions"
+                            tone="clay"
+                            compact
+                        />
+                        <DashboardStatCard
+                            icon="ban"
+                            label="Cancelled"
+                            value={admin.number ? admin.number(cancelledCount) : cancelledCount}
+                            meta="Stopped before completion"
+                            tone="sand"
+                            compact
+                        />
+                        <DashboardStatCard
+                            icon="shield-check"
+                            label="Archived Bids"
+                            value={admin.number ? admin.number(archivedBidCount) : archivedBidCount}
+                            meta={`${admin.number ? admin.number(scopedReserveCount) : scopedReserveCount} reserve-backed lots`}
+                            tone="sage"
+                            compact
+                        />
+                    </>
+                ) : (
+                    <>
+                        <DashboardStatCard
+                            icon="flame"
+                            label="Live Now"
+                            value={admin.number ? admin.number(liveCount) : liveCount}
+                            meta="Active bidding"
+                            tone="olive"
+                            compact
+                        />
+                        <DashboardStatCard
+                            icon="calendar-range"
+                            label="Scheduled"
+                            value={admin.number ? admin.number(scheduledCount) : scheduledCount}
+                            meta="Waiting to start"
+                            tone="sand"
+                            compact
+                        />
+                        <DashboardStatCard
+                            icon="shield-check"
+                            label="Reserve Protected"
+                            value={admin.number ? admin.number(reserveProtectedCount) : reserveProtectedCount}
+                            meta={`${admin.number ? admin.number(closingSoonCount) : closingSoonCount} closing within 24h`}
+                            tone="sage"
+                            compact
+                        />
+                    </>
+                )}
             </div>
 
             <div className="admin-card auction-manage-toolbar">
@@ -159,11 +243,9 @@ export function AuctionsTab() {
                         onChange={(e) => { admin.auctionFilters.status = e.target.value; }}
                         className="order-filter-select"
                     >
-                        <option value="">All Status</option>
-                        <option value="scheduled">Scheduled</option>
-                        <option value="live">Live</option>
-                        <option value="ended">Ended</option>
-                        <option value="cancelled">Cancelled</option>
+                        {statusOptions.map((option) => (
+                            <option key={option.value || 'all'} value={option.value}>{option.label}</option>
+                        ))}
                     </select>
                     <button onClick={() => admin.loadAuctions && admin.loadAuctions(true)} className="order-filter-btn primary">Apply</button>
                 </div>
@@ -172,7 +254,7 @@ export function AuctionsTab() {
                     <div className="auction-manage-toolbar__summary">
                         Showing <span className="mono">{admin.number ? admin.number(filtered.length) : 0}</span>
                         {' / '}
-                        <span className="mono">{admin.number ? admin.number(auctionCards.length) : 0}</span>
+                        <span className="mono">{admin.number ? admin.number(scopedAuctions.length) : 0}</span>
                     </div>
                     <div className="admin-soft-segment">
                         <button
@@ -191,8 +273,16 @@ export function AuctionsTab() {
                 </div>
             </div>
 
-            {auctionCards.length > 0 && filtered.length === 0 && (
-                <div className="admin-card auction-manage-empty">No auctions match the current filters.</div>
+            {auctionCards.length > 0 && scopedAuctions.length === 0 && (
+                <div className="admin-card auction-manage-empty">
+                    {scope === 'past' ? 'No past auctions are available yet.' : 'No active auctions are available right now.'}
+                </div>
+            )}
+
+            {scopedAuctions.length > 0 && filtered.length === 0 && (
+                <div className="admin-card auction-manage-empty">
+                    {scope === 'past' ? 'No past auctions match the current filters.' : 'No active auctions match the current filters.'}
+                </div>
             )}
 
             {auctionCards.length === 0 && (

@@ -11,6 +11,8 @@ const couponSchema = new mongoose.Schema(
     expiresAt: { type: Date, default: null },
     minOrderAmount: { type: Number, default: 0 },
     appliesTo: { type: String, enum: ["store", "auction", "both"], default: "both" },
+    customerUsageMode: { type: String, enum: ["multiple", "once"], default: "multiple" },
+    productIds: [{ type: mongoose.Schema.Types.ObjectId, ref: "Product" }],
     isActive: { type: Boolean, default: true }
   },
   { timestamps: true }

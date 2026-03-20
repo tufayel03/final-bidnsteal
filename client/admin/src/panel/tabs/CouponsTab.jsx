@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { PencilLine, Plus, RefreshCw, Save, TicketPercent, Trash2 } from 'lucide-react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { CalendarClock, Check, CheckCheck, ChevronDown, Gavel, Package, PencilLine, Plus, RefreshCw, Repeat2, Save, Search, SlidersHorizontal, Store, TicketPercent, Trash2, X } from 'lucide-react';
 import { useAdmin } from '../AdminContext';
 import { DashboardStatCard } from '../components/dashboard/DashboardStatCard';
 
@@ -12,6 +12,11 @@ const COUPON_SCOPE_OPTIONS = [
     { value: 'both', label: 'Store + Auctions' },
     { value: 'store', label: 'Store Only' },
     { value: 'auction', label: 'Auction Only' }
+];
+
+const COUPON_CUSTOMER_USAGE_OPTIONS = [
+    { value: 'multiple', label: 'Repeat Allowed' },
+    { value: 'once', label: 'One Time / User' }
 ];
 
 function toDateTimeInputValue(value) {
@@ -53,6 +58,46 @@ function formatScope(appliesTo) {
     return 'Store + auction';
 }
 
+function formatCouponCustomerUsage(mode) {
+    return mode === 'once' ? '1x / user' : 'Repeat';
+}
+
+function ScopeIcon({ appliesTo, size = 13 }) {
+    if (appliesTo === 'store') return <Store size={size} />;
+    if (appliesTo === 'auction') return <Gavel size={size} />;
+    return <TicketPercent size={size} />;
+}
+
+function normalizeCouponProductIds(values) {
+    const seen = new Set();
+    return (Array.isArray(values) ? values : [])
+        .map((value) => {
+            if (value && typeof value === 'object') {
+                return String(value.id || value._id || '').trim();
+            }
+            return String(value || '').trim();
+        })
+        .filter((value) => {
+            if (!value || seen.has(value)) return false;
+            seen.add(value);
+            return true;
+        });
+}
+
+function formatCouponProductTarget(coupon) {
+    const selectedIds = normalizeCouponProductIds(coupon?.productIds);
+    if (!selectedIds.length) return 'All products';
+    if (selectedIds.length === 1 && coupon?.targetProducts?.[0]?.title) {
+        return coupon.targetProducts[0].title;
+    }
+    return `${selectedIds.length} selected products`;
+}
+
+function formatCouponExpiryCompact(coupon, admin) {
+    if (!coupon?.expiresAt) return 'No expiry';
+    return admin.date ? admin.date(coupon.expiresAt) : coupon.expiresAt;
+}
+
 function formatCouponValue(coupon, admin) {
     if (String(coupon?.type || '').toLowerCase() === 'fixed') {
         return `${admin.currency ? admin.currency(coupon?.value || 0) : `BDT ${coupon?.value || 0}`} off`;
@@ -76,10 +121,180 @@ function getUsagePercent(coupon) {
     return Math.max(0, Math.min(100, (usedCount / maxUses) * 100));
 }
 
+function CouponSectionHeader({ icon: Icon, title, meta = null }) {
+    return (
+        <div className="coupon-section-head">
+            <div className="coupon-section-head__title">
+                <span className="coupon-section-head__icon">
+                    <Icon size={15} />
+                </span>
+                <h3>{title}</h3>
+            </div>
+            {meta}
+        </div>
+    );
+}
+
+function CouponMetaPill({ icon, label }) {
+    return (
+        <span className="coupon-meta-pill">
+            {icon}
+            <span>{label}</span>
+        </span>
+    );
+}
+
+function CouponProductSelector({ products, selectedIds, onChange, inputId }) {
+    const [search, setSearch] = useState('');
+    const [open, setOpen] = useState(false);
+    const rootRef = useRef(null);
+    const normalizedSelectedIds = useMemo(() => normalizeCouponProductIds(selectedIds), [selectedIds]);
+    const selectedSet = useMemo(() => new Set(normalizedSelectedIds), [normalizedSelectedIds]);
+
+    const filteredProducts = useMemo(() => {
+        const query = String(search || '').trim().toLowerCase();
+        const base = Array.isArray(products) ? products : [];
+        if (!query) return base;
+        return base.filter((product) => {
+            const haystack = `${product.title || ''} ${product.slug || ''} ${product.saleMode || ''}`.toLowerCase();
+            return haystack.includes(query);
+        });
+    }, [products, search]);
+
+    useEffect(() => {
+        if (!open) return undefined;
+
+        const handlePointerDown = (event) => {
+            if (rootRef.current && !rootRef.current.contains(event.target)) {
+                setOpen(false);
+            }
+        };
+
+        document.addEventListener('mousedown', handlePointerDown);
+        return () => document.removeEventListener('mousedown', handlePointerDown);
+    }, [open]);
+
+    useEffect(() => {
+        if (!open && search) {
+            setSearch('');
+        }
+    }, [open, search]);
+
+    const toggleProduct = (productId) => {
+        const next = new Set(normalizedSelectedIds);
+        if (next.has(productId)) {
+            next.delete(productId);
+        } else {
+            next.add(productId);
+        }
+        onChange(Array.from(next));
+    };
+
+    const summaryLabel = normalizedSelectedIds.length
+        ? `${normalizedSelectedIds.length} product${normalizedSelectedIds.length === 1 ? '' : 's'}`
+        : 'All products';
+
+    return (
+        <div className="coupon-product-target" ref={rootRef}>
+            <span className="coupon-field-label">Eligible</span>
+            <button
+                type="button"
+                onClick={() => setOpen((current) => !current)}
+                className={`order-filter-btn coupon-product-target__trigger${open ? ' is-open' : ''}`}
+                aria-expanded={open}
+                aria-controls={`${inputId}-panel`}
+            >
+                <span className="coupon-product-target__trigger-copy">
+                    <Package size={14} />
+                    <span>{summaryLabel}</span>
+                </span>
+                <ChevronDown size={14} />
+            </button>
+
+            {open && (
+                <div id={`${inputId}-panel`} className="coupon-product-target__panel">
+                    <div className="coupon-product-target__search-row">
+                        <div className="coupon-product-target__search">
+                            <Search size={14} />
+                            <input
+                                id={inputId}
+                                value={search}
+                                onChange={(event) => setSearch(event.target.value)}
+                                placeholder="Search product"
+                                className="admin-search-input"
+                            />
+                        </div>
+                        <button
+                            type="button"
+                            onClick={() => onChange([])}
+                            className="order-filter-btn coupon-icon-btn"
+                            disabled={!normalizedSelectedIds.length}
+                            title="Use all products"
+                            aria-label="Use all products"
+                        >
+                            <X size={14} />
+                        </button>
+                    </div>
+
+                    <button
+                        type="button"
+                        onClick={() => onChange([])}
+                        className={`coupon-product-target__item coupon-product-target__item--all${!normalizedSelectedIds.length ? ' is-selected' : ''}`}
+                    >
+                        <span className="coupon-product-target__item-check" aria-hidden="true">
+                            {!normalizedSelectedIds.length ? <Check size={13} /> : null}
+                        </span>
+                        <span className="coupon-product-target__item-copy">
+                            <strong>All products</strong>
+                            <span>Default coverage</span>
+                        </span>
+                    </button>
+
+                    <div className="coupon-product-target__list custom-scrollbar">
+                        {filteredProducts.map((product) => {
+                            const checked = selectedSet.has(product.id);
+                            const modeLabel = product.saleMode === 'hybrid' ? 'Auction + Buy Now' : product.saleMode === 'auction' ? 'Auction' : 'Fixed';
+
+                            return (
+                                <button
+                                    key={product.id}
+                                    type="button"
+                                    onClick={() => toggleProduct(product.id)}
+                                    className={`coupon-product-target__item${checked ? ' is-selected' : ''}`}
+                                >
+                                    <span className="coupon-product-target__item-check" aria-hidden="true">
+                                        {checked ? <Check size={13} /> : null}
+                                    </span>
+                                    <div className="coupon-product-target__item-copy">
+                                        <strong>{product.title}</strong>
+                                        <span>{product.slug || product.id}</span>
+                                    </div>
+                                    <span className="coupon-product-target__item-mode">{modeLabel}</span>
+                                </button>
+                            );
+                        })}
+                        {filteredProducts.length === 0 && (
+                            <div className="coupon-product-target__empty">
+                                No products matched this search.
+                            </div>
+                        )}
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+}
+
 export function CouponsTab() {
     const admin = useAdmin();
-    const { coupons = [], couponFilters = {}, couponDraft = {} } = admin;
+    const { coupons = [], couponFilters = {}, couponDraft = {}, couponProducts = [] } = admin;
     const [expandedCouponId, setExpandedCouponId] = useState(null);
+
+    useEffect(() => {
+        if (!couponProducts.length && admin.loadCouponProducts) {
+            void admin.loadCouponProducts();
+        }
+    }, [admin, couponProducts.length]);
 
     const activeCoupons = coupons.filter((coupon) => getCouponStatus(coupon).label === 'Active').length;
     const expiringSoonCount = coupons.filter((coupon) => {
@@ -93,8 +308,8 @@ export function CouponsTab() {
         <div style={{ display: 'grid', gap: '24px' }}>
             <div className="admin-tab-header">
                 <div>
-                    <h2>Coupon Management</h2>
-                    <p>Build reusable discount codes, control redemption windows, and keep offer rules organized.</p>
+                    <h2>Coupons</h2>
+                    <p>Discount codes.</p>
                 </div>
                 <button onClick={() => admin.loadCoupons && admin.loadCoupons(true)} className="order-filter-btn">
                     <RefreshCw size={14} />
@@ -139,16 +354,11 @@ export function CouponsTab() {
 
             <div className="coupon-management-layout">
                 <section className="admin-card coupon-draft-card">
-                    <div className="coupon-panel-head">
-                        <div>
-                            <p className="coupon-panel-kicker">Offer Builder</p>
-                            <h3>Create Coupon</h3>
-                            <p className="coupon-panel-copy">Prepare a new code with discount type, usage limit, expiry, and checkout scope.</p>
-                        </div>
-                        <div className="coupon-head-icon">
-                            <TicketPercent size={18} />
-                        </div>
-                    </div>
+                    <CouponSectionHeader
+                        icon={TicketPercent}
+                        title="New Coupon"
+                        meta={<span className="coupon-mini-pill">{normalizeCouponProductIds(couponDraft.productIds).length ? 'Targeted' : 'All products'}</span>}
+                    />
 
                     <div className="coupon-form-grid">
                         <label className="coupon-field coupon-field--wide">
@@ -162,7 +372,7 @@ export function CouponsTab() {
                             />
                         </label>
                         <label className="coupon-field">
-                            <span className="coupon-field-label">Discount Type</span>
+                            <span className="coupon-field-label">Type</span>
                             <select
                                 value={couponDraft.type || 'percent'}
                                 onChange={(e) => { admin.couponDraft.type = e.target.value; }}
@@ -174,7 +384,7 @@ export function CouponsTab() {
                             </select>
                         </label>
                         <label className="coupon-field">
-                            <span className="coupon-field-label">Discount Value</span>
+                            <span className="coupon-field-label">Value</span>
                             <input
                                 value={couponDraft.value || ''}
                                 onChange={(e) => { admin.couponDraft.value = e.target.value; }}
@@ -185,7 +395,7 @@ export function CouponsTab() {
                             />
                         </label>
                         <label className="coupon-field">
-                            <span className="coupon-field-label">Maximum Uses</span>
+                            <span className="coupon-field-label">Limit</span>
                             <input
                                 value={couponDraft.maxUses || ''}
                                 onChange={(e) => { admin.couponDraft.maxUses = e.target.value; }}
@@ -196,7 +406,7 @@ export function CouponsTab() {
                             />
                         </label>
                         <label className="coupon-field">
-                            <span className="coupon-field-label">Minimum Order</span>
+                            <span className="coupon-field-label">Min Order</span>
                             <input
                                 value={couponDraft.minOrderAmount || ''}
                                 onChange={(e) => { admin.couponDraft.minOrderAmount = e.target.value; }}
@@ -218,8 +428,20 @@ export function CouponsTab() {
                                 ))}
                             </select>
                         </label>
+                        <label className="coupon-field">
+                            <span className="coupon-field-label">Reuse</span>
+                            <select
+                                value={couponDraft.customerUsageMode || 'multiple'}
+                                onChange={(e) => { admin.couponDraft.customerUsageMode = e.target.value; }}
+                                className="order-filter-select"
+                            >
+                                {COUPON_CUSTOMER_USAGE_OPTIONS.map((option) => (
+                                    <option key={option.value} value={option.value}>{option.label}</option>
+                                ))}
+                            </select>
+                        </label>
                         <label className="coupon-field coupon-field--wide">
-                            <span className="coupon-field-label">Expires At</span>
+                            <span className="coupon-field-label">Expires</span>
                             <input
                                 value={couponDraft.expiresAt || ''}
                                 onChange={(e) => { admin.couponDraft.expiresAt = e.target.value; }}
@@ -227,6 +449,14 @@ export function CouponsTab() {
                                 className="admin-search-input"
                             />
                         </label>
+                        <div className="coupon-field coupon-field--full">
+                            <CouponProductSelector
+                                products={couponProducts}
+                                selectedIds={couponDraft.productIds}
+                                onChange={(nextIds) => { admin.couponDraft.productIds = nextIds; }}
+                                inputId="coupon-draft-product-search"
+                            />
+                        </div>
                     </div>
 
                     <div className="coupon-draft-footer">
@@ -238,23 +468,19 @@ export function CouponsTab() {
                                 className="order-check"
                             />
                             <div>
-                                <strong>Activate on creation</strong>
-                                <span>New coupon is immediately available in checkout.</span>
+                                <strong>Active</strong>
                             </div>
                         </label>
                         <button onClick={() => admin.createCoupon && admin.createCoupon()} className="order-filter-btn primary">
                             <Plus size={14} />
-                            <span>Create Coupon</span>
+                            <span>Create</span>
                         </button>
                     </div>
                 </section>
 
                 <section className="coupon-library-column">
                     <div className="order-panel coupon-filter-panel">
-                        <div className="coupon-filter-copy">
-                            <p className="coupon-panel-kicker">Library Controls</p>
-                            <h3>Filter Coupon Library</h3>
-                        </div>
+                        <CouponSectionHeader icon={SlidersHorizontal} title="Filter" />
                         <select
                             value={couponFilters.isActive || ''}
                             onChange={(e) => { admin.couponFilters.isActive = e.target.value; }}
@@ -282,21 +508,7 @@ export function CouponsTab() {
                     </div>
 
                     <div className="admin-card coupon-library-card">
-                        <div className="coupon-panel-head coupon-panel-head--library">
-                            <div>
-                                <p className="coupon-panel-kicker">Library</p>
-                                <h3>Existing Coupons</h3>
-                                <p className="coupon-panel-copy">Update offer rules, usage caps, expiry windows, and checkout scope from one place.</p>
-                            </div>
-                        </div>
-
-                        <div className="coupon-library-list-head">
-                            <span>Coupon</span>
-                            <span>Usage</span>
-                            <span>Coverage</span>
-                            <span>Expiry</span>
-                            <span>Actions</span>
-                        </div>
+                        <CouponSectionHeader icon={TicketPercent} title="Library" />
 
                         <div className="coupon-library-list">
                             {coupons.map((coupon, index) => {
@@ -307,9 +519,7 @@ export function CouponsTab() {
                                 const minOrderLabel = Number(coupon.minOrderAmount || 0) > 0
                                     ? `Min ${admin.currency ? admin.currency(coupon.minOrderAmount) : `BDT ${coupon.minOrderAmount}`}`
                                     : 'No minimum order';
-                                const expiryLabel = coupon.expiresAt
-                                    ? (admin.dateTime ? admin.dateTime(coupon.expiresAt) : coupon.expiresAt)
-                                    : 'No expiry set';
+                                const productTargetLabel = formatCouponProductTarget(coupon);
 
                                 return (
                                     <article key={couponKey} className={`coupon-list-item${isExpanded ? ' is-expanded' : ''}`}>
@@ -322,14 +532,32 @@ export function CouponsTab() {
                                                         <span className={`status-badge ${status.className}`}>{status.label}</span>
                                                     </div>
                                                     <div className="coupon-summary-meta">
-                                                        <span>{coupon.type === 'fixed' ? 'Fixed amount' : 'Percent off'}</span>
-                                                        <span>{coupon.isActive ? 'Visible at checkout' : 'Hidden from checkout'}</span>
+                                                        <CouponMetaPill
+                                                            icon={<TicketPercent size={12} />}
+                                                            label={coupon.type === 'fixed' ? 'Fixed' : 'Percent'}
+                                                        />
+                                                        <CouponMetaPill
+                                                            icon={<ScopeIcon appliesTo={coupon.appliesTo} size={12} />}
+                                                            label={formatScope(coupon.appliesTo)}
+                                                        />
+                                                        <CouponMetaPill
+                                                            icon={<Repeat2 size={12} />}
+                                                            label={formatCouponCustomerUsage(coupon.customerUsageMode)}
+                                                        />
+                                                        <CouponMetaPill
+                                                            icon={<Package size={12} />}
+                                                            label={productTargetLabel}
+                                                        />
+                                                        <CouponMetaPill
+                                                            icon={<CalendarClock size={12} />}
+                                                            label={formatCouponExpiryCompact(coupon, admin)}
+                                                        />
                                                     </div>
                                                 </div>
                                             </div>
 
                                             <div className="coupon-list-usage">
-                                                <span className="coupon-field-label">Usage</span>
+                                                <span className="coupon-field-label"><CheckCheck size={12} /> Usage</span>
                                                 <strong>{formatUsageSummary(coupon)}</strong>
                                                 <div className="coupon-usage-meter">
                                                     <span className="coupon-usage-meter-bar" style={{ width: `${usagePercent}%` }} />
@@ -339,30 +567,30 @@ export function CouponsTab() {
                                                 </span>
                                             </div>
 
-                                            <div className="coupon-list-coverage">
-                                                <span className="coupon-field-label">Coverage</span>
-                                                <strong>{formatScope(coupon.appliesTo)}</strong>
-                                                <span>{minOrderLabel}</span>
-                                            </div>
-
-                                            <div className="coupon-list-expiry">
-                                                <span className="coupon-field-label">Expiry</span>
-                                                <strong>{expiryLabel}</strong>
-                                                <span>{isCouponExpired(coupon) ? 'Expired' : 'Active window'}</span>
-                                            </div>
-
                                             <div className="coupon-row-actions">
-                                                <button onClick={() => setExpandedCouponId(isExpanded ? null : couponKey)} className="order-filter-btn">
+                                                <button
+                                                    onClick={() => setExpandedCouponId(isExpanded ? null : couponKey)}
+                                                    className="order-filter-btn coupon-icon-btn"
+                                                    title={isExpanded ? 'Close editor' : 'Edit'}
+                                                    aria-label={isExpanded ? 'Close editor' : 'Edit'}
+                                                >
                                                     <PencilLine size={14} />
-                                                    <span>{isExpanded ? 'Close' : 'Edit'}</span>
                                                 </button>
-                                                <button onClick={() => admin.updateCoupon && admin.updateCoupon(coupon)} className="order-filter-btn">
+                                                <button
+                                                    onClick={() => admin.updateCoupon && admin.updateCoupon(coupon)}
+                                                    className="order-filter-btn coupon-icon-btn"
+                                                    title="Save"
+                                                    aria-label="Save"
+                                                >
                                                     <Save size={14} />
-                                                    <span>Save</span>
                                                 </button>
-                                                <button onClick={() => admin.deleteCoupon && admin.deleteCoupon(coupon)} className="order-filter-btn danger">
+                                                <button
+                                                    onClick={() => admin.deleteCoupon && admin.deleteCoupon(coupon)}
+                                                    className="order-filter-btn danger coupon-icon-btn"
+                                                    title="Delete"
+                                                    aria-label="Delete"
+                                                >
                                                     <Trash2 size={14} />
-                                                    <span>Delete</span>
                                                 </button>
                                             </div>
                                         </div>
@@ -393,7 +621,7 @@ export function CouponsTab() {
                                                         />
                                                     </label>
                                                     <label className="coupon-field">
-                                                        <span className="coupon-field-label">Max Uses</span>
+                                                        <span className="coupon-field-label">Limit</span>
                                                         <input
                                                             value={coupon.maxUses || 0}
                                                             onChange={(e) => { admin.coupons[index].maxUses = Number(e.target.value); }}
@@ -425,7 +653,19 @@ export function CouponsTab() {
                                                         </select>
                                                     </label>
                                                     <label className="coupon-field">
-                                                        <span className="coupon-field-label">Expires At</span>
+                                                        <span className="coupon-field-label">Reuse</span>
+                                                        <select
+                                                            value={coupon.customerUsageMode || 'multiple'}
+                                                            onChange={(e) => { admin.coupons[index].customerUsageMode = e.target.value; }}
+                                                            className="order-filter-select"
+                                                        >
+                                                            {COUPON_CUSTOMER_USAGE_OPTIONS.map((option) => (
+                                                                <option key={option.value} value={option.value}>{option.label}</option>
+                                                            ))}
+                                                        </select>
+                                                    </label>
+                                                    <label className="coupon-field">
+                                                        <span className="coupon-field-label">Expires</span>
                                                         <input
                                                             value={toDateTimeInputValue(coupon.expiresAt)}
                                                             onChange={(e) => { admin.coupons[index].expiresAt = e.target.value; }}
@@ -433,6 +673,14 @@ export function CouponsTab() {
                                                             className="admin-search-input"
                                                         />
                                                     </label>
+                                                    <div className="coupon-field coupon-field--full">
+                                                        <CouponProductSelector
+                                                            products={couponProducts}
+                                                            selectedIds={coupon.productIds}
+                                                            onChange={(nextIds) => { admin.coupons[index].productIds = nextIds; }}
+                                                            inputId={`coupon-row-product-search-${couponKey}`}
+                                                        />
+                                                    </div>
                                                 </div>
 
                                                 <div className="coupon-row-footer">
@@ -444,8 +692,8 @@ export function CouponsTab() {
                                                             className="order-check"
                                                         />
                                                         <div>
-                                                            <strong>Coupon is active</strong>
-                                                            <span>Visible and redeemable during checkout validation.</span>
+                                                            <strong>Active</strong>
+                                                            <span>{minOrderLabel}</span>
                                                         </div>
                                                     </label>
                                                 </div>

@@ -93,6 +93,7 @@ export function OrdersTab() {
                     <option value="">All Fulfillment</option>
                     <option value="pending">Pending</option>
                     <option value="processing">Processing</option>
+                    <option value="on_hold">On Hold</option>
                     <option value="shipped">Shipped</option>
                     <option value="delivered">Delivered</option>
                     <option value="cancelled">Cancelled</option>
@@ -158,6 +159,7 @@ export function OrdersTab() {
                             <option value="">Fulfillment Status</option>
                             <option value="pending">Pending</option>
                             <option value="processing">Processing</option>
+                            <option value="on_hold">On Hold</option>
                             <option value="shipped">Shipped</option>
                             <option value="delivered">Delivered</option>
                             <option value="cancelled">Cancelled</option>
@@ -262,6 +264,7 @@ export function OrdersTab() {
                                         >
                                             <option value="pending">Pending</option>
                                             <option value="processing">Processing</option>
+                                            <option value="on_hold">On Hold</option>
                                             <option value="shipped">Shipped</option>
                                             <option value="delivered">Delivered</option>
                                             <option value="cancelled">Cancelled</option>

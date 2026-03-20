@@ -75,58 +75,29 @@ export function MediaTab() {
                         </div>
                     </div>
 
-                    <div className="media-library-hero-grid">
-                        <div className="media-library-upload-card">
-                            <label className="media-library-field-label">Upload Images</label>
-                            <div className="admin-soft-upload media-library-dropzone relative cursor-pointer w-full group">
-                                <input
-                                    id="mediaUploadInput"
-                                    type="file"
-                                    accept="image/*"
-                                    multiple
-                                    onChange={(e) => admin.onMediaFileChange && admin.onMediaFileChange(e)}
-                                    style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', opacity: 0, cursor: 'pointer', zIndex: 10 }}
-                                />
-                                <div className="admin-soft-upload__body pointer-events-none">
-                                    <span className="media-library-dropzone__icon">
-                                        <Icon name="image-plus" />
-                                    </span>
-                                    <span className="admin-soft-upload__title">
-                                        {mediaUpload.uploading ? 'Uploading assets...' : 'Select digital assets'}
-                                    </span>
-                                    <span className="admin-soft-upload__caption">
-                                        {mediaUpload.uploading ? 'Please wait while files are being stored on the server' : 'Drag and drop files here or click to browse your device'}
-                                    </span>
-                                </div>
+                    <div className="media-library-upload-card">
+                        <label className="media-library-field-label">Upload Images</label>
+                        <div className="admin-soft-upload media-library-dropzone relative cursor-pointer w-full group">
+                            <input
+                                id="mediaUploadInput"
+                                type="file"
+                                accept="image/*"
+                                multiple
+                                onChange={(e) => admin.onMediaFileChange && admin.onMediaFileChange(e)}
+                                style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', opacity: 0, cursor: 'pointer', zIndex: 10 }}
+                            />
+                            <div className="admin-soft-upload__body pointer-events-none">
+                                <span className="media-library-dropzone__icon">
+                                    <Icon name="image-plus" />
+                                </span>
+                                <span className="admin-soft-upload__title">
+                                    {mediaUpload.uploading ? 'Uploading assets...' : 'Select digital assets'}
+                                </span>
+                                <span className="admin-soft-upload__caption">
+                                    {mediaUpload.uploading ? 'Please wait while files are being stored on the server' : 'Drag and drop files here or click to browse your device'}
+                                </span>
                             </div>
                         </div>
-
-                        <aside className="media-library-side-card">
-                            <p className="media-library-side-title">Reuse Anywhere</p>
-                            <div className="media-library-side-list">
-                                <div className="media-library-side-item">
-                                    <span className="media-library-side-icon"><Icon name="package" /></span>
-                                    <div>
-                                        <strong>Products + Auctions</strong>
-                                        <span>Assign uploaded images directly in catalog items and bidding lots.</span>
-                                    </div>
-                                </div>
-                                <div className="media-library-side-item">
-                                    <span className="media-library-side-icon"><Icon name="mail" /></span>
-                                    <div>
-                                        <strong>Email Templates</strong>
-                                        <span>Copy template tags and drop them into transactional or campaign HTML.</span>
-                                    </div>
-                                </div>
-                                <div className="media-library-side-item">
-                                    <span className="media-library-side-icon"><Icon name="copy" /></span>
-                                    <div>
-                                        <strong>Fast Tag Workflow</strong>
-                                        <span>Use the copy action on any asset to insert the media placeholder wherever you need it.</span>
-                                    </div>
-                                </div>
-                            </div>
-                        </aside>
                     </div>
                 </section>
             )}

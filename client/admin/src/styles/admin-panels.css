@@ -102,6 +102,43 @@
   overflow: hidden;
 }
 
+.admin-inset-card {
+  padding: 18px;
+  min-width: 0;
+}
+
+.admin-inset-card > * {
+  min-width: 0;
+}
+
+.admin-inset-card-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.admin-inset-card-copy {
+  flex: 1 1 240px;
+  min-width: 0;
+}
+
+.admin-inset-card-title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.admin-inset-card-meta {
+  max-width: 100%;
+  color: #7e8678;
+  font-size: 12px;
+  line-height: 1.45;
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+
 .order-check {
   width: 16px;
   height: 16px;
@@ -568,5 +605,11 @@
 
 .status-badge.status-pending::before {
   box-shadow: 0 0 8px var(--warning);
+}
+
+@media (max-width: 980px) {
+  .admin-inset-card-meta {
+    text-align: left;
+  }
 }
 

@@ -1,3 +1,4 @@
+const mongoose = require("mongoose");
 const express = require("express");
 const Auction = require("../models/Auction");
 const Campaign = require("../models/Campaign");
@@ -5,6 +6,7 @@ const CampaignDelivery = require("../models/CampaignDelivery");
 const CampaignTemplate = require("../models/CampaignTemplate");
 const Coupon = require("../models/Coupon");
 const Order = require("../models/Order");
+const Product = require("../models/Product");
 const Subscriber = require("../models/Subscriber");
 const User = require("../models/User");
 const { env } = require("../config/env");
@@ -14,10 +16,18 @@ const {
   sanitizeCheckoutSettingsForClient,
   saveCheckoutSettings
 } = require("../services/checkoutSettingsService");
-const { attachMediaTemplateContext, createTransport, getSmtpSettings, renderTemplateString, sendEmail, sendTemplateEmail } = require("../services/emailService");
+const {
+  attachMediaTemplateContext,
+  buildTransactionalEmailContext,
+  createTransport,
+  getSmtpSettings,
+  renderTemplateString,
+  sendEmail,
+  sendTemplateEmail
+} = require("../services/emailService");
 const { syncAuctions } = require("../services/auctionService");
 const { normalizeCampaignForAdmin, queueCampaignDispatch } = require("../services/campaignDispatchService");
-const { getPublicSiteProfile } = require("../services/siteProfileService");
+const { normalizeSiteProfile } = require("../services/siteProfileService");
 const {
   createSteadfastOrder,
   fetchSteadfastCustomerHistory,
@@ -28,6 +38,13 @@ const {
   sanitizeCourierSettingsForClient,
   saveCourierSettings
 } = require("../services/steadfastService");
+const {
+  ensureEmailTemplates,
+  getSystemEmailTemplateDefinition,
+  isSystemEmailTemplateKey,
+  mergeEmailTemplates,
+  normalizeEmailTemplateRecord
+} = require("../services/emailTemplateService");
 const { getSetting, setSetting } = require("../services/settingsService");
 const { parsePagination } = require("../utils/http");
 const { encryptSecret } = require("../utils/secrets");
@@ -35,8 +52,45 @@ const { isValidEmail, sanitizeText } = require("../utils/validation");
 
 const router = express.Router();
 
-function normalizeEmailTemplates(items) {
-  return Array.isArray(items) ? items : [];
+function normalizeCouponProductIds(values) {
+  const seen = new Set();
+  return (Array.isArray(values) ? values : [])
+    .map((value) => {
+      if (value && typeof value === "object") {
+        return String(value.id || value._id || "").trim();
+      }
+      return String(value || "").trim();
+    })
+    .filter((value) => {
+      if (!value || !mongoose.Types.ObjectId.isValid(value) || seen.has(value)) {
+        return false;
+      }
+      seen.add(value);
+      return true;
+    });
+}
+
+function serializeCouponForAdmin(coupon) {
+  const json = coupon?.toJSON ? coupon.toJSON() : coupon;
+
+  return {
+    ...json,
+    customerUsageMode: json?.customerUsageMode === "once" ? "once" : "multiple",
+    productIds: normalizeCouponProductIds(json?.productIds),
+    targetProducts: (Array.isArray(coupon?.productIds) ? coupon.productIds : [])
+      .map((product) => {
+        if (!product || typeof product !== "object") return null;
+        const id = String(product.id || product._id || "").trim();
+        if (!id) return null;
+        return {
+          id,
+          title: String(product.title || "").trim() || "Untitled product",
+          slug: String(product.slug || "").trim(),
+          saleMode: String(product.saleMode || "fixed").trim() || "fixed"
+        };
+      })
+      .filter(Boolean)
+  };
 }
 
 function sanitizeSmtpSettingsForClient(value = {}) {
@@ -91,6 +145,114 @@ function buildFulfillmentStatusFromCourier(deliveryStatus, currentStatus) {
   return currentStatus;
 }
 
+function escapeHtml(value) {
+  return String(value || "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+function buildOrderItemsTable(order, withImages = false) {
+  return (order.items || [])
+    .map((item) => {
+      const title = escapeHtml(item.titleSnapshot || "Item");
+      const qty = Number(item.qty || 0);
+      const unitPrice = Number(item.unitPrice || 0);
+      const subtotal = qty * unitPrice;
+      const image = withImages && item.imageUrl
+        ? `<td style="padding:8px;border:1px solid #ddd;"><img src="${escapeHtml(item.imageUrl)}" alt="" width="56" height="56" style="object-fit:cover;" /></td>`
+        : "";
+      return `<tr>${image}<td style="padding:8px;border:1px solid #ddd;">${title}</td><td style="padding:8px;border:1px solid #ddd;">${qty}</td><td style="padding:8px;border:1px solid #ddd;">BDT ${unitPrice}</td><td style="padding:8px;border:1px solid #ddd;">BDT ${subtotal}</td></tr>`;
+    })
+    .join("");
+}
+
+function formatFulfillmentStatusLabel(status) {
+  const normalized = String(status || "").trim().toLowerCase();
+  if (!normalized) return "";
+  if (normalized === "on_hold") return "On Hold";
+  return normalized.charAt(0).toUpperCase() + normalized.slice(1);
+}
+
+const ORDER_STATUS_EMAIL_CONFIG = {
+  processing: {
+    templateKey: "order-processing",
+    fallbackSubject: (order) => `We are preparing order ${order.orderNumber}`,
+    fallbackHtml: (order) => `<p>Your order <strong>${escapeHtml(order.orderNumber)}</strong> is now being prepared.</p>`
+  },
+  on_hold: {
+    templateKey: "order-on-hold",
+    fallbackSubject: (order) => `Order ${order.orderNumber} is on hold`,
+    fallbackHtml: (order) => `<p>Your order <strong>${escapeHtml(order.orderNumber)}</strong> is currently on hold.</p>`
+  },
+  shipped: {
+    templateKey: "order-shipped",
+    fallbackSubject: (order) => `Order ${order.orderNumber} has shipped`,
+    fallbackHtml: (order) => `<p>Your order <strong>${escapeHtml(order.orderNumber)}</strong> is on the way.</p>`
+  },
+  cancelled: {
+    templateKey: "order-cancelled",
+    fallbackSubject: (order) => `Order ${order.orderNumber} has been cancelled`,
+    fallbackHtml: (order) => `<p>Your order <strong>${escapeHtml(order.orderNumber)}</strong> has been cancelled.</p>`
+  }
+};
+
+async function notifyOrderStatusTransition(order, previousFulfillmentStatus = "") {
+  const nextStatus = String(order?.fulfillmentStatus || "").trim().toLowerCase();
+  if (!order || !nextStatus || nextStatus === String(previousFulfillmentStatus || "").trim().toLowerCase()) {
+    return;
+  }
+
+  const config = ORDER_STATUS_EMAIL_CONFIG[nextStatus];
+  if (!config || !isValidEmail(order.customerEmail)) {
+    return;
+  }
+
+  const shippingAddress = order.shippingAddress || {};
+
+  try {
+    const context = await buildTransactionalEmailContext({
+      customer: {
+        name: order.customerName,
+        email: order.customerEmail
+      },
+      order: {
+        number: order.orderNumber,
+        total: `BDT ${Number(order.total || 0)}`,
+        status: nextStatus,
+        fulfillment_label: formatFulfillmentStatusLabel(nextStatus),
+        payment_status: order.paymentStatus,
+        tracking_code: String(order.courier?.trackingCode || order.courier?.consignmentId || "").trim(),
+        items_table: buildOrderItemsTable(order, false),
+        items_table_with_images: buildOrderItemsTable(order, true)
+      },
+      shipping: {
+        address: [
+          shippingAddress.addressLine1,
+          shippingAddress.addressLine2,
+          shippingAddress.area,
+          shippingAddress.city,
+          shippingAddress.postalCode,
+          shippingAddress.country
+        ].filter(Boolean).join(", "),
+        city: shippingAddress.city || ""
+      }
+    });
+
+    await sendTemplateEmail({
+      templateKey: config.templateKey,
+      to: order.customerEmail,
+      context,
+      fallbackSubject: config.fallbackSubject(order),
+      fallbackHtml: config.fallbackHtml(order)
+    });
+  } catch (error) {
+    console.error(`[admin-cms] failed to send ${config.templateKey} email`, error);
+  }
+}
+
 function roundMoney(value) {
   return Number(Number(value || 0).toFixed(2));
 }
@@ -111,6 +273,7 @@ async function dispatchSteadfastOrder(order, options = {}) {
   }
 
   const result = await createSteadfastOrder(order);
+  const previousFulfillmentStatus = String(order.fulfillmentStatus || "").toLowerCase();
   order.courier = {
     ...(order.courier || {}),
     provider: "steadfast",
@@ -121,6 +284,7 @@ async function dispatchSteadfastOrder(order, options = {}) {
   };
   order.fulfillmentStatus = buildFulfillmentStatusFromCourier(order.courier.deliveryStatus, order.fulfillmentStatus);
   await order.save();
+  await notifyOrderStatusTransition(order, previousFulfillmentStatus);
   return order;
 }
 
@@ -389,19 +553,18 @@ function buildWalletItems(snapshot, usersById) {
 }
 
 async function buildTemplateContext() {
-  const siteProfile = await getPublicSiteProfile();
-  const siteUrl = String(siteProfile.siteUrl || "").replace(/\/$/, "");
-
-  return {
+  const base = await buildTransactionalEmailContext({
     customer: {
       name: "Test Customer",
-      email: siteProfile.supportEmail || env.adminEmail
+      email: env.adminEmail
     },
     order: {
       number: "TEST-ORDER-001",
       total: "BDT 0",
       status: "pending",
+      fulfillment_label: "Pending",
       payment_status: "unpaid",
+      tracking_code: "TRACK-0001",
       items_table: "<tr><td>Sample item</td><td>1</td><td>BDT 0</td></tr>",
       items_table_with_images: "<tr><td>Sample item</td><td>1</td><td>BDT 0</td></tr>"
     },
@@ -409,22 +572,27 @@ async function buildTemplateContext() {
       address: "Dhaka, Bangladesh",
       city: "Dhaka"
     },
-    site: {
-      name: siteProfile.siteName || "BidnSteal",
-      url: siteUrl
-    },
-    support: {
-      email: siteProfile.supportEmail || env.adminEmail
-    },
-    auth: {
-      login_link: siteUrl ? `${siteUrl}/login` : "/login",
-      reset_link: siteUrl ? `${siteUrl}/reset-password?token=sample` : "/reset-password?token=sample"
-    },
     auction: {
-      title: "Auction title"
+      title: "Auction title",
+      amount: "BDT 0",
+      url: ""
     },
     product: {
       title: "Product title"
+    }
+  });
+
+  return {
+    ...base,
+    auth: {
+      ...base.auth,
+      reset_link: base.site.url
+        ? `${base.site.url}/reset-password?token=sample`
+        : "/reset-password?token=sample"
+    },
+    auction: {
+      ...base.auction,
+      url: base.site.url ? `${base.site.url}/auction/sample-lot` : "/auction/sample-lot"
     }
   };
 }
@@ -441,6 +609,35 @@ async function buildCampaignPreviewContext() {
 }
 
 router.use(requireAdmin);
+
+router.get("/site-profile", async (_req, res) => {
+  return res.json(normalizeSiteProfile(await getSetting("siteProfile", {})));
+});
+
+router.put("/site-profile", async (req, res) => {
+  const current = normalizeSiteProfile(await getSetting("siteProfile", {}));
+  const next = normalizeSiteProfile({
+    ...current,
+    ...(req.body || {})
+  });
+
+  if (next.supportEmail && !isValidEmail(next.supportEmail)) {
+    return res.status(400).json({ message: "Support email must be a valid email address." });
+  }
+
+  const rawSiteUrl = String(req.body?.siteUrl || "").trim();
+  if (rawSiteUrl && !next.siteUrl) {
+    return res.status(400).json({ message: "Site URL must be a valid http or https URL." });
+  }
+
+  const rawLogoUrl = String(req.body?.logoUrl || "").trim();
+  if (rawLogoUrl && !next.logoUrl) {
+    return res.status(400).json({ message: "Logo URL must be a valid uploaded asset path or http/https URL." });
+  }
+
+  const saved = await setSetting("siteProfile", next);
+  return res.json(normalizeSiteProfile(saved));
+});
 
 router.get("/campaigns/templates", async (req, res) => {
   const limit = Math.max(1, Number(req.query.limit || 100));
@@ -562,8 +759,8 @@ router.get("/coupons", async (req, res) => {
   const query = {};
   if (req.query.isActive === "true") query.isActive = true;
   if (req.query.isActive === "false") query.isActive = false;
-  const items = await Coupon.find(query).sort({ createdAt: -1 });
-  return res.json({ items, total: items.length });
+  const items = await Coupon.find(query).populate("productIds", "title slug saleMode").sort({ createdAt: -1 });
+  return res.json({ items: items.map((coupon) => serializeCouponForAdmin(coupon)), total: items.length });
 });
 
 router.post("/coupons", async (req, res) => {
@@ -575,13 +772,16 @@ router.post("/coupons", async (req, res) => {
     expiresAt: req.body?.expiresAt ? new Date(req.body.expiresAt) : null,
     minOrderAmount: Number(req.body?.minOrderAmount || 0),
     appliesTo: ["store", "auction", "both"].includes(req.body?.appliesTo) ? req.body.appliesTo : "both",
+    customerUsageMode: req.body?.customerUsageMode === "once" ? "once" : "multiple",
+    productIds: normalizeCouponProductIds(req.body?.productIds),
     isActive: req.body?.isActive !== false
   });
-  return res.status(201).json(coupon);
+  await coupon.populate("productIds", "title slug saleMode");
+  return res.status(201).json(serializeCouponForAdmin(coupon));
 });
 
 router.patch("/coupons/:id", async (req, res) => {
-  const coupon = await Coupon.findById(req.params.id);
+  const coupon = await Coupon.findById(req.params.id).populate("productIds", "title slug saleMode");
   if (!coupon) {
     return res.status(404).json({ message: "Coupon not found." });
   }
@@ -592,9 +792,12 @@ router.patch("/coupons/:id", async (req, res) => {
   if (req.body?.expiresAt !== undefined) coupon.expiresAt = req.body.expiresAt ? new Date(req.body.expiresAt) : null;
   if (req.body?.minOrderAmount !== undefined) coupon.minOrderAmount = Number(req.body.minOrderAmount || 0);
   if (req.body?.appliesTo !== undefined) coupon.appliesTo = req.body.appliesTo;
+  if (req.body?.customerUsageMode !== undefined) coupon.customerUsageMode = req.body.customerUsageMode === "once" ? "once" : "multiple";
+  if (req.body?.productIds !== undefined) coupon.productIds = normalizeCouponProductIds(req.body.productIds);
   if (req.body?.isActive !== undefined) coupon.isActive = Boolean(req.body.isActive);
   await coupon.save();
-  return res.json(coupon);
+  await coupon.populate("productIds", "title slug saleMode");
+  return res.json(serializeCouponForAdmin(coupon));
 });
 
 router.delete("/coupons/:id", async (req, res) => {
@@ -741,22 +944,34 @@ router.patch("/disputes/:id", async (req, res) => {
 });
 
 router.get("/email-templates", async (_req, res) => {
-  const items = normalizeEmailTemplates(await getSetting("emailTemplates", []));
+  const items = await ensureEmailTemplates();
   return res.json({ items });
 });
 
 router.post("/email-templates", async (req, res) => {
-  const items = normalizeEmailTemplates(await getSetting("emailTemplates", []));
-  const template = {
-    key: String(req.body?.key || "").trim(),
-    subjectTemplate: String(req.body?.subjectTemplate || ""),
-    htmlTemplate: String(req.body?.htmlTemplate || ""),
-    isActive: req.body?.isActive !== false
-  };
+  const items = await ensureEmailTemplates();
+  const key = String(req.body?.key || "").trim();
+  if (!key) {
+    return res.status(400).json({ message: "Template key is required." });
+  }
+
+  const systemDefinition = getSystemEmailTemplateDefinition(key);
+  const template = normalizeEmailTemplateRecord({
+    ...(systemDefinition || {}),
+    key,
+    label: systemDefinition?.label || req.body?.label,
+    description: systemDefinition?.description || req.body?.description,
+    subjectTemplate: String(req.body?.subjectTemplate || systemDefinition?.subjectTemplate || ""),
+    htmlTemplate: String(req.body?.htmlTemplate || systemDefinition?.htmlTemplate || ""),
+    isActive: systemDefinition ? true : req.body?.isActive !== false,
+    isSystem: Boolean(systemDefinition),
+    isDeletable: systemDefinition ? false : true
+  });
+
   const existingIndex = items.findIndex((item) => item.key === template.key);
   if (existingIndex >= 0) items[existingIndex] = template;
   else items.push(template);
-  await setSetting("emailTemplates", items);
+  await setSetting("emailTemplates", mergeEmailTemplates(items));
   return res.status(201).json(template);
 });
 
@@ -815,7 +1030,7 @@ router.post("/email-templates/transport/smtp/test", async (req, res) => {
 });
 
 router.get("/email-templates/:key", async (req, res) => {
-  const items = normalizeEmailTemplates(await getSetting("emailTemplates", []));
+  const items = await ensureEmailTemplates();
   const template = items.find((item) => item.key === req.params.key);
   if (!template) {
     return res.status(404).json({ message: "Template not found." });
@@ -824,22 +1039,47 @@ router.get("/email-templates/:key", async (req, res) => {
 });
 
 router.put("/email-templates/:key", async (req, res) => {
-  const items = normalizeEmailTemplates(await getSetting("emailTemplates", []));
-  const template = {
+  const items = await ensureEmailTemplates();
+  const systemDefinition = getSystemEmailTemplateDefinition(req.params.key);
+  const existingTemplate = items.find((item) => item.key === req.params.key) || {};
+  const template = normalizeEmailTemplateRecord({
+    ...(systemDefinition || {}),
+    ...existingTemplate,
     key: req.params.key,
+    label: systemDefinition?.label || existingTemplate.label,
+    description: systemDefinition?.description || existingTemplate.description,
     subjectTemplate: String(req.body?.subjectTemplate || ""),
     htmlTemplate: String(req.body?.htmlTemplate || ""),
-    isActive: req.body?.isActive !== false
-  };
+    isActive: systemDefinition ? true : req.body?.isActive !== false,
+    isSystem: Boolean(systemDefinition || existingTemplate.isSystem),
+    isDeletable: systemDefinition ? false : existingTemplate.isDeletable !== false
+  });
+
   const existingIndex = items.findIndex((item) => item.key === req.params.key);
   if (existingIndex >= 0) items[existingIndex] = template;
   else items.push(template);
-  await setSetting("emailTemplates", items);
+  await setSetting("emailTemplates", mergeEmailTemplates(items));
   return res.json(template);
 });
 
+router.delete("/email-templates/:key", async (req, res) => {
+  const items = await ensureEmailTemplates();
+  if (isSystemEmailTemplateKey(req.params.key)) {
+    return res.status(403).json({ message: "System templates cannot be deleted." });
+  }
+
+  const nextItems = items.filter((item) => String(item?.key || "").trim() !== String(req.params.key || "").trim());
+
+  if (nextItems.length === items.length) {
+    return res.status(404).json({ message: "Template not found." });
+  }
+
+  await setSetting("emailTemplates", mergeEmailTemplates(nextItems));
+  return res.json({ ok: true, key: req.params.key });
+});
+
 router.post("/email-templates/:key/preview", async (req, res) => {
-  const items = normalizeEmailTemplates(await getSetting("emailTemplates", []));
+  const items = await ensureEmailTemplates();
   const template = items.find((item) => item.key === req.params.key);
   if (!template) {
     return res.status(404).json({ message: "Template not found." });
@@ -1041,6 +1281,7 @@ router.post("/courier/steadfast/orders/:id/sync-status", async (req, res) => {
   }
 
   const result = await getSteadfastStatusByConsignmentId(order.courier.consignmentId);
+  const previousFulfillmentStatus = String(order.fulfillmentStatus || "").toLowerCase();
   order.courier = {
     ...(order.courier || {}),
     provider: "steadfast",
@@ -1049,6 +1290,7 @@ router.post("/courier/steadfast/orders/:id/sync-status", async (req, res) => {
   };
   order.fulfillmentStatus = buildFulfillmentStatusFromCourier(order.courier.deliveryStatus, order.fulfillmentStatus);
   await order.save();
+  await notifyOrderStatusTransition(order, previousFulfillmentStatus);
   return res.json({
     ok: true,
     deliveryStatus: order.courier.deliveryStatus,

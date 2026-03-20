@@ -1,9 +1,11 @@
 const nodemailer = require("nodemailer");
+const { env } = require("../config/env");
 const MediaAsset = require("../models/MediaAsset");
-const { getSetting } = require("./settingsService");
 const { getPublicSiteProfile } = require("./siteProfileService");
+const { loadEmailTemplates } = require("./emailTemplateService");
 const { ensureMediaAssetTagIds } = require("../utils/mediaTags");
 const { decryptSecret } = require("../utils/secrets");
+const { getSetting } = require("./settingsService");
 
 function defaultSmtpSettings() {
   return {
@@ -96,6 +98,66 @@ async function attachMediaTemplateContext(context) {
   };
 }
 
+async function buildTransactionalEmailContext(overrides = {}) {
+  const siteProfile = await getPublicSiteProfile();
+  const storefrontBase = String(siteProfile.siteUrl || env.clientUrls[0] || "").replace(/\/$/, "");
+  const normalizedOverrides = overrides && typeof overrides === "object" ? overrides : {};
+
+  return {
+    customer: {
+      name: "",
+      email: "",
+      ...(normalizedOverrides.customer || {})
+    },
+    order: {
+      number: "",
+      total: "",
+      status: "",
+      fulfillment_label: "",
+      payment_status: "",
+      tracking_code: "",
+      items_table: "",
+      items_table_with_images: "",
+      ...(normalizedOverrides.order || {})
+    },
+    shipping: {
+      address: "",
+      city: "",
+      ...(normalizedOverrides.shipping || {})
+    },
+    site: {
+      name: siteProfile.siteName || "BidnSteal",
+      url: storefrontBase,
+      logo_url: siteProfile.logoUrl || "",
+      ...(normalizedOverrides.site || {})
+    },
+    support: {
+      email: siteProfile.supportEmail || env.adminEmail,
+      phone: siteProfile.supportPhone || "",
+      whatsapp: siteProfile.supportWhatsappNumber || "",
+      ...(normalizedOverrides.support || {})
+    },
+    auth: {
+      login_link: storefrontBase ? `${storefrontBase}/login` : "/login",
+      reset_link: storefrontBase ? `${storefrontBase}/reset-password` : "/reset-password",
+      ...(normalizedOverrides.auth || {})
+    },
+    auction: {
+      title: "",
+      amount: "",
+      url: "",
+      ...(normalizedOverrides.auction || {})
+    },
+    product: {
+      title: "",
+      ...(normalizedOverrides.product || {})
+    },
+    media: {
+      ...(normalizedOverrides.media || {})
+    }
+  };
+}
+
 async function createTransport() {
   const smtp = await getSmtpSettings();
   const password = decryptSecret(smtp.passwordEncrypted);
@@ -134,7 +196,7 @@ async function sendEmail({ to, subject, html, text, replyTo }) {
 }
 
 async function loadTemplate(key, fallback) {
-  const templates = await getSetting("emailTemplates", []);
+  const templates = await loadEmailTemplates();
   const found = Array.isArray(templates) ? templates.find((item) => item.key === key && item.isActive !== false) : null;
   return found || fallback;
 }
@@ -162,6 +224,7 @@ async function sendTemplateEmail({ templateKey, to, context, fallbackSubject, fa
 module.exports = {
   createTransport,
   attachMediaTemplateContext,
+  buildTransactionalEmailContext,
   getSmtpSettings,
   renderTemplateString,
   sendEmail,

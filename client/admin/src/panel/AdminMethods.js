@@ -68,6 +68,38 @@ export const adminMethods = {
     return this.checkoutSettings;
   },
 
+  defaultSiteProfile() {
+    return {
+      siteName: "BidnSteal",
+      siteUrl: "",
+      supportEmail: "",
+      supportPhone: "",
+      supportWhatsappNumber: "",
+      facebookUrl: "",
+      logoUrl: "",
+      saving: false
+    };
+  },
+
+  ensureSiteProfile() {
+    const defaults = this.defaultSiteProfile();
+    const current =
+      this.siteProfile && typeof this.siteProfile === "object" ? this.siteProfile : {};
+    this.siteProfile = {
+      ...defaults,
+      ...current,
+      siteName: String(current.siteName || defaults.siteName).trim() || defaults.siteName,
+      siteUrl: String(current.siteUrl || defaults.siteUrl).trim(),
+      supportEmail: String(current.supportEmail || defaults.supportEmail).trim(),
+      supportPhone: String(current.supportPhone || defaults.supportPhone).trim(),
+      supportWhatsappNumber: String(current.supportWhatsappNumber || defaults.supportWhatsappNumber).trim(),
+      facebookUrl: String(current.facebookUrl || defaults.facebookUrl).trim(),
+      logoUrl: String(current.logoUrl || defaults.logoUrl).trim(),
+      saving: Boolean(current.saving)
+    };
+    return this.siteProfile;
+  },
+
   courierDispatchEnabled() {
     return Boolean(
       this.courierSettings &&
@@ -117,6 +149,7 @@ export const adminMethods = {
 
   async init() {
     this.restoreLocalSettings();
+    this.ensureSiteProfile();
     this.ensureCourierSettings();
     this.ensureCheckoutSettings();
     this.refreshIcons();
@@ -209,6 +242,23 @@ export const adminMethods = {
     }
     this.localSettings.auctionView = nextView;
     this.persistLocalSettings();
+  },
+
+  setAuctionScope(scope) {
+    const nextScope = String(scope || "").toLowerCase() === "past" ? "past" : "active";
+    if (this.auctionFilters.scope === nextScope) {
+      return;
+    }
+
+    this.auctionFilters.scope = nextScope;
+    const nextStatus = String(this.auctionFilters.status || "").trim().toLowerCase();
+    const allowedStatuses = nextScope === "past"
+      ? new Set(["", "ended", "cancelled"])
+      : new Set(["", "scheduled", "live"]);
+
+    if (!allowedStatuses.has(nextStatus)) {
+      this.auctionFilters.status = "";
+    }
   },
 
   async loadTab(tab, options = {}) {
@@ -1165,7 +1215,7 @@ export const adminMethods = {
     let sevenDayRevenue = 0;
     let thirtyDayRevenue = 0;
     let pendingOrders = 0;
-    const statusCounts = { delivered: 0, processing: 0, cancelled: 0, pending: 0, shipped: 0 };
+    const statusCounts = { delivered: 0, processing: 0, on_hold: 0, cancelled: 0, pending: 0, shipped: 0 };
 
     orders.forEach((order) => {
       const createdAt = new Date(order.createdAt).getTime();
@@ -1938,8 +1988,9 @@ export const adminMethods = {
   },
 
   async openEmailMediaPicker(target = "template") {
-    this.emailMediaPicker.target = target === "campaign" ? "campaign" : "template";
+    this.emailMediaPicker.target = ["campaign", "siteLogo"].includes(target) ? target : "template";
     this.emailMediaPicker.search = "";
+    this.emailMediaPicker.alt = "";
     this.emailMediaPicker.open = true;
     if (this.mediaAssets.length && !String(this.mediaFilters.search || "").trim()) {
       return;
@@ -1987,6 +2038,19 @@ export const adminMethods = {
     const target = targetOverride || this.emailMediaPicker.target || "template";
     const source = this.resolveEmailImageSource(itemOrUrl, target);
     if (!source) return;
+    if (target === "siteLogo") {
+      const profile = this.ensureSiteProfile ? this.ensureSiteProfile() : this.siteProfile;
+      const rawUrl = itemOrUrl && typeof itemOrUrl === "object"
+        ? String(itemOrUrl.url || source || "").trim()
+        : String(itemOrUrl || source || "").trim();
+      profile.logoUrl = rawUrl || source;
+      this.siteProfile = profile;
+      this.setActiveTab("settings");
+      this.notify("Logo selected from media.", "success");
+      this.emailMediaPicker.open = false;
+      return;
+    }
+
     const snippet = this.buildEmailImageTag(source);
 
     if (target === "campaign") {
@@ -2136,7 +2200,13 @@ export const adminMethods = {
   filteredAuctionCards() {
     const search = String(this.auctionFilters.search || "").toLowerCase().trim();
     const status = String(this.auctionFilters.status || "").toLowerCase().trim();
+    const scope = String(this.auctionFilters.scope || "active").toLowerCase().trim();
     return (this.auctionCards || []).filter((item) => {
+      const itemStatus = String(item.status || "").toLowerCase();
+      const isPastAuction = itemStatus === "ended" || itemStatus === "cancelled";
+      if (scope === "past" ? !isPastAuction : isPastAuction) {
+        return false;
+      }
       if (status && String(item.status || "").toLowerCase() !== status) {
         return false;
       }
@@ -2146,12 +2216,16 @@ export const adminMethods = {
       const title = String(item.title || "").toLowerCase();
       const slug = String(item.productSlug || "").toLowerCase();
       const productId = String(item.productId || "").toLowerCase();
+      const highestBidderName = String(item.highestBid?.bidderName || item.highestBid?.name || "").toLowerCase();
+      const highestBidderEmail = String(item.highestBid?.bidderEmail || item.highestBid?.email || "").toLowerCase();
       const winnerName = String(item.winner?.name || "").toLowerCase();
       const winnerEmail = String(item.winner?.email || "").toLowerCase();
       return (
         title.includes(search) ||
         slug.includes(search) ||
         productId.includes(search) ||
+        highestBidderName.includes(search) ||
+        highestBidderEmail.includes(search) ||
         winnerName.includes(search) ||
         winnerEmail.includes(search)
       );
@@ -2243,6 +2317,7 @@ export const adminMethods = {
     this.auctionDetailsModal.open = true;
     this.auctionDetailsModal.loading = true;
     this.auctionDetailsModal.saving = false;
+    this.auctionDetailsModal.removingBidId = "";
     this.auctionDetailsModal.detail = null;
     this.syncAuctionDetailsDraft(null);
 
@@ -2262,6 +2337,7 @@ export const adminMethods = {
     this.auctionDetailsModal.open = false;
     this.auctionDetailsModal.loading = false;
     this.auctionDetailsModal.saving = false;
+    this.auctionDetailsModal.removingBidId = "";
     this.auctionDetailsModal.detail = null;
     this.syncAuctionDetailsDraft(null);
   },
@@ -2278,6 +2354,43 @@ export const adminMethods = {
       this.notify(this.errorMessage(error), "error");
     } finally {
       this.auctionDetailsModal.loading = false;
+    }
+  },
+
+  async removeAuctionBid(bid) {
+    const detail = this.auctionDetailsModal.detail;
+    const auctionId = String(detail?.id || detail?._id || detail?.productSlug || detail?.productId || "").trim();
+    const bidId = String(bid?.id || bid?._id || "").trim();
+    if (!auctionId || !bidId) return;
+
+    const bidder = this.auctionBidderLabel ? this.auctionBidderLabel(bid) : "this bidder";
+    const amount = this.currency ? this.currency(bid.amount) : String(bid.amount || 0);
+    const highestAmount = Number(detail?.currentPrice || detail?.highestBid?.amount || 0);
+    const isHighestBid = Number(bid?.amount || 0) >= highestAmount && highestAmount > 0;
+    const prompt = isHighestBid
+      ? `Remove the current highest bid ${amount} by ${bidder}? The auction price and bidder will be recalculated.`
+      : `Remove bid ${amount} by ${bidder}?`;
+
+    if (!confirm(prompt)) {
+      return;
+    }
+
+    this.auctionDetailsModal.removingBidId = bidId;
+    try {
+      const updated = await this.apiRequest(`/admin/auctions/${encodeURIComponent(auctionId)}/bids/${encodeURIComponent(bidId)}`, {
+        method: "DELETE"
+      });
+      this.auctionDetailsModal.detail = updated;
+      this.syncAuctionDetailsDraft(updated);
+      await this.loadAuctions(true);
+      this.loadedTabs.dashboard = false;
+      this.notify("Bid removed from auction.", "success");
+    } catch (error) {
+      this.notify(this.errorMessage(error), "error");
+    } finally {
+      if (String(this.auctionDetailsModal.removingBidId || "") === bidId) {
+        this.auctionDetailsModal.removingBidId = "";
+      }
     }
   },
 
@@ -3739,141 +3852,44 @@ export const adminMethods = {
     }
   },
 
-  campaignTemplateRef(template) {
-    if (!template || typeof template !== "object") {
-      return "";
-    }
-    const byId = String(template.id || template._id || "").trim();
-    if (byId) {
-      return byId;
-    }
-    return String(template.key || "").trim();
-  },
-
-  campaignTemplateById(templateId) {
-    const normalizedId = String(templateId || "").trim();
-    if (!normalizedId) {
-      return null;
-    }
-
-    return (
-      this.campaignTemplates.find((template) => {
-        const ref = this.campaignTemplateRef(template);
-        return ref === normalizedId || String(template.key || "").trim() === normalizedId;
-      }) || null
-    );
-  },
-
-  applyCampaignTemplateById(templateId) {
-    const template = this.campaignTemplateById(templateId);
-    if (!template) {
-      this.selectedCampaignTemplateId = "";
+  applyEmailTemplateToCampaign(templateKey, options = {}) {
+    const normalizedKey = String(templateKey || "").trim();
+    if (!normalizedKey) {
+      this.selectedCampaignTemplateKey = "";
       return;
     }
 
-    this.selectedCampaignTemplateId = this.campaignTemplateRef(template);
-    this.campaignTemplateName = String(template.name || "");
-    this.campaignDraft.subject = String(template.subject || "");
-    this.campaignDraft.html = String(template.html || "");
-    this.notify("Campaign template loaded.", "success");
+    const template = this.emailTemplateByKey(normalizedKey);
+    if (!template) {
+      this.selectedCampaignTemplateKey = "";
+      if (options.notify !== false) {
+        this.notify("Selected email template was not found.", "error");
+      }
+      return;
+    }
+
+    this.selectedCampaignTemplateKey = template.key;
+    this.campaignDraft.subject = String(template.subjectTemplate || "");
+    this.campaignDraft.html = String(template.htmlTemplate || "");
+
+    if (options.notify !== false) {
+      this.notify(`Loaded "${template.key}" into the campaign draft.`, "success");
+    }
   },
 
   clearCampaignTemplateSelection() {
-    this.selectedCampaignTemplateId = "";
-    this.campaignTemplateName = "";
+    this.selectedCampaignTemplateKey = "";
   },
 
   async loadCampaignTemplates() {
-    const response = await this.apiRequest("/admin/campaigns/templates?page=1&limit=100");
-    this.campaignTemplates = (response.items || []).map((item) => ({
-      ...item,
-      id: this.campaignTemplateRef(item)
-    }));
-
-    if (!this.selectedCampaignTemplateId) {
-      return;
-    }
-    const selected = this.campaignTemplateById(this.selectedCampaignTemplateId);
-    if (!selected) {
-      this.clearCampaignTemplateSelection();
-    }
-  },
-
-  async saveCampaignTemplate() {
-    try {
-      const name = String(this.campaignTemplateName || "").trim();
-      const subject = String(this.campaignDraft.subject || "").trim();
-      const html = String(this.campaignDraft.html || "").trim();
-
-      if (!name) {
-        throw new Error("Template name is required.");
-      }
-      if (!subject || !html) {
-        throw new Error("Template subject and html are required.");
-      }
-
-      const body = { name, subject, html };
-      let savedTemplate;
-      const selectedId = String(this.selectedCampaignTemplateId || "").trim();
-      if (selectedId) {
-        savedTemplate = await this.apiRequest(`/admin/campaigns/templates/${selectedId}`, {
-          method: "PATCH",
-          body
-        });
-      } else {
-        savedTemplate = await this.apiRequest("/admin/campaigns/templates", {
-          method: "POST",
-          body
-        });
-      }
-
-      await this.loadCampaignTemplates();
-      const savedTemplateRef = this.campaignTemplateRef(savedTemplate);
-      this.selectedCampaignTemplateId = savedTemplateRef;
-      this.campaignTemplateName = String(savedTemplate?.name || name);
-      if (savedTemplateRef) {
-        this.applyCampaignTemplateById(savedTemplateRef);
-      }
-      this.notify(selectedId ? "Campaign template updated." : "Campaign template saved.", "success");
-    } catch (error) {
-      this.notify(this.errorMessage(error), "error");
-    }
-  },
-
-  async deleteCampaignTemplate(template) {
-    try {
-      const target =
-        template ||
-        this.campaignTemplateById(this.selectedCampaignTemplateId) ||
-        this.campaignTemplates.find(
-          (item) =>
-            String(item.name || "").trim().toLowerCase() ===
-            String(this.campaignTemplateName || "").trim().toLowerCase()
-        );
-      const targetRef = this.campaignTemplateRef(target);
-      if (!targetRef) {
-        throw new Error("Select a template to delete.");
-      }
-      if (!confirm(`Delete campaign template "${target.name}"?`)) {
-        return;
-      }
-      await this.apiRequest(`/admin/campaigns/templates/${encodeURIComponent(targetRef)}`, {
-        method: "DELETE"
-      });
-      if (String(targetRef) === String(this.selectedCampaignTemplateId || "")) {
-        this.clearCampaignTemplateSelection();
-      }
-      this.notify("Campaign template deleted.", "success");
-      await this.loadCampaignTemplates();
-    } catch (error) {
-      this.notify(this.errorMessage(error), "error");
-    }
+    const response = await this.apiRequest("/admin/email-templates");
+    this.setEmailTemplateLibrary(response.items || []);
   },
 
   async loadCampaigns() {
     const [campaignResponse, templateResponse] = await Promise.all([
       this.apiRequest("/admin/campaigns?page=1&limit=50"),
-      this.apiRequest("/admin/campaigns/templates?page=1&limit=100")
+      this.apiRequest("/admin/email-templates")
     ]);
     this.campaigns = (campaignResponse.items || []).map((item) => ({
       ...item,
@@ -3884,14 +3900,7 @@ export const adminMethods = {
       hourlyRateLimit: Number(item?.hourlyRateLimit || 0),
       dailyRateLimit: Number(item?.dailyRateLimit || 0)
     }));
-    this.campaignTemplates = (templateResponse.items || []).map((item) => ({
-      ...item,
-      id: this.campaignTemplateRef(item)
-    }));
-
-    if (this.selectedCampaignTemplateId && !this.campaignTemplateById(this.selectedCampaignTemplateId)) {
-      this.clearCampaignTemplateSelection();
-    }
+    this.setEmailTemplateLibrary(templateResponse.items || []);
   },
 
   closeCampaignPreview() {
@@ -3952,6 +3961,7 @@ export const adminMethods = {
           dailyRateLimit
         }
       });
+      this.selectedCampaignTemplateKey = "";
       this.campaignDraft.subject = "";
       this.campaignDraft.html = "";
       this.campaignDraft.hourlyRateLimit = "0";
@@ -4020,7 +4030,7 @@ export const adminMethods = {
         lastOrderAt: user.lastOrderAt || null
       }));
 
-    const counts = { delivered: 0, processing: 0, cancelled: 0, pending: 0, shipped: 0 };
+    const counts = { delivered: 0, processing: 0, on_hold: 0, cancelled: 0, pending: 0, shipped: 0 };
     this.orders.forEach((order) => {
       if (counts[order.fulfillmentStatus] !== undefined) {
         counts[order.fulfillmentStatus] += 1;
@@ -4083,13 +4093,68 @@ export const adminMethods = {
     }
   },
 
-  async loadCoupons() {
+  async loadCoupons(force = false) {
+    if (force || !Array.isArray(this.couponProducts) || !this.couponProducts.length) {
+      await this.loadCouponProducts(force);
+    }
     const response = await this.apiRequest(`/admin/coupons?${this.toQueryString({
       page: 1,
       limit: 100,
       isActive: this.couponFilters.isActive
     })}`);
-    this.coupons = response.items || [];
+    this.coupons = (response.items || []).map((coupon) => ({
+      ...coupon,
+      customerUsageMode: coupon.customerUsageMode === "once" ? "once" : "multiple",
+      productIds: this.normalizeCouponProductIds(coupon.productIds),
+      targetProducts: Array.isArray(coupon.targetProducts) ? coupon.targetProducts : []
+    }));
+  },
+
+  async loadCouponProducts(force = false) {
+    if (!force && Array.isArray(this.couponProducts) && this.couponProducts.length) {
+      return this.couponProducts;
+    }
+
+    const response = await this.apiRequest(`/admin/products?${this.toQueryString({
+      page: 1,
+      limit: 500,
+      search: "",
+      saleMode: "",
+      trash: "false"
+    })}`);
+
+    this.couponProducts = (response.items || [])
+      .map((item) => {
+        const id = this.productIdentifier(item);
+        return {
+          id,
+          title: String(item.title || "").trim() || "Untitled product",
+          slug: String(item.slug || "").trim(),
+          saleMode: String(item.saleMode || "fixed").trim() || "fixed"
+        };
+      })
+      .filter((item) => item.id)
+      .sort((left, right) => left.title.localeCompare(right.title));
+
+    return this.couponProducts;
+  },
+
+  normalizeCouponProductIds(values) {
+    const seen = new Set();
+    return (Array.isArray(values) ? values : [])
+      .map((value) => {
+        if (value && typeof value === "object") {
+          return String(value.id || value._id || "").trim();
+        }
+        return String(value || "").trim();
+      })
+      .filter((value) => {
+        if (!value || seen.has(value)) {
+          return false;
+        }
+        seen.add(value);
+        return true;
+      });
   },
 
   async applyCouponFilters() {
@@ -4115,6 +4180,8 @@ export const adminMethods = {
           expiresAt: new Date(this.couponDraft.expiresAt).toISOString(),
           minOrderAmount: Number(this.couponDraft.minOrderAmount || 0),
           appliesTo: this.couponDraft.appliesTo,
+          customerUsageMode: this.couponDraft.customerUsageMode === "once" ? "once" : "multiple",
+          productIds: this.normalizeCouponProductIds(this.couponDraft.productIds),
           isActive: Boolean(this.couponDraft.isActive)
         }
       });
@@ -4126,6 +4193,8 @@ export const adminMethods = {
         expiresAt: "",
         minOrderAmount: "0",
         appliesTo: "both",
+        customerUsageMode: "multiple",
+        productIds: [],
         isActive: true
       };
       this.notify("Coupon created.", "success");
@@ -4149,6 +4218,8 @@ export const adminMethods = {
           expiresAt: coupon.expiresAt ? new Date(coupon.expiresAt).toISOString() : undefined,
           minOrderAmount: Number(coupon.minOrderAmount || 0),
           appliesTo: coupon.appliesTo,
+          customerUsageMode: coupon.customerUsageMode === "once" ? "once" : "multiple",
+          productIds: this.normalizeCouponProductIds(coupon.productIds),
           isActive: Boolean(coupon.isActive)
         }
       });
@@ -4223,10 +4294,93 @@ export const adminMethods = {
     this.notify("Monthly financial CSV downloaded.", "success");
   },
 
+  normalizeEmailTemplateRecord(item = {}) {
+    const key = String(item.key || "").trim();
+    return {
+      ...item,
+      key,
+      label: String(item.label || item.name || key || "").trim(),
+      description: String(item.description || "").trim(),
+      subjectTemplate: String(item.subjectTemplate || item.subject || ""),
+      htmlTemplate: String(item.htmlTemplate || item.html || ""),
+      isActive: item.isActive !== false,
+      isSystem: Boolean(item.isSystem),
+      isDeletable: item.isSystem ? false : item.isDeletable !== false
+    };
+  },
+
+  emailTemplateByKey(key) {
+    const normalizedKey = String(key || "").trim();
+    if (!normalizedKey) {
+      return null;
+    }
+
+    return (
+      (Array.isArray(this.emailTemplates) ? this.emailTemplates : []).find(
+        (item) => String(item?.key || "").trim() === normalizedKey
+      ) || null
+    );
+  },
+
+  setEmailTemplateLibrary(items = []) {
+    const normalizedItems = (Array.isArray(items) ? items : [])
+      .map((item) => this.normalizeEmailTemplateRecord(item))
+      .filter((item) => item.key);
+
+    this.emailTemplates = normalizedItems;
+    this.templateKeys = normalizedItems.map((item) => item.key);
+
+    if (this.templateEditor.selectedKey && !this.emailTemplateByKey(this.templateEditor.selectedKey)) {
+      this.templateEditor.selectedKey = "";
+    }
+
+    if (!this.templateEditor.selectedKey && this.templateKeys.length) {
+      this.templateEditor.selectedKey = this.templateKeys[0];
+    }
+
+    if (!this.templateEditor.selectedKey) {
+      this.templateEditor.key = "";
+      this.templateEditor.subjectTemplate = "";
+      this.templateEditor.htmlTemplate = "";
+    }
+
+    if (this.selectedCampaignTemplateKey && !this.emailTemplateByKey(this.selectedCampaignTemplateKey)) {
+      this.selectedCampaignTemplateKey = "";
+    }
+
+    return normalizedItems;
+  },
+
+  upsertEmailTemplateRecord(item = {}) {
+    const normalized = this.normalizeEmailTemplateRecord(item);
+    if (!normalized.key) {
+      return null;
+    }
+
+    const nextItems = Array.isArray(this.emailTemplates) ? [...this.emailTemplates] : [];
+    const existingIndex = nextItems.findIndex(
+      (entry) => String(entry?.key || "").trim() === normalized.key
+    );
+
+    if (existingIndex >= 0) {
+      nextItems[existingIndex] = {
+        ...nextItems[existingIndex],
+        ...normalized
+      };
+    } else {
+      nextItems.push(normalized);
+    }
+
+    this.setEmailTemplateLibrary(nextItems);
+    return normalized;
+  },
+
   async loadSettings() {
+    this.ensureSiteProfile();
     this.ensureCourierSettings();
     this.ensureCheckoutSettings();
     const settled = await Promise.allSettled([
+      this.apiRequest("/admin/site-profile"),
       this.apiRequest("/admin/email-templates"),
       this.apiRequest("/admin/email-templates/transport/smtp"),
       this.apiRequest("/admin/courier/steadfast/settings"),
@@ -4234,16 +4388,25 @@ export const adminMethods = {
     ]);
 
     const ok = (idx, fallback) => settled[idx].status === 'fulfilled' ? settled[idx].value : fallback;
-    const templateResponse = ok(0, { items: [] });
-    const smtpResponse = ok(1, {});
-    const courierResponse = ok(2, {});
-    const checkoutResponse = ok(3, {});
+    const siteProfileResponse = ok(0, this.defaultSiteProfile());
+    const templateResponse = ok(1, { items: [] });
+    const smtpResponse = ok(2, {});
+    const courierResponse = ok(3, {});
+    const checkoutResponse = ok(4, {});
 
-    const items = templateResponse.items || [];
-    this.templateKeys = items.map((item) => item.key);
-    if (!this.templateEditor.selectedKey && this.templateKeys.length) {
-      this.templateEditor.selectedKey = this.templateKeys[0];
-    }
+    this.siteProfile = {
+      ...this.ensureSiteProfile(),
+      siteName: String(siteProfileResponse.siteName || "BidnSteal"),
+      siteUrl: String(siteProfileResponse.siteUrl || ""),
+      supportEmail: String(siteProfileResponse.supportEmail || ""),
+      supportPhone: String(siteProfileResponse.supportPhone || ""),
+      supportWhatsappNumber: String(siteProfileResponse.supportWhatsappNumber || ""),
+      facebookUrl: String(siteProfileResponse.facebookUrl || ""),
+      logoUrl: String(siteProfileResponse.logoUrl || ""),
+      saving: false
+    };
+
+    this.setEmailTemplateLibrary(templateResponse.items || []);
     if (this.templateEditor.selectedKey) {
       await this.selectTemplate(this.templateEditor.selectedKey).catch(() => { });
     }
@@ -4371,6 +4534,49 @@ export const adminMethods = {
     }
   },
 
+  async saveSiteProfile() {
+    const profile = this.ensureSiteProfile();
+    profile.saving = true;
+
+    try {
+      const payload = {
+        siteName: String(profile.siteName || "").trim() || "BidnSteal",
+        siteUrl: String(profile.siteUrl || "").trim(),
+        supportEmail: String(profile.supportEmail || "").trim(),
+        supportPhone: String(profile.supportPhone || "").trim(),
+        supportWhatsappNumber: String(profile.supportWhatsappNumber || "").trim(),
+        facebookUrl: String(profile.facebookUrl || "").trim(),
+        logoUrl: String(profile.logoUrl || "").trim()
+      };
+
+      const saved = await this.apiRequest("/admin/site-profile", {
+        method: "PUT",
+        body: payload
+      });
+
+      this.siteProfile = {
+        ...profile,
+        siteName: String(saved.siteName || payload.siteName || "BidnSteal"),
+        siteUrl: String(saved.siteUrl || ""),
+        supportEmail: String(saved.supportEmail || ""),
+        supportPhone: String(saved.supportPhone || ""),
+        supportWhatsappNumber: String(saved.supportWhatsappNumber || ""),
+        facebookUrl: String(saved.facebookUrl || ""),
+        logoUrl: String(saved.logoUrl || ""),
+        saving: false
+      };
+      this.notify("Brand settings saved.", "success");
+    } catch (error) {
+      this.notify(this.errorMessage(error), "error");
+    } finally {
+      profile.saving = false;
+      this.siteProfile = {
+        ...this.ensureSiteProfile(),
+        saving: false
+      };
+    }
+  },
+
   async checkCourierBalance() {
     const settings = this.ensureCourierSettings();
     settings.balanceLoading = true;
@@ -4461,17 +4667,31 @@ export const adminMethods = {
 
   async selectTemplate(key) {
     if (!key) return;
-    const template = await this.apiRequest(`/admin/email-templates/${key}`);
+    const template = this.emailTemplateByKey(key) || await this.apiRequest(`/admin/email-templates/${key}`);
+    this.upsertEmailTemplateRecord(template);
     this.templateEditor.selectedKey = template.key;
     this.templateEditor.key = template.key;
     this.templateEditor.subjectTemplate = template.subjectTemplate;
     this.templateEditor.htmlTemplate = template.htmlTemplate;
   },
+
+  startNewTemplate() {
+    this.templateEditor.selectedKey = "";
+    this.templateEditor.key = "";
+    this.templateEditor.subjectTemplate = "";
+    this.templateEditor.htmlTemplate = "";
+    this.templatePreview = { subject: "", html: "" };
+  },
+
   async createTemplate() {
     if (!this.templateEditor.key || !this.templateEditor.subjectTemplate || !this.templateEditor.htmlTemplate) {
       throw new Error("Template key, subject, and html are required.");
     }
-    await this.apiRequest("/admin/email-templates", {
+    const existingTemplate = this.emailTemplateByKey(this.templateEditor.key);
+    if (existingTemplate?.isSystem) {
+      throw new Error("This system template already exists. Use Update instead.");
+    }
+    const created = await this.apiRequest("/admin/email-templates", {
       method: "POST",
       body: {
         key: this.templateEditor.key,
@@ -4480,14 +4700,15 @@ export const adminMethods = {
         isActive: true
       }
     });
+    this.upsertEmailTemplateRecord(created);
     this.notify("Template created.", "success");
-    await this.loadSettings();
+    await this.selectTemplate(created.key);
   },
 
   async updateTemplate() {
     const key = this.templateEditor.selectedKey || this.templateEditor.key;
     if (!key) throw new Error("Template key required.");
-    await this.apiRequest(`/admin/email-templates/${key}`, {
+    const updated = await this.apiRequest(`/admin/email-templates/${key}`, {
       method: "PUT",
       body: {
         subjectTemplate: this.templateEditor.subjectTemplate,
@@ -4495,7 +4716,41 @@ export const adminMethods = {
         isActive: true
       }
     });
+    this.upsertEmailTemplateRecord(updated);
+    this.templateEditor.selectedKey = updated.key;
+    this.templateEditor.key = updated.key;
     this.notify("Template updated.", "success");
+  },
+
+  async deleteTemplate() {
+    const key = String(this.templateEditor.selectedKey || this.templateEditor.key || "").trim();
+    if (!key) {
+      throw new Error("Select a template to delete.");
+    }
+    const template = this.emailTemplateByKey(key);
+    if (template?.isDeletable === false) {
+      throw new Error("System templates cannot be deleted.");
+    }
+    if (!confirm(`Delete template ${key}?`)) {
+      return;
+    }
+
+    await this.apiRequest(`/admin/email-templates/${key}`, {
+      method: "DELETE"
+    });
+
+    const remainingItems = (Array.isArray(this.emailTemplates) ? this.emailTemplates : [])
+      .filter((item) => String(item?.key || "").trim() !== key);
+
+    this.setEmailTemplateLibrary(remainingItems);
+
+    if (this.templateKeys.length) {
+      await this.selectTemplate(this.templateEditor.selectedKey || this.templateKeys[0]);
+    } else {
+      this.templatePreview = { subject: "", html: "" };
+    }
+
+    this.notify("Template deleted.", "success");
   },
 
   async previewTemplate() {
@@ -4929,95 +5184,6 @@ export const adminMethods = {
     }
   },
 
-  async openAuctionCreate() {
-    try {
-      if (!this.inventory.length) {
-        await this.loadInventory();
-      }
-    } catch (error) {
-      this.notify(this.errorMessage(error), "error");
-      return;
-    }
-    const auctionWindow = this.defaultAuctionWindow();
-    this.auctionModal.form = {
-      productId: "",
-      startAt: auctionWindow.startAt,
-      endAt: auctionWindow.endAt,
-      startingPrice: "",
-      reservePrice: "",
-      minIncrement: "1"
-    };
-    this.auctionModal.open = true;
-    this.refreshIcons();
-  },
-
-  closeAuctionModal() {
-    this.auctionModal.open = false;
-    this.auctionModal.saving = false;
-  },
-
-  async saveAuctionModal() {
-    const form = this.auctionModal.form;
-    const productId = String(form.productId || "").trim();
-    if (!productId || !form.startAt || !form.endAt) {
-      throw new Error("Product, start, and end are required.");
-    }
-
-    const startAtDate = new Date(form.startAt);
-    const endAtDate = new Date(form.endAt);
-    if (Number.isNaN(startAtDate.getTime()) || Number.isNaN(endAtDate.getTime())) {
-      throw new Error("Invalid auction start/end time.");
-    }
-    if (endAtDate.getTime() <= startAtDate.getTime()) {
-      throw new Error("Auction end time must be after start time.");
-    }
-    if (startAtDate.getTime() <= Date.now()) {
-      throw new Error("Auction start time must be in the future.");
-    }
-
-    const startingPriceRaw = String(form.startingPrice ?? "").trim();
-    const minIncrementRaw = String(form.minIncrement ?? "").trim();
-    const reservePriceRaw = String(form.reservePrice ?? "").trim();
-
-    const startingPrice = Number(startingPriceRaw === "" ? 0 : startingPriceRaw);
-    const minIncrement = Number(minIncrementRaw === "" ? 1 : minIncrementRaw);
-    const reservePrice = reservePriceRaw === "" ? undefined : Number(reservePriceRaw);
-
-    if (!Number.isFinite(startingPrice) || !Number.isInteger(startingPrice) || startingPrice < 0) {
-      throw new Error("Starting price must be a whole number 0 or higher.");
-    }
-    if (!Number.isFinite(minIncrement) || !Number.isInteger(minIncrement) || minIncrement < 1) {
-      throw new Error("Minimum bid increment must be a whole number 1 or higher.");
-    }
-    if (
-      reservePrice !== undefined &&
-      (!Number.isFinite(reservePrice) || !Number.isInteger(reservePrice) || reservePrice < 0)
-    ) {
-      throw new Error("Reserve price must be a whole number 0 or higher.");
-    }
-
-    this.auctionModal.saving = true;
-    try {
-      await this.apiRequest("/admin/auctions", {
-        method: "POST",
-        body: {
-          productId,
-          startAt: startAtDate.toISOString(),
-          endAt: endAtDate.toISOString(),
-          startingPrice,
-          reservePrice,
-          minIncrement
-        }
-      });
-      this.notify("Auction created.", "success");
-      this.closeAuctionModal();
-      await this.loadAuctions(true);
-    } catch (error) {
-      this.notify(this.errorMessage(error), "error");
-    } finally {
-      this.auctionModal.saving = false;
-    }
-  },
   renderRevenueChart() {
     const series = this.revenueSeries[this.revenueWindow] || { labels: [], values: [] };
     const labels = series.labels.length ? series.labels : ["No data"];
@@ -5179,6 +5345,7 @@ export const adminMethods = {
     const values = counts || {
       delivered: 0,
       processing: 0,
+      on_hold: 0,
       cancelled: 0,
       pending: 0,
       shipped: 0
@@ -5187,11 +5354,11 @@ export const adminMethods = {
     this.charts.ordersPie = new Chart(context, {
       type: "doughnut",
       data: {
-        labels: ["Delivered", "Processing", "Shipped", "Pending", "Cancelled"],
+        labels: ["Delivered", "Processing", "On Hold", "Shipped", "Pending", "Cancelled"],
         datasets: [
           {
-            data: [values.delivered, values.processing, values.shipped, values.pending, values.cancelled],
-            backgroundColor: ["#7fa85b", "#b4cc57", "#c39b59", "#d4b85e", "#c97767"],
+            data: [values.delivered, values.processing, values.on_hold, values.shipped, values.pending, values.cancelled],
+            backgroundColor: ["#7fa85b", "#b4cc57", "#8fa27a", "#c39b59", "#d4b85e", "#c97767"],
             borderWidth: 0,
             cutout: "70%"
           }

@@ -7,6 +7,29 @@ const label = { display: 'block', marginBottom: '6px', fontSize: '11px', fontWei
 const card = { display: 'grid', gap: '6px', padding: '12px', border: '1px solid var(--border)', background: '#ffffff', borderRadius: '18px' };
 const grid = (min) => ({ display: 'grid', gridTemplateColumns: `repeat(auto-fit, minmax(${min}px, 1fr))`, gap: '12px' });
 
+function SummaryCard({ title, value, monoValue = false }) {
+  return (
+    <div className="user-details-summary-card">
+      <span className="user-details-summary-label">{title}</span>
+      <strong className={`user-details-summary-value${monoValue ? ' user-details-summary-value--mono' : ''}`}>{value}</strong>
+    </div>
+  );
+}
+
+function SectionCard({ title, meta, children }) {
+  return (
+    <section className="admin-inset-card user-details-section-card">
+      <div className="admin-inset-card-head">
+        <div className="admin-inset-card-copy">
+          <h4 className="admin-inset-card-title">{title}</h4>
+        </div>
+        {meta ? <span className="admin-inset-card-meta">{meta}</span> : null}
+      </div>
+      {children}
+    </section>
+  );
+}
+
 export function UserDetailsSurface({ variant = 'modal', onClose }) {
   const admin = useAdmin();
   const { selectedUserDetails, userDetailsDraft, userDetailsLoading, userDetailsSaving } = admin;
@@ -62,22 +85,18 @@ export function UserDetailsSurface({ variant = 'modal', onClose }) {
         {userDetailsLoading ? (
           <p style={{ margin: 0, color: 'var(--muted)' }}>Loading user data...</p>
         ) : details ? (
-          <div style={{ display: 'grid', gap: '16px' }}>
-            <div style={grid(180)}>
-              <div style={card}><span style={label}>Name</span><strong style={{ color: 'var(--text)' }}>{details.name || '-'}</strong></div>
-              <div style={card}><span style={label}>Role</span><strong style={{ color: 'var(--text)' }}>{details.role || '-'}</strong></div>
-              <div style={card}><span style={label}>Status</span><strong style={{ color: 'var(--text)' }}>{details.isSuspended ? 'suspended' : 'active'}</strong></div>
-              <div style={card}><span style={label}>Phone</span><strong style={{ ...mono, color: 'var(--text)' }}>{details.phone || '-'}</strong></div>
-              <div style={card}><span style={label}>Total Orders</span><strong style={{ ...mono, color: 'var(--text)' }}>{admin.number ? admin.number(details.orderCount) : details.orderCount}</strong></div>
-              <div style={card}><span style={label}>Total Spent</span><strong style={{ ...mono, color: 'var(--text)' }}>{admin.currency ? admin.currency(details.totalSpent) : details.totalSpent}</strong></div>
+          <div className="user-details-content-stack">
+            <div className="user-details-summary-grid">
+              <SummaryCard title="Name" value={details.name || '-'} />
+              <SummaryCard title="Role" value={details.role || '-'} />
+              <SummaryCard title="Status" value={details.isSuspended ? 'suspended' : 'active'} />
+              <SummaryCard title="Phone" value={details.phone || '-'} monoValue />
+              <SummaryCard title="Total Orders" value={admin.number ? admin.number(details.orderCount) : details.orderCount} monoValue />
+              <SummaryCard title="Total Spent" value={admin.currency ? admin.currency(details.totalSpent) : details.totalSpent} monoValue />
             </div>
 
-            <div className="admin-inset-card" style={{ marginBottom: 0 }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', marginBottom: '12px' }}>
-                <h4 style={{ margin: 0, fontSize: '15px', fontWeight: 700 }}>Edit User Details</h4>
-                <span style={{ color: 'var(--muted)', fontSize: '12px' }}>Admin editable</span>
-              </div>
-              <div style={grid(180)}>
+            <SectionCard title="Edit User Details" meta="Admin editable">
+              <div className="user-details-field-grid">
                 <label style={{ display: 'grid', gap: '6px' }}>
                   <span style={label}>Name</span>
                   <input
@@ -136,14 +155,10 @@ export function UserDetailsSurface({ variant = 'modal', onClose }) {
                   </button>
                 </div>
               </div>
-            </div>
+            </SectionCard>
 
-            <div className="admin-inset-card" style={{ marginBottom: 0 }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', marginBottom: '12px' }}>
-                <h4 style={{ margin: 0, fontSize: '15px', fontWeight: 700 }}>Primary Shipping Address</h4>
-                <span style={{ color: 'var(--muted)', fontSize: '12px' }}>Saved to user profile</span>
-              </div>
-              <div style={grid(180)}>
+            <SectionCard title="Primary Shipping Address" meta="Saved to user profile">
+              <div className="user-details-field-grid">
                 <label style={{ display: 'grid', gap: '6px' }}>
                   <span style={label}>Full Name</span>
                   <input
@@ -217,32 +232,24 @@ export function UserDetailsSurface({ variant = 'modal', onClose }) {
                   />
                 </label>
               </div>
-            </div>
+            </SectionCard>
 
-            <div className="admin-inset-card" style={{ marginBottom: 0 }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', marginBottom: '12px' }}>
-                <h4 style={{ margin: 0, fontSize: '15px', fontWeight: 700 }}>Address Book</h4>
-                <span style={{ color: 'var(--muted)', fontSize: '12px' }}>{admin.number ? admin.number(addresses.length) : addresses.length} saved</span>
-              </div>
+            <SectionCard title="Address Book" meta={`${admin.number ? admin.number(addresses.length) : addresses.length} saved`}>
               <div style={{ display: 'grid', gap: '12px' }}>
                 {addresses.length ? addresses.map((address, index) => (
                   <div key={`${index}-${address.label || address.addressLine1 || 'address'}`} style={card}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px' }}>
+                    <div className="user-details-address-head">
                       <strong style={{ color: 'var(--text)' }}>{address.label || `Address #${index + 1}`}</strong>
-                      <span style={{ ...mono, color: 'var(--muted)', fontSize: '11px' }}>{address.phone || '-'}</span>
+                      <span className="user-details-address-phone" style={mono}>{address.phone || '-'}</span>
                     </div>
                     <span style={{ color: 'var(--text)', fontSize: '13px' }}>{address.fullName || details.name || '-'}</span>
                     <span style={{ color: 'var(--muted)', fontSize: '13px', lineHeight: 1.5 }}>{[address.addressLine1, address.addressLine2, address.area, address.city, address.postalCode, address.country].filter(Boolean).join(', ') || '-'}</span>
                   </div>
                 )) : <p style={{ margin: 0, color: 'var(--muted)' }}>No saved addresses.</p>}
               </div>
-            </div>
+            </SectionCard>
 
-            <div className="admin-inset-card" style={{ marginBottom: 0 }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', marginBottom: '12px' }}>
-                <h4 style={{ margin: 0, fontSize: '15px', fontWeight: 700 }}>User Orders</h4>
-                <span style={{ color: 'var(--muted)', fontSize: '12px' }}>{admin.number ? admin.number(orders.length) : orders.length} loaded</span>
-              </div>
+            <SectionCard title="User Orders" meta={`${admin.number ? admin.number(orders.length) : orders.length} loaded`}>
               <div className="user-orders-stack">
                 {orders.length ? orders.map((order) => (
                   <div key={order.id} className={`user-order-card ${expandedOrders[String(order.id || '')] ? 'expanded' : ''}`}>
@@ -261,7 +268,7 @@ export function UserDetailsSurface({ variant = 'modal', onClose }) {
                             <span>Total</span>
                             <strong style={{ ...mono }}>{admin.currency ? admin.currency(order.total) : order.total}</strong>
                           </div>
-                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                          <div className="user-details-order-status-row">
                             <span className={`status-badge status-${admin.normalizeStatus ? admin.normalizeStatus(order.paymentStatus) : order.paymentStatus}`}>{order.paymentStatus || 'unknown'}</span>
                             <span className={`status-badge status-${admin.normalizeStatus ? admin.normalizeStatus(order.fulfillmentStatus) : order.fulfillmentStatus}`}>{order.fulfillmentStatus || 'unknown'}</span>
                           </div>
@@ -298,7 +305,7 @@ export function UserDetailsSurface({ variant = 'modal', onClose }) {
                   </div>
                 )) : <p style={{ margin: 0, color: 'var(--muted)' }}>No orders found for this user.</p>}
               </div>
-            </div>
+            </SectionCard>
           </div>
         ) : <p style={{ margin: 0, color: 'var(--muted)' }}>User details are not available.</p>}
       </div>

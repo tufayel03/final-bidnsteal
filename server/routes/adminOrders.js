@@ -3,6 +3,7 @@ const Order = require("../models/Order");
 const Product = require("../models/Product");
 const User = require("../models/User");
 const { requireAdmin } = require("../middleware/auth");
+const { buildTransactionalEmailContext, sendTemplateEmail } = require("../services/emailService");
 const { parsePagination } = require("../utils/http");
 const { makeOrderNumber } = require("../utils/orderNumbers");
 const {
@@ -24,8 +25,8 @@ function normalizePaymentStatus(value) {
 }
 
 function normalizeFulfillmentStatus(value) {
-  const normalized = String(value || "").trim().toLowerCase();
-  if (["pending", "processing", "shipped", "delivered", "cancelled"].includes(normalized)) {
+  const normalized = String(value || "").trim().toLowerCase().replace(/[\s-]+/g, "_");
+  if (["pending", "processing", "on_hold", "shipped", "delivered", "cancelled"].includes(normalized)) {
     return normalized;
   }
   return "";
@@ -74,6 +75,115 @@ function computeOrderSubtotal(items = []) {
       return sum + (qty * unitPrice);
     }, 0).toFixed(2)
   );
+}
+
+function escapeHtml(value) {
+  return String(value || "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+function buildOrderItemsTable(order, withImages = false) {
+  return (order.items || [])
+    .map((item) => {
+      const title = escapeHtml(item.titleSnapshot || "Item");
+      const qty = Number(item.qty || 0);
+      const unitPrice = Number(item.unitPrice || 0);
+      const subtotal = qty * unitPrice;
+      const image = withImages && item.imageUrl
+        ? `<td style="padding:8px;border:1px solid #ddd;"><img src="${escapeHtml(item.imageUrl)}" alt="" width="56" height="56" style="object-fit:cover;" /></td>`
+        : "";
+      return `<tr>${image}<td style="padding:8px;border:1px solid #ddd;">${title}</td><td style="padding:8px;border:1px solid #ddd;">${qty}</td><td style="padding:8px;border:1px solid #ddd;">BDT ${unitPrice}</td><td style="padding:8px;border:1px solid #ddd;">BDT ${subtotal}</td></tr>`;
+    })
+    .join("");
+}
+
+function formatFulfillmentStatusLabel(status) {
+  const normalized = String(status || "").trim().toLowerCase();
+  if (!normalized) return "";
+  if (normalized === "on_hold") return "On Hold";
+  return normalized.charAt(0).toUpperCase() + normalized.slice(1);
+}
+
+const ORDER_STATUS_EMAIL_CONFIG = {
+  processing: {
+    templateKey: "order-processing",
+    fallbackSubject: (order) => `We are preparing order ${order.orderNumber}`,
+    fallbackHtml: (order) => `<p>Your order <strong>${escapeHtml(order.orderNumber)}</strong> is now being prepared.</p>`
+  },
+  on_hold: {
+    templateKey: "order-on-hold",
+    fallbackSubject: (order) => `Order ${order.orderNumber} is on hold`,
+    fallbackHtml: (order) => `<p>Your order <strong>${escapeHtml(order.orderNumber)}</strong> is currently on hold.</p>`
+  },
+  shipped: {
+    templateKey: "order-shipped",
+    fallbackSubject: (order) => `Order ${order.orderNumber} has shipped`,
+    fallbackHtml: (order) => `<p>Your order <strong>${escapeHtml(order.orderNumber)}</strong> is on the way.</p>`
+  },
+  cancelled: {
+    templateKey: "order-cancelled",
+    fallbackSubject: (order) => `Order ${order.orderNumber} has been cancelled`,
+    fallbackHtml: (order) => `<p>Your order <strong>${escapeHtml(order.orderNumber)}</strong> has been cancelled.</p>`
+  }
+};
+
+async function notifyOrderStatusChange(order, previousFulfillmentStatus = "") {
+  const nextStatus = String(order?.fulfillmentStatus || "").trim().toLowerCase();
+  if (!order || !nextStatus || nextStatus === String(previousFulfillmentStatus || "").trim().toLowerCase()) {
+    return;
+  }
+
+  const config = ORDER_STATUS_EMAIL_CONFIG[nextStatus];
+  if (!config || !isValidEmail(order.customerEmail)) {
+    return;
+  }
+
+  const shippingAddress = order.shippingAddress || {};
+  const trackingCode = String(order.courier?.trackingCode || order.courier?.consignmentId || "").trim();
+
+  try {
+    const context = await buildTransactionalEmailContext({
+      customer: {
+        name: order.customerName,
+        email: order.customerEmail
+      },
+      order: {
+        number: order.orderNumber,
+        total: `BDT ${Number(order.total || 0)}`,
+        status: nextStatus,
+        fulfillment_label: formatFulfillmentStatusLabel(nextStatus),
+        payment_status: order.paymentStatus,
+        tracking_code: trackingCode,
+        items_table: buildOrderItemsTable(order, false),
+        items_table_with_images: buildOrderItemsTable(order, true)
+      },
+      shipping: {
+        address: [
+          shippingAddress.addressLine1,
+          shippingAddress.addressLine2,
+          shippingAddress.area,
+          shippingAddress.city,
+          shippingAddress.postalCode,
+          shippingAddress.country
+        ].filter(Boolean).join(", "),
+        city: shippingAddress.city || ""
+      }
+    });
+
+    await sendTemplateEmail({
+      templateKey: config.templateKey,
+      to: order.customerEmail,
+      context,
+      fallbackSubject: config.fallbackSubject(order),
+      fallbackHtml: config.fallbackHtml(order)
+    });
+  } catch (error) {
+    console.error(`[admin-orders] failed to send ${config.templateKey} email`, error);
+  }
 }
 
 function fixedInventoryItemsFromItems(items) {
@@ -528,7 +638,9 @@ router.patch("/bulk/status", async (req, res) => {
     }
 
     try {
+      const previousFulfillmentStatus = String(order.fulfillmentStatus || "").toLowerCase();
       await applyOrderUpdate(order, payload);
+      await notifyOrderStatusChange(order, previousFulfillmentStatus);
       updatedOrders.push(order);
     } catch (error) {
       failed.push({
@@ -569,7 +681,9 @@ router.patch("/:id/status", async (req, res) => {
     return res.status(Number(error?.status) || 400).json({ message: error.message || "Invalid order update." });
   }
 
+  const previousFulfillmentStatus = String(order.fulfillmentStatus || "").toLowerCase();
   await applyOrderUpdate(order, payload);
+  await notifyOrderStatusChange(order, previousFulfillmentStatus);
   return res.json(order);
 });
 
@@ -586,7 +700,9 @@ router.patch("/:id", async (req, res) => {
     return res.status(Number(error?.status) || 400).json({ message: error.message || "Invalid order update." });
   }
 
+  const previousFulfillmentStatus = String(order.fulfillmentStatus || "").toLowerCase();
   await applyOrderUpdate(order, payload);
+  await notifyOrderStatusChange(order, previousFulfillmentStatus);
   return res.json(order);
 });
 

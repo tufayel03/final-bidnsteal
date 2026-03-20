@@ -182,7 +182,12 @@ export function CheckoutPage() {
         method: 'POST',
         body: {
           code: couponCode.trim(),
-          subtotal: cartTotal
+          subtotal: cartTotal,
+          customerEmail: form.email.trim(),
+          items: items.map((item) => ({
+            productId: item.id,
+            qty: item.quantity
+          }))
         }
       });
       setDiscount(Number(payload.discount || 0));

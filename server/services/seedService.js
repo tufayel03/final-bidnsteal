@@ -7,6 +7,7 @@ const CampaignTemplate = require("../models/CampaignTemplate");
 const Campaign = require("../models/Campaign");
 const Setting = require("../models/Setting");
 const { couponSeeds, campaignTemplateSeeds } = require("../data/seedData");
+const { mergeEmailTemplates } = require("./emailTemplateService");
 
 async function upsertAdminUser() {
   const passwordHash = await bcrypt.hash(env.adminPassword, 10);
@@ -115,14 +116,7 @@ async function ensureSettings() {
     },
     {
       key: "emailTemplates",
-      value: [
-        {
-          key: "order-confirmation",
-          subjectTemplate: "Your order {{order.number}} is confirmed",
-          htmlTemplate: "<p>Thanks for ordering from BidnSteal.</p>",
-          isActive: true
-        }
-      ]
+      value: mergeEmailTemplates([])
     },
     {
       key: "disputes",

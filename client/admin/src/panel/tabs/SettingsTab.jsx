@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { Activity, Eye, ImagePlus, Mail, RefreshCw, Send, ShieldCheck, ShoppingCart, SlidersHorizontal, Truck } from 'lucide-react';
+import { Activity, Eye, Globe, ImagePlus, Mail, RefreshCw, Send, ShieldCheck, ShoppingCart, SlidersHorizontal, Trash2, Truck, X } from 'lucide-react';
 import { useAdmin } from '../AdminContext';
 
 const SETTINGS_TABS = [
+    { key: 'brand', label: 'Brand', caption: 'Site identity + logo', icon: ImagePlus },
     { key: 'templates', label: 'Email Templates', caption: 'Transactional template editor', icon: Mail },
     { key: 'smtp', label: 'SMTP Mailer', caption: 'Mail transport + sender identity', icon: Send },
     { key: 'courier', label: 'Courier Integration', caption: 'Steadfast dispatch + fraud checks', icon: Truck },
@@ -40,10 +41,12 @@ function StatCard({ label, value, hint, accent = '' }) {
 export function SettingsTab() {
     const admin = useAdmin();
     const {
+        emailTemplates = [],
         templateEditor = {},
         templatePreview = {},
         templateKeys = [],
         templatePlaceholders = [],
+        siteProfile = {},
         smtpSettings = {},
         courierSettings = {},
         checkoutSettings = {},
@@ -53,7 +56,6 @@ export function SettingsTab() {
     const [activeTab, setActiveTab] = useState('templates');
 
     const courierDispatchEnabled = admin.courierDispatchEnabled ? admin.courierDispatchEnabled() : false;
-    const activeTemplateLabel = templateEditor.selectedKey || templateEditor.key || 'No template selected';
     const smtpStatusLabel = smtpSettings.enabled ? 'Enabled' : 'Disabled';
     const smtpTransportLabel = smtpSettings.host ? `${smtpSettings.host}:${smtpSettings.port || 465}` : 'Transport not configured';
     const courierBalanceLabel = courierSettings.balance === null || courierSettings.balance === undefined
@@ -66,6 +68,122 @@ export function SettingsTab() {
     const deliveryChargeOutsideDhakaLabel = admin.currency
         ? admin.currency(checkoutSettings.deliveryChargeOutsideDhaka || 0)
         : `BDT ${Number(checkoutSettings.deliveryChargeOutsideDhaka || 0).toFixed(2)}`;
+    const brandLogoUrl = admin.mediaUrl ? admin.mediaUrl(siteProfile.logoUrl || '') : (siteProfile.logoUrl || '');
+    const brandLogoStatusLabel = siteProfile.logoUrl ? 'Logo Ready' : 'No Logo';
+    const brandSiteUrlLabel = siteProfile.siteUrl || 'Not set';
+    const brandInitial = String(siteProfile.siteName || 'B').trim().charAt(0).toUpperCase() || 'B';
+    const selectedTemplate = admin.emailTemplateByKey
+        ? admin.emailTemplateByKey(templateEditor.selectedKey || templateEditor.key)
+        : null;
+    const selectedTemplateLabel = selectedTemplate?.label || selectedTemplate?.key || templateEditor.selectedKey || templateEditor.key || 'Template';
+    const selectedTemplateDescription = selectedTemplate?.description || '';
+    const selectedTemplateLocked = Boolean(selectedTemplate?.isSystem);
+
+    const renderBrandTab = () => (
+        <div className="settings-workspace settings-workspace-wide">
+            <div className="settings-stat-grid settings-stat-grid-top">
+                <StatCard label="Site Name" value={siteProfile.siteName || 'BidnSteal'} hint="Public brand label" accent={siteProfile.logoUrl ? 'accent-primary' : ''} />
+                <StatCard label="Logo" value={brandLogoStatusLabel} hint="Uploaded asset or direct URL" />
+                <StatCard label="Support Email" value={siteProfile.supportEmail || 'Not set'} hint="Customer contact inbox" />
+                <StatCard label="Site URL" value={brandSiteUrlLabel} hint="Storefront base address" />
+            </div>
+
+            <div className="settings-layout settings-layout-editor">
+                <div className="settings-stack">
+                    <section className="settings-card settings-surface-card">
+                        <SectionHeader
+                            kicker="Brand Identity"
+                            title="Site Profile"
+                            description="Manage the public storefront name, support channels, and logo source used across the site profile feed."
+                            aside={<Globe size={16} className="settings-panel-icon" />}
+                        />
+                        <div className="settings-form-grid">
+                            <div className="settings-field">
+                                <label className="settings-label">Site Name</label>
+                                <input value={siteProfile.siteName || ''} onChange={(event) => { admin.siteProfile.siteName = event.target.value; }} placeholder="BidnSteal" className="settings-input text-sm w-full" />
+                            </div>
+                            <div className="settings-field">
+                                <label className="settings-label">Site URL</label>
+                                <input value={siteProfile.siteUrl || ''} onChange={(event) => { admin.siteProfile.siteUrl = event.target.value; }} placeholder="https://bidnsteal.com" className="settings-input text-sm w-full" />
+                            </div>
+                            <div className="settings-field">
+                                <label className="settings-label">Support Email</label>
+                                <input type="email" value={siteProfile.supportEmail || ''} onChange={(event) => { admin.siteProfile.supportEmail = event.target.value; }} placeholder="support@bidnsteal.com" className="settings-input text-sm w-full" />
+                            </div>
+                            <div className="settings-field">
+                                <label className="settings-label">Support Phone</label>
+                                <input value={siteProfile.supportPhone || ''} onChange={(event) => { admin.siteProfile.supportPhone = event.target.value; }} placeholder="+8801..." className="settings-input text-sm w-full" />
+                            </div>
+                            <div className="settings-field">
+                                <label className="settings-label">WhatsApp Number</label>
+                                <input value={siteProfile.supportWhatsappNumber || ''} onChange={(event) => { admin.siteProfile.supportWhatsappNumber = event.target.value; }} placeholder="8801..." className="settings-input text-sm w-full" />
+                            </div>
+                            <div className="settings-field">
+                                <label className="settings-label">Facebook URL</label>
+                                <input value={siteProfile.facebookUrl || ''} onChange={(event) => { admin.siteProfile.facebookUrl = event.target.value; }} placeholder="https://facebook.com/your-page" className="settings-input text-sm w-full" />
+                            </div>
+                            <div className="settings-field settings-field-full">
+                                <label className="settings-label">Logo URL</label>
+                                <input value={siteProfile.logoUrl || ''} onChange={(event) => { admin.siteProfile.logoUrl = event.target.value; }} placeholder="/uploads/media/logo.png or https://..." className="settings-input text-sm w-full" />
+                                <p className="settings-helper-text">Use an uploaded media asset path or a direct https image URL.</p>
+                            </div>
+                        </div>
+
+                        <div className="settings-inline-actions">
+                            <button onClick={() => admin.openEmailMediaPicker && admin.openEmailMediaPicker('siteLogo')} className="settings-btn settings-btn-soft">
+                                <ImagePlus size={15} />
+                                <span>Choose From Media</span>
+                            </button>
+                            <button onClick={() => { admin.siteProfile.logoUrl = ''; }} className="settings-btn settings-btn-soft">
+                                <X size={15} />
+                                <span>Clear Logo</span>
+                            </button>
+                            <p className="settings-inline-note">The logo picker reuses uploaded media so you do not need to paste file paths manually.</p>
+                        </div>
+
+                        <div className="settings-actions-grid settings-actions-grid-single">
+                            <button onClick={() => admin.saveSiteProfile && admin.saveSiteProfile()} className="settings-btn settings-btn-primary">
+                                {siteProfile.saving ? 'Saving...' : 'Save Brand Settings'}
+                            </button>
+                        </div>
+                    </section>
+                </div>
+
+                <aside className="settings-sidebar">
+                    <section className="settings-card settings-surface-card settings-sticky-card">
+                        <SectionHeader
+                            kicker="Preview"
+                            title="Brand Mark"
+                            description="Current public logo preview for the site profile feed."
+                            aside={<ImagePlus size={16} className="settings-panel-icon" />}
+                        />
+                        <div className="settings-preview-box">
+                            <span className="settings-preview-label">Logo</span>
+                            <div className="settings-brand-mark">
+                                {brandLogoUrl ? (
+                                    <img src={brandLogoUrl} alt={`${siteProfile.siteName || 'BidnSteal'} logo`} className="settings-brand-logo" />
+                                ) : (
+                                    <div className="settings-brand-logo-fallback">
+                                        <span>{brandInitial}</span>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                        <div className="settings-preview-box">
+                            <span className="settings-preview-label">Public Identity</span>
+                            <p className="settings-preview-value">{siteProfile.siteName || 'BidnSteal'}</p>
+                            <p className="settings-preview-value mono">{siteProfile.siteUrl || 'No site URL set'}</p>
+                        </div>
+                        <div className="settings-preview-box">
+                            <span className="settings-preview-label">Support Reach</span>
+                            <p className="settings-preview-value">{siteProfile.supportEmail || 'No support email set'}</p>
+                            <p className="settings-preview-value">{siteProfile.supportPhone || siteProfile.supportWhatsappNumber || 'No phone set'}</p>
+                        </div>
+                    </section>
+                </aside>
+            </div>
+        </div>
+    );
 
     const renderNav = () => (
         <div className="settings-subnav">
@@ -77,6 +195,8 @@ export function SettingsTab() {
                         key={tab.key}
                         type="button"
                         onClick={() => setActiveTab(tab.key)}
+                        title={tab.caption}
+                        aria-label={`${tab.label}: ${tab.caption}`}
                         className={`settings-subnav-button${active ? ' is-active' : ''}`}
                     >
                         <span className="settings-subnav-icon">
@@ -98,23 +218,10 @@ export function SettingsTab() {
                 <div className="settings-stack">
                     <section className="settings-card settings-surface-card">
                         <SectionHeader
-                            kicker="Email Templates"
-                            title="Template Editor"
-                            description="Edit live transactional templates, attach uploaded media, and keep placeholders organized."
-                            aside={<span className="settings-panel-pill">Live backend</span>}
-                        />
-                        <div className="settings-stat-grid">
-                            <StatCard label="Library Size" value={templateKeys.length} hint="Saved template records" accent="accent-primary" />
-                            <StatCard label="Current Template" value={activeTemplateLabel} hint="Active editor target" />
-                            <StatCard label="Quick Tokens" value={templatePlaceholders.length} hint="Insertable placeholders" />
-                        </div>
-                    </section>
-
-                    <section className="settings-card settings-surface-card">
-                        <SectionHeader
                             kicker="Editor Inputs"
-                            title="Template Content"
-                            description="Select a template from the backend library, then update its key, subject line, and HTML body."
+                            title={selectedTemplateLabel}
+                            description={selectedTemplateDescription || 'Select a template from the backend library, then update its subject line and HTML body.'}
+                            aside={selectedTemplateLocked ? <span className="settings-code-pill">System</span> : null}
                         />
                         <div className="settings-form-grid settings-form-grid-editor">
                             <div className="settings-field settings-field-full">
@@ -128,8 +235,10 @@ export function SettingsTab() {
                                     className="settings-input text-sm w-full"
                                 >
                                     <option value="">Select template</option>
-                                    {templateKeys.map((key) => (
-                                        <option key={key} value={key}>{key}</option>
+                                    {(emailTemplates || []).map((template) => (
+                                        <option key={template.key} value={template.key}>
+                                            {template.label || template.key}
+                                        </option>
                                     ))}
                                 </select>
                             </div>
@@ -140,7 +249,9 @@ export function SettingsTab() {
                                     onChange={(event) => { admin.templateEditor.key = event.target.value; }}
                                     placeholder="template_key"
                                     className="settings-input mono text-sm w-full"
+                                    disabled={selectedTemplateLocked}
                                 />
+                                {selectedTemplateLocked ? <p className="settings-helper-text">System template keys are locked, but subject and HTML stay editable.</p> : null}
                             </div>
                             <div className="settings-field">
                                 <label className="settings-label">Subject Line</label>
@@ -209,10 +320,24 @@ export function SettingsTab() {
                                 />
                             </div>
                             <div className="settings-actions-grid settings-actions-grid-four">
+                                <button onClick={() => admin.startNewTemplate && admin.startNewTemplate()} className="settings-btn settings-btn-soft">New</button>
                                 <button onClick={() => admin.createTemplate && admin.createTemplate()} className="settings-btn settings-btn-primary">Create</button>
                                 <button onClick={() => admin.updateTemplate && admin.updateTemplate()} className="settings-btn settings-btn-soft">Update</button>
                                 <button onClick={() => admin.previewTemplate && admin.previewTemplate()} className="settings-btn settings-btn-soft">Preview</button>
+                            </div>
+                            <div className="settings-actions-grid settings-actions-grid-four">
                                 <button onClick={() => admin.testSendTemplate && admin.testSendTemplate()} className="settings-btn settings-btn-soft">Test Send</button>
+                                {selectedTemplateLocked ? (
+                                    <button type="button" disabled className="settings-btn settings-btn-soft">
+                                        <ShieldCheck size={15} />
+                                        <span>Locked</span>
+                                    </button>
+                                ) : (
+                                    <button onClick={() => admin.deleteTemplate && admin.deleteTemplate()} className="settings-btn settings-btn-soft">
+                                        <Trash2 size={15} />
+                                        <span>Delete</span>
+                                    </button>
+                                )}
                             </div>
                         </div>
                     </section>
@@ -711,6 +836,7 @@ export function SettingsTab() {
             {renderNav()}
 
             <div className="settings-content">
+                {activeTab === 'brand' && renderBrandTab()}
                 {activeTab === 'templates' && renderTemplatesTab()}
                 {activeTab === 'smtp' && renderSmtpTab()}
                 {activeTab === 'courier' && renderCourierTab()}

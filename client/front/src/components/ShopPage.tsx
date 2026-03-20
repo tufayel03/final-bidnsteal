@@ -27,6 +27,10 @@ export function ShopPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 12;
   const { addToCart } = useCart();
+  const getProductImageStateClasses = (inStock: boolean) =>
+    inStock
+      ? 'group-hover:scale-105'
+      : 'grayscale saturate-0 contrast-75 brightness-90';
 
   useEffect(() => {
     setCurrentPage(1);
@@ -260,7 +264,7 @@ export function ShopPage() {
                         <img 
                           src={assetUrl(product.image)} 
                           alt={product.name}
-                          className="w-full h-full object-cover rounded transition-all duration-500 group-hover:scale-105"
+                          className={`w-full h-full object-cover rounded transition-all duration-500 ${getProductImageStateClasses(product.inStock)}`}
                         />
                         
                         {/* Badges */}

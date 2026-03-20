@@ -15,3 +15,7 @@ export interface Product {
 }
 
 export const PRODUCTS: Product[] = [];
+
+export function isShopCatalogProduct(product: Product) {
+  return String(product.saleMode || 'fixed').toLowerCase() === 'fixed';
+}

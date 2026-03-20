@@ -17,6 +17,21 @@ function sanitizeUrl(value) {
   return "";
 }
 
+function sanitizeAssetUrl(value) {
+  const raw = String(value || "").trim();
+  if (!raw) return "";
+
+  if (raw.startsWith("/uploads/")) {
+    return raw;
+  }
+
+  if (raw.startsWith("uploads/")) {
+    return `/${raw}`;
+  }
+
+  return sanitizeUrl(raw);
+}
+
 function sanitizeText(value, maxLength = 255) {
   return String(value || "").trim().slice(0, maxLength);
 }
@@ -36,7 +51,8 @@ function defaultSiteProfile() {
     supportEmail: sanitizeText(env.supportEmail || env.adminEmail || "", 255).toLowerCase(),
     supportPhone: sanitizePhone(env.supportPhone || ""),
     supportWhatsappNumber: sanitizeWhatsappNumber(env.supportWhatsappNumber || env.supportPhone || ""),
-    facebookUrl: sanitizeUrl(env.facebookUrl || "")
+    facebookUrl: sanitizeUrl(env.facebookUrl || ""),
+    logoUrl: sanitizeAssetUrl("")
   };
 }
 
@@ -48,7 +64,8 @@ function normalizeSiteProfile(value = {}) {
     supportEmail: sanitizeText(value.supportEmail || fallback.supportEmail, 255).toLowerCase(),
     supportPhone: sanitizePhone(value.supportPhone || fallback.supportPhone),
     supportWhatsappNumber: sanitizeWhatsappNumber(value.supportWhatsappNumber || fallback.supportWhatsappNumber),
-    facebookUrl: sanitizeUrl(value.facebookUrl || fallback.facebookUrl)
+    facebookUrl: sanitizeUrl(value.facebookUrl || fallback.facebookUrl),
+    logoUrl: sanitizeAssetUrl(value.logoUrl || fallback.logoUrl)
   };
 }
 
